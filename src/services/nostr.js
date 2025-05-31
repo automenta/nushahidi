@@ -66,7 +66,7 @@ const handleEvent = async (event, relayUrl) => {
         case C.NOSTR_KIND_NOTE:
             await addInteractionToReport(event);
             break;
-        case 5: // Deletion event
+        case 5:
             await dbSvc.rmRep(event.tags.find(t => t[0] === 'e')?.[1]);
             appStore.set(s => ({ reports: s.reports.filter(r => r.id !== event.tags.find(t => t[0] === 'e')?.[1]) }));
             break;

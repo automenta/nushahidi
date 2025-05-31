@@ -164,7 +164,6 @@ export class FilterControls {
 
         newForm.querySelector('#clear-drawn-shapes-btn').onclick = mapSvc.clearAllDrawnShapes;
 
-        // Re-add map draw controls if the form is re-rendered
         const mapDrawControlsDiv = newForm.querySelector('#map-draw-controls');
         if (this.mapDrawControlsDiv && this.mapDrawControlsDiv.parentNode) {
             this.mapDrawControlsDiv.parentNode.removeChild(this.mapDrawControlsDiv);

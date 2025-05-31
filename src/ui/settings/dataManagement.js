@@ -50,7 +50,6 @@ export class DataManagementSection {
                 downloadAnchorNode.setAttribute("href", dataStr);
                 downloadAnchorNode.setAttribute("download", "nostrmapper_settings.json");
                 document.body.appendChild(downloadAnchorNode);
-                downloadAnchorNode.click();
                 downloadAnchorNode.remove();
             }, "Settings exported.", "Error exporting settings"));
 

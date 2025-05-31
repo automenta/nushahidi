@@ -10,7 +10,6 @@
 - Deduplicated (no redundant logic)
     - Introduce helpful abstractions functions, parameters, and classes to share common code
     - Apply "don't repeat yourself" principles
-- Modular (logically organized, supporting abstraction)
 - Remove all comments, relying only on self-documenting code
     - Clear naming and structure
 - Use the latest version of the language, APIs, and dependencies

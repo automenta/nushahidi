@@ -1,4 +1,4 @@
-import {C, createEl, formatNpubShort, npubToHex} from '../utils.js';
+import {npubToHex} from '../utils.js';
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
 import {KeyManagementSection} from './settings/keyManagement.js';

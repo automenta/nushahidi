@@ -82,7 +82,7 @@ export const mapSvc = {
         _map.addControl(_drawControl);
         setupMapEventListeners();
         await this.loadDrawnShapes();
-        return true; // Indicate successful initialization
+        return true;
     },
 
     async loadDrawnShapes() {
