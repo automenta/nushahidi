@@ -213,13 +213,13 @@ export const isNostrId = id => /^[0-9a-f]{64}$/.test(id);
  * Renders a list of items into a specified container with flexible item rendering and actions.
  * @param {string} containerId - The ID of the container element.
  * @param {Array<object>} items - Array of items to render.
- * @param {function(object): (string|HTMLElement)} itemRenderer - Function to render a single item's display content.
+ * @param {function(object, number): (string|HTMLElement)} itemRenderer - Function to render a single item's display content.
  *                                                                 Should return a string (HTML) or a DOM element.
  * @param {Array<object>} actionsConfig - Array of action button configurations for each item.
  *   Each action object: {
  *     label: string,
  *     className: string,
- *     onClick: function(item: object),
+ *     onClick: function(item: object, index: number), // Now passes index
  *     confirm?: { title: string, message: string } // Optional confirmation modal config
  *   }
  * @param {string} itemWrapperClass - CSS class for the div wrapping each item.
@@ -238,8 +238,8 @@ export const renderList = (containerId, items, itemRenderer, actionsConfig, item
         return;
     }
 
-    items.forEach(item => {
-        const itemContent = itemRenderer(item);
+    items.forEach((item, index) => { // Added index here
+        const itemContent = itemRenderer(item, index); // Pass index to itemRenderer
         const itemDiv = createEl('div', { class: itemWrapperClass });
 
         if (typeof itemContent === 'string') {
@@ -261,11 +261,11 @@ export const renderList = (containerId, items, itemRenderer, actionsConfig, item
                         showConfirmModal(
                             action.confirm.title,
                             action.confirm.message,
-                            () => action.onClick(item),
+                            () => action.onClick(item, index), // Pass index to onClick
                             () => showToast("Action cancelled.", 'info')
                         );
                     } else {
-                        action.onClick(item);
+                        action.onClick(item, index); // Pass index to onClick
                     }
                 }
             });

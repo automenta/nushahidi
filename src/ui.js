@@ -445,18 +445,22 @@ const _renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
         previewElement.textContent = 'No images selected.';
         return;
     }
-    imagesMetadata.forEach((img, index) => {
-        const imgDiv = cE('div', { class: 'uploaded-image-item' }, [
-            cE('span', { textContent: sH(img.url.substring(img.url.lastIndexOf('/') + 1)) }),
-            cE('button', {
-                type: 'button',
-                class: 'remove-image-btn',
-                textContent: 'x',
-                onclick: () => onRemoveImage(index)
-            })
-        ]);
-        previewElement.appendChild(imgDiv);
-    });
+
+    const imageItemRenderer = (img) => cE('span', { textContent: sH(img.url.substring(img.url.lastIndexOf('/') + 1)) });
+    const imageActionsConfig = [{
+        label: 'x',
+        className: 'remove-image-btn',
+        onClick: (item, index) => onRemoveImage(index) // Pass index to the callback
+    }];
+
+    renderList(
+        previewElement.id, // Use the element's ID for renderList
+        imagesMetadata,
+        imageItemRenderer,
+        imageActionsConfig,
+        'uploaded-image-item',
+        previewElement.parentNode // Scope to the parent of previewElement if it's not a direct child of modalContent
+    );
 };
 
 /**
@@ -1760,8 +1764,8 @@ export function initUI() {
         followedOnlyToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
             _cFilt.followedOnly = e.target.checked; // Update local filter state
-            applyAllFilters(); // Re-apply filters immediately
             nostrSvc.refreshSubs(); // Refresh subscriptions to apply author filter if needed
+            applyAllFilters(); // Re-apply filters immediately
         };
 
         // Clear Drawn Shapes Button
