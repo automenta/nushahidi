@@ -1,6 +1,6 @@
 import { SimplePool, getEventHash, validateEvent, verifySignature } from 'nostr-tools';
 import { appStore } from '../store.js';
-import { dbSvc } from './db.js';
+import { dbSvc } from '../services/db.js';
 import { idSvc } from './identity.js';
 import { C, parseReport, showToast } from '../utils.js';
 

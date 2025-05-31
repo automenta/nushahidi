@@ -66,4 +66,24 @@ export const dbSvc = {
     addFollowedPubkey: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).add,
     rmFollowedPubkey: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).rm,
     clearFollowedPubkeys: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).clear,
+
+    async pruneDb() {
+        // Prune old reports (keep only the latest DB_PRUNE_REPORTS_MAX)
+        const allReports = await this.getAllReps();
+        if (allReports.length > C.DB_PRUNE_REPORTS_MAX) {
+            const sortedReports = allReports.sort((a, b) => b.at - a.at);
+            for (let i = C.DB_PRUNE_REPORTS_MAX; i < sortedReports.length; i++) {
+                await this.rmRep(sortedReports[i].id);
+            }
+        }
+
+        // Prune old profiles (older than DB_PRUNE_PROFILES_MAX_AGE_DAYS)
+        const allProfiles = await this.getAllProfiles();
+        const thirtyDaysAgo = Date.now() / 1000 - (C.DB_PRUNE_PROFILES_MAX_AGE_DAYS * 24 * 60 * 60);
+        for (const profile of allProfiles) {
+            if (profile.at < thirtyDaysAgo) {
+                await createDbStoreCrud(C.STORE_PROFILES).rm(profile.pk);
+            }
+        }
+    }
 };

@@ -1,16 +1,16 @@
-import {appStore} from '../store.js';
-import {idSvc} from '../services.js';
-import {C, createEl} from '../utils.js';
-import {showConfirmModal} from './modals.js';
-import {FilterControls, applyAllFilters} from './components/FilterControls.js';
-import {ReportList} from './components/ReportList.js';
-import {GlobalLoadingSpinner} from './components/GlobalLoadingSpinner.js';
-import {AppHeader} from './components/AppHeader.js';
-import {ReportDetailsModal} from './components/ReportDetailsModal.js';
-import {AuthModal} from './components/AuthModal.js';
-import {ReportFormModal} from './components/ReportFormModal.js';
-import {SettingsModal} from './components/SettingsModal.js';
-import {OnboardingModal} from './components/OnboardingModal.js';
+import { appStore } from '../store.js';
+import { idSvc, mapSvc } from '../services.js';
+import { C, createEl } from '../utils.js';
+import { showConfirmModal } from './modals.js';
+import { FilterControls, applyAllFilters } from './components/FilterControls.js';
+import { ReportList } from './components/ReportList.js';
+import { GlobalLoadingSpinner } from './components/GlobalLoadingSpinner.js';
+import { AppHeader } from './components/AppHeader.js';
+import { ReportDetailsModal } from './components/ReportDetailsModal.js';
+import { AuthModal } from './components/AuthModal.js';
+import { ReportFormModal } from './components/ReportFormModal.js';
+import { SettingsModal } from './components/SettingsModal.js';
+import { OnboardingModal } from './components/OnboardingModal.js';
 
 export class App {
     constructor() {

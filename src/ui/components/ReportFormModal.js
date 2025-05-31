@@ -161,7 +161,7 @@ export class ReportFormModal extends Modal {
             const address = repAddressInput.value.trim();
             if (!address) throw new Error("Please enter an address to geocode.");
 
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}}&limit=1`);
             const data = await response.json();
             if (data?.length) {
                 const { lat, lon, display_name } = data[0];
@@ -190,6 +190,24 @@ export class ReportFormModal extends Modal {
             }, null, `Failed to upload ${file.name}`))();
         }
     };
+
+    buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag) {
+        const tags = [];
+        if (reportToEdit) tags.push(['e', reportToEdit.id, '', 'root']);
+        tags.push(['title', formData.get('title') || '']);
+        tags.push(['summary', formData.get('summary') || '']);
+        tags.push(['g', geohashEncode(formState.pFLoc.lat, formState.pFLoc.lng)]);
+        formData.getAll('category').forEach(cat => tags.push(['l', cat, 'report-category']));
+        if (formData.get('freeTags')) {
+            formData.get('freeTags').split(',').map(t => t.trim()).filter(Boolean).forEach(t => tags.push(['t', t]));
+        }
+        if (currentFocusTag && currentFocusTag !== C.FOCUS_TAG_DEFAULT) tags.push(['t', currentFocusTag.substring(1)]);
+        if (formData.get('eventType')) tags.push(['event_type', formData.get('eventType')]);
+        if (formData.get('status')) tags.push(['status', formData.get('status')]);
+        imagesMetadata.forEach(img => tags.push(['image', img.url, img.type, img.dim, img.hHex]));
+        if (reportToEdit) tags.push(['d', reportToEdit.d || generateUUID()]);
+        return tags;
+    }
 
     setupReportFormSubmission(formElement, reportToEdit, formState, imagesMetadata) {
         formElement.onsubmit = withLoading(withToast(async e => {

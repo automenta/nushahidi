@@ -13,7 +13,7 @@ import {
     renderFollowedPubkeyItem, handleFollowedPubkeyRemove
 } from './settingsUtils.js';
 import {DataManagementSection} from './settings/dataManagement.js';
-import {OfflineQueueSection} from './settings/offlineQueue.js';
+import {OfflineQueueSection, offlineQueueItemRenderer} from './settings/offlineQueue.js';
 import {ConfigurableListSetting} from './components/ConfigurableListSetting.js';
 
 const createAddLogicHandler = (confSvcMethod, itemExistsChecker, itemExistsErrorMsg) => async inputValue => {
