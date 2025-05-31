@@ -66,15 +66,15 @@ const initGlobalButtons = () => {
 const setupAppStoreListeners = () => {
     appStore.on((newState, oldState) => {
         if (newState.user?.pk !== oldState?.user?.pk) {
-            updAuthDisp(newState.user?.pk);
+            updateAuthDisplay(newState.user?.pk); // Corrected function call
         }
 
         if (newState.online !== oldState?.online) {
-            updConnDisp(newState.online);
+            updateConnectionDisplay(newState.online); // Corrected function call
         }
 
         if (newState.online !== oldState?.online || newState.reports !== oldState?.reports) {
-            updSyncDisp();
+            updateSyncDisplay(); // Corrected function call
         }
 
         handleReportAndFilterUpdates(newState, oldState);
