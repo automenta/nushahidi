@@ -13,7 +13,7 @@ export const C = { // Constants
     ],
     FOCUS_TAG_DEFAULT: '#NostrMapper_Global',
     DB_NAME: 'NostrMapperDB_vFinal', DB_VERSION: 1,
-    STORE_REPORTS: 'reports', STORE_PROFILES: 'profiles', STORE_SETTINGS: 'settings', STORE_OFFLINE_QUEUE: 'offlineQueue',
+    STORE_REPORTS: 'reports', STORE_PROFILES: 'profiles', STORE_SETTINGS: 'settings', STORE_OFFLINE_QUEUE: 'offlineQueue', STORE_DRAWN_SHAPES: 'drawnShapes', // New: Store for drawn shapes
     IMG_UPLOAD_NOSTR_BUILD: 'https://nostr.build/api/v2/upload/files',
     IMG_SIZE_LIMIT_BYTES: 5 * 1024 * 1024, // 5MB
     ONBOARDING_KEY: 'nostrmapper_onboarded_v1',

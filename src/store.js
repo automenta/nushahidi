@@ -18,7 +18,8 @@ let _s={
     map:null,
     mapBnds:null,
     mapGhs:[],
-    ui:{modalOpen:null,loading:!1,syncMsg:''} // Changed 'modal' to 'modalOpen' for consistency
+    drawnShapes:[], // New: Stores GeoJSON of drawn shapes
+    ui:{modalOpen:null,loading:!1,syncMsg:'', spatialFilterEnabled: false} // Changed 'modal' to 'modalOpen' for consistency, added spatialFilterEnabled
 }; /* s: state */
 const _l=new Set(); /* l: listeners */
 export const appStore={

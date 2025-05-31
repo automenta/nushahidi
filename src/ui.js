@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import { point, booleanPointInPolygon } from '@turf/turf'; // Import turf for spatial queries
 import { appStore } from './store.js';
 import { mapSvc, idSvc, confSvc, nostrSvc, imgSvc, dbSvc } from './services.js';
 import { C, $, $$, createEl, showModal, hideModal, sanitizeHTML, debounce, geohashEncode, sha256, getImgDims, formatNpubShort, npubToHex, showToast, isValidUrl, generateUUID } from './utils.js';
@@ -810,6 +811,8 @@ let _cFilt = { q: '', fT: '', cat: '', auth: '', tStart: null, tEnd: null }; /* 
 const applyAllFilters = () => {
     const allReports = appStore.get().reports;
     const mutedPubkeys = appStore.get().settings.mute;
+    const drawnShapes = appStore.get().drawnShapes;
+    const spatialFilterEnabled = appStore.get().ui.spatialFilterEnabled;
 
     const filteredReports = allReports.filter(report => {
         // Mute filter
@@ -843,6 +846,20 @@ const applyAllFilters = () => {
         // Time filters
         if (_cFilt.tStart && report.at < _cFilt.tStart) return false;
         if (_cFilt.tEnd && report.at > _cFilt.tEnd) return false;
+
+        // Spatial filter (new)
+        if (spatialFilterEnabled && drawnShapes.length > 0) {
+            if (!report.lat || !report.lon) return false; // Report must have location
+            const reportPoint = point([report.lon, report.lat]); // Turf expects [lon, lat]
+            let isInDrawnShape = false;
+            for (const shape of drawnShapes) {
+                if (booleanPointInPolygon(reportPoint, shape)) {
+                    isInDrawnShape = true;
+                    break;
+                }
+            }
+            if (!isInDrawnShape) return false;
+        }
 
         return true;
     }).sort((a, b) => b.at - a.at); // Sort by created_at descending
@@ -916,7 +933,31 @@ export function initUI() {
             gE('#filter-author').value = '';
             gE('#filter-time-start').value = '';
             gE('#filter-time-end').value = '';
+            // Reset spatial filter state
+            appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: false } }));
+            gE('#spatial-filter-toggle').checked = false;
             applyAllFilters();
+        };
+
+        // New: Map Drawing Controls
+        const mapDrawControlsDiv = gE('#map-draw-controls');
+        const drawControl = mapSvc.getDrawControl();
+        if (drawControl) {
+            // Append the draw control's toolbar to the designated div
+            mapDrawControlsDiv.appendChild(drawControl.onAdd(mapSvc.get()));
+        }
+
+        // New: Spatial Filter Toggle
+        const spatialFilterToggle = gE('#spatial-filter-toggle');
+        spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled;
+        spatialFilterToggle.onchange = e => {
+            appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
+            applyAllFilters(); // Re-apply filters immediately
+        };
+
+        // New: Clear Drawn Shapes Button
+        gE('#clear-drawn-shapes-btn').onclick = () => {
+            mapSvc.clearAllDrawnShapes();
         };
     };
 
@@ -927,10 +968,12 @@ export function initUI() {
             updConnDisp(newState.online);
             updSyncDisp();
 
-            // Re-apply filters if reports, mute list, or current focus tag changes
+            // Re-apply filters if reports, mute list, current focus tag, or drawn shapes/spatial filter changes
             if (newState.reports !== oldState?.reports ||
                 newState.settings.mute !== oldState?.settings?.mute ||
-                newState.currentFocusTag !== oldState?.currentFocusTag) {
+                newState.currentFocusTag !== oldState?.currentFocusTag ||
+                newState.drawnShapes !== oldState?.drawnShapes || // New: Trigger filter on drawn shapes change
+                newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled) { // New: Trigger filter on spatial filter toggle
                 if (newState.currentFocusTag !== _cFilt.fT) {
                     _cFilt.fT = newState.currentFocusTag;
                     gE('#focus-tag-input').value = _cFilt.fT;

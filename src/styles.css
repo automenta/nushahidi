@@ -719,3 +719,71 @@ footer {
 .confirm-modal-buttons .cancel-button:hover {
     background-color: #45a049;
 }
+
+/* Leaflet.draw controls styling */
+.leaflet-draw-toolbar a {
+    background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png'); /* Ensure spritesheet is accessible */
+}
+
+.leaflet-draw-toolbar a.leaflet-draw-draw-polygon { background-position: -144px 0; }
+.leaflet-draw-toolbar a.leaflet-draw-draw-rectangle { background-position: -168px 0; }
+.leaflet-draw-toolbar a.leaflet-draw-draw-circle { background-position: -120px 0; }
+.leaflet-draw-toolbar a.leaflet-draw-edit-edit { background-position: -72px 0; }
+.leaflet-draw-toolbar a.leaflet-draw-edit-remove { background-position: -96px 0; }
+
+/* Adjustments for filter controls */
+#filter-controls hr {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 1rem 0;
+}
+
+#filter-controls #map-draw-controls {
+    margin-bottom: 0.5rem;
+}
+
+#filter-controls #map-draw-controls .leaflet-draw-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 0.5rem;
+}
+
+#filter-controls #map-draw-controls .leaflet-draw-toolbar a {
+    display: inline-block;
+    width: 24px; /* Standard icon size */
+    height: 24px;
+    background-color: var(--primary-color);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#filter-controls #map-draw-controls .leaflet-draw-toolbar a:hover {
+    background-color: #2a5bb7;
+}
+
+#filter-controls #map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions {
+    background-color: transparent; /* Actions like 'Cancel', 'Save' */
+    border: none;
+    width: auto;
+    height: auto;
+    padding: 0 5px;
+    font-size: 0.8em;
+    color: var(--primary-color);
+}
+
+#filter-controls #map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions:hover {
+    text-decoration: underline;
+}
+
+#filter-controls #spatial-filter-toggle {
+    width: auto; /* Override 100% width */
+    margin-right: 0.5rem;
+}
+
+#filter-controls #clear-drawn-shapes-btn {
+    background-color: var(--danger-color);
+    margin-top: 0.5rem;
+}

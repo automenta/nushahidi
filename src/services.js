@@ -1,8 +1,9 @@
 import L from 'leaflet';
 import 'leaflet.markercluster'; // Import the MarkerCluster plugin
+// L.Draw is typically global after its script is loaded, no explicit import needed here if using CDN
 import { generatePrivateKey as genSk, getPublicKey as getPk, nip19, getEventHash as getEvH, signEvent as signEvNostr, relayInit, nip11 } from 'nostr-tools';
 import { appStore } from './store.js';
-import { C, $, encrypt, decrypt, sha256, npubToHex, geohashEncode, parseReport, getGhPrefixes, nsecToHex, isNostrId, showToast } from './utils.js';
+import { C, $, encrypt, decrypt, sha256, npubToHex, geohashEncode, parseReport, getGhPrefixes, nsecToHex, isNostrId, showToast, generateUUID } from './utils.js';
 import { showPassphraseModal } from './ui.js'; // Import the new modal function
 
 let _db; /* db instance */
@@ -25,6 +26,7 @@ const getDbStore = async (storeName, mode = 'readonly') => {
                 if (!db.objectStoreNames.contains(C.STORE_PROFILES)) db.createObjectStore(C.STORE_PROFILES, { keyPath: 'pk' });
                 if (!db.objectStoreNames.contains(C.STORE_SETTINGS)) db.createObjectStore(C.STORE_SETTINGS, { keyPath: 'id' });
                 if (!db.objectStoreNames.contains(C.STORE_OFFLINE_QUEUE)) db.createObjectStore(C.STORE_OFFLINE_QUEUE, { autoIncrement: true, keyPath: 'qid' });
+                if (!db.objectStoreNames.contains(C.STORE_DRAWN_SHAPES)) db.createObjectStore(C.STORE_DRAWN_SHAPES, { keyPath: 'id' }); // New store for drawn shapes
             };
         });
     }
@@ -44,6 +46,11 @@ export const dbSvc = { /* dbSvc: dbService */
     addOfflineQ: async e => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).add(e),
     getOfflineQ: async () => (await getDbStore(C.STORE_OFFLINE_QUEUE)).getAll(),
     rmOfflineQ: async qid => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).delete(qid),
+    // New: Methods for drawn shapes
+    addDrawnShape: async shape => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).put(shape),
+    getAllDrawnShapes: async () => (await getDbStore(C.STORE_DRAWN_SHAPES)).getAll(),
+    rmDrawnShape: async id => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).delete(id),
+    clearDrawnShapes: async () => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).clear(),
 
     /**
      * Prunes old reports and profiles from IndexedDB to manage storage.
@@ -166,7 +173,7 @@ export const confSvc = { /* confSvc: configService */
                 mute: updatedSettings.mute || s.settings.mute,
                 imgHost: updatedSettings.imgH || s.settings.imgHost,
                 nip96Host: updatedSettings.nip96H || s.settings.nip96Host,
-                nip96Token: updatedSettings.nip96T || s.settings.nip96Token
+                nip96Token: updatedSettings.nip96T || s.settings.nip96T
             },
             user: updatedSettings.id ? { pk: updatedSettings.id.pk, authM: updatedSettings.id.authM } : s.user
         }));
@@ -677,20 +684,6 @@ export const nostrSvc = { /* nostrSvc: nostrService */
         }));
 
         return allInteractions.sort((a, b) => a.created_at - b.created_at); // Oldest first for display
-    },
-
-    /**
-     * Publishes a NIP-09 event deletion request.
-     * @param {string} eventId - The ID of the event to delete.
-     * @param {string} [reason=''] - Optional reason for deletion.
-     */
-    async deleteEv(eventId, reason = '') {
-        const eventData = {
-            kind: 5, // NIP-09 Event Deletion
-            content: reason,
-            tags: [['e', eventId]]
-        };
-        await this.pubEv(eventData);
     }
 };
 
@@ -748,6 +741,8 @@ export const offSvc = { /* offSvc: offlineService */
 
 let _map, _mapRepsLyr = L.layerGroup(),
     _mapTileLyr; /* map: mapInstance, mapRepsLyr: mapReportsLayer, mapTileLyr: mapTileLayer */
+let _drawnItems; // FeatureGroup to store drawn items
+let _drawControl; // Leaflet.draw control instance
 
 export const mapSvc = { /* mapSvc: mapService */
     /**
@@ -763,6 +758,34 @@ export const mapSvc = { /* mapSvc: mapService */
         _mapRepsLyr = L.markerClusterGroup(); // Changed to MarkerClusterGroup
         _map.addLayer(_mapRepsLyr);
 
+        // Initialize the FeatureGroup to store drawn items
+        _drawnItems = new L.FeatureGroup();
+        _map.addLayer(_drawnItems);
+
+        // Initialize the draw control and add it to the map
+        _drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: _drawnItems,
+                poly: {
+                    allowIntersection: false
+                }
+            },
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true
+                },
+                polyline: false, // Disable polyline
+                rectangle: true,
+                circle: true,
+                marker: false, // Disable marker
+                circlemarker: false // Disable circlemarker
+            }
+        });
+        // Add the draw control to a specific div, not directly to the map
+        // This allows us to place it in the sidebar
+        // _map.addControl(_drawControl); // This line is removed
+
         appStore.set({ map: _map });
 
         _map.on('moveend zoomend', () => {
@@ -770,8 +793,96 @@ export const mapSvc = { /* mapSvc: mapService */
             const geohashes = getGhPrefixes(bounds);
             appStore.set({ mapBnds: bounds, mapGhs: geohashes });
         });
+
+        // Event handlers for Leaflet.draw
+        _map.on(L.Draw.Event.CREATED, async e => {
+            const layer = e.layer;
+            const geojson = layer.toGeoJSON();
+            const shapeId = generateUUID(); // Generate a unique ID for the shape
+            geojson.properties = { ...geojson.properties, id: shapeId }; // Add ID to properties
+            layer.options.id = shapeId; // Store ID on the layer itself for easy lookup
+
+            _drawnItems.addLayer(layer);
+            await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
+            appStore.set(s => ({ drawnShapes: [...s.drawnShapes, geojson] }));
+            showToast("Shape drawn and saved!", 'success');
+        });
+
+        _map.on(L.Draw.Event.EDITED, async e => {
+            for (const layer of Object.values(e.layers._layers)) {
+                const geojson = layer.toGeoJSON();
+                const shapeId = layer.options.id; // Retrieve ID from layer options
+                geojson.properties = { ...geojson.properties, id: shapeId };
+                await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson }); // Update in DB
+            }
+            // Re-fetch all drawn shapes to update appStore
+            const updatedShapes = await dbSvc.getAllDrawnShapes();
+            appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
+            showToast("Shape edited and saved!", 'success');
+        });
+
+        _map.on(L.Draw.Event.DELETED, async e => {
+            for (const layer of Object.values(e.layers._layers)) {
+                const shapeId = layer.options.id; // Retrieve ID from layer options
+                await dbSvc.rmDrawnShape(shapeId); // Remove from DB
+            }
+            // Re-fetch all drawn shapes to update appStore
+            const updatedShapes = await dbSvc.getAllDrawnShapes();
+            appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
+            showToast("Shape deleted!", 'info');
+        });
+
+        // Load existing drawn shapes from IndexedDB on startup
+        this.loadDrawnShapes();
+
         return _map;
     },
+
+    /**
+     * Loads drawn shapes from IndexedDB and adds them to the map.
+     */
+    async loadDrawnShapes() {
+        const storedShapes = await dbSvc.getAllDrawnShapes();
+        _drawnItems.clearLayers(); // Clear any existing layers before loading
+        const geojsonShapes = [];
+        storedShapes.forEach(s => {
+            const layer = L.GeoJSON.geometryToLayer(s.geojson);
+            layer.options.id = s.id; // Store the ID on the layer
+            _drawnItems.addLayer(layer);
+            geojsonShapes.push(s.geojson);
+        });
+        appStore.set({ drawnShapes: geojsonShapes });
+        console.log(`Loaded ${storedShapes.length} drawn shapes.`);
+    },
+
+    /**
+     * Clears all drawn shapes from the map and IndexedDB.
+     */
+    async clearAllDrawnShapes() {
+        showConfirmModal(
+            "Clear All Drawn Shapes",
+            "Are you sure you want to clear ALL drawn shapes from the map and database? This action cannot be undone.",
+            async () => {
+                _drawnItems.clearLayers();
+                await dbSvc.clearDrawnShapes();
+                appStore.set({ drawnShapes: [] });
+                showToast("All drawn shapes cleared.", 'info');
+            },
+            () => showToast("Clearing shapes cancelled.", 'info')
+        );
+    },
+
+    /**
+     * Gets the Leaflet.draw control instance.
+     * @returns {L.Control.Draw} The draw control.
+     */
+    getDrawControl: () => _drawControl,
+
+    /**
+     * Gets the FeatureGroup containing drawn items.
+     * @returns {L.FeatureGroup} The drawn items feature group.
+     */
+    getDrawnItems: () => _drawnItems,
 
     /**
      * Updates the map's tile layer URL.
