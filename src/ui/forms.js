@@ -1,5 +1,5 @@
 import {createEl, sanitizeHTML, showToast} from '../utils.js';
-import {showConfirmModal} from '../modals.js';
+import {showConfirmModal} from './modals.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     const form = createEl('form', {...formOptions});
