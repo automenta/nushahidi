@@ -23,7 +23,7 @@
                 <div id="filter-controls">
                     <h4>Filter Reports</h4>
                     <input type="search" id="search-query-input" placeholder="Search reports..." aria-label="Search reports text">
-                    <label for="focus-tag-input">Focus Tag:</label><input type="text" id="focus-tag-input" placeholder="#MyEvent" aria-label="Focus Tag filter"><button id="set-focus-tag-btn">Set</button>
+                    <label for="focus-tag-input">Focus Tag:</label><input type="text" id="focus-tag-input" placeholder="#MyEvent" aria-label="Focus Tag filter" readonly>
                     <label for="filter-category">Category:</label><select id="filter-category" aria-label="Filter by category"><option value="">All</option></select>
                     <label for="filter-author">Author (npub/hex):</label><input type="text" id="filter-author" placeholder="Author pubkey" aria-label="Filter by author pubkey">
                     <label for="filter-time-start">From:</label><input type="datetime-local" id="filter-time-start" aria-label="Filter start date">
@@ -33,6 +33,7 @@
                     <h4>Map Drawing Filters</h4>
                     <div id="map-draw-controls"></div>
                     <label><input type="checkbox" id="spatial-filter-toggle"> Enable Spatial Filter</label>
+                    <label><input type="checkbox" id="followed-only-toggle"> Show Only Followed Users</label>
                     <button id="clear-drawn-shapes-btn">Clear All Drawn Shapes</button>
                 </div>
                 <div id="report-list-container" role="region" aria-labelledby="report-list-heading">

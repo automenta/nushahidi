@@ -37,18 +37,8 @@ async function main() {
     initUI();
 
     const cachedReports = await dbSvc.getAllReps();
-    if (cachedReports?.length > 0) {
-        const currentReportIds = new Set(appStore.get().reports.map(r => r.id));
-        const newUniqueReports = cachedReports.filter(r => !currentReportIds.has(r.id));
-
-        if (newUniqueReports.length > 0) {
-            appStore.set(s => ({ reports: [...s.reports, ...newUniqueReports].sort((a, b) => b.at - a.at) }));
-        } else if (appStore.get().reports.length === 0 && cachedReports.length > 0) {
-            appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
-        }
-    } else if (appStore.get().reports.length === 0) {
-        appStore.set({ reports: [] });
-    }
+    // Always set reports from cache, sorted. appStore.reports is empty at this point.
+    appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
 
     nostrSvc.refreshSubs();
     offSvc.setupSyncLs();

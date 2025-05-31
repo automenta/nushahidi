@@ -1,15 +1,14 @@
 module.exports = {
+  swSrc: 'src/sw.js', // Path to your service worker file
+  swDest: 'dist/sw.js',
   globDirectory: 'dist/',
   globPatterns: [
     '**/*.{html,js,css,png,jpg,json,woff2,svg}'
   ],
-  swDest: 'dist/sw.js',
   ignoreURLParametersMatching: [
     /^utm_/,
     /^fbclid$/
   ],
-  // Define runtime caching rules here if needed beyond precaching
-  // For example, for map tiles if not covered by sw.js's registerRoute
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/api\.nostr\.build\/.*/,
@@ -24,7 +23,7 @@ module.exports = {
       }
     },
     {
-      urlPattern: ({url}) => url.href.includes('tile.openstreetmap.org') || url.href.includes('tile.thunderforest.com') || url.href.includes('tile.stamen.com'),
+      urlPattern: ({url}) => url.href.includes('tile.openstreetmap.org') || url.href.includes('tile.thunderforest.com') || url.href.includes('tile.stamen.com') || url.href.includes('server.arcgisonline.com'),
       handler: 'CacheFirst',
       options: {
         cacheName: 'map-tiles',

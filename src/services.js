@@ -414,6 +414,22 @@ const updRlyStore = (url, status, nip11Doc = null) => {
     appStore.set({ relays: updatedRelays });
 };
 
+/**
+ * Helper function to add/update a report in the appStore and IndexedDB.
+ * @param {object} signedEvent - The signed Nostr event (report).
+ */
+const addReportToStoreAndDb = async (signedEvent) => {
+    const report = parseReport(signedEvent);
+    await dbSvc.addRep(report);
+    appStore.set(s => {
+        const index = s.reports.findIndex(rp => rp.id === report.id);
+        const updatedReports = (index > -1) ?
+            [...s.reports.slice(0, index), report, ...s.reports.slice(index + 1)] :
+            [...s.reports, report];
+        return { reports: updatedReports.sort((a, b) => b.at - a.at) };
+    });
+};
+
 export const nostrSvc = { /* nostrSvc: nostrService */
     /**
      * Connects to configured relays.
@@ -602,30 +618,22 @@ export const nostrSvc = { /* nostrSvc: nostrService */
                     console.error("Publish Error (SW Proxy):", response.statusText);
                 } else if (response.status === 503) {
                     console.log("Publish deferred by Service Worker (offline or network issue).");
-                    // If it's a report, add it to local state immediately for UI feedback
                     if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
-                        const report = parseReport(signedEvent);
-                        await dbSvc.addRep(report);
-                        appStore.set(s => ({ reports: [...s.reports, report].sort((a, b) => b.at - a.at) }));
+                        await addReportToStoreAndDb(signedEvent);
                     }
                 }
             } catch (e) {
                 // Network error, SW should handle it via fetch interception
                 console.warn("Publish Network Error, Service Worker should handle:", e);
-                // If it's a report, add it to local state immediately for UI feedback
                 if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
-                    const report = parseReport(signedEvent);
-                    await dbSvc.addRep(report);
-                    appStore.set(s => ({ reports: [...s.reports, report].sort((a, b) => b.at - a.at) }));
+                    await addReportToStoreAndDb(signedEvent);
                 }
             }
         } else {
             // Explicitly offline, add to IndexedDB queue
             await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
             if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
-                const report = parseReport(signedEvent);
-                await dbSvc.addRep(report);
-                appStore.set(s => ({ reports: [...s.reports, report].sort((a, b) => b.at - a.at) }));
+                await addReportToStoreAndDb(signedEvent);
             }
         }
 

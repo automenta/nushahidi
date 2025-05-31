@@ -1077,8 +1077,7 @@ export function initUI() {
         // Initialize focus tag filter display
         _cFilt.fT = appStore.get().currentFocusTag;
         gE('#focus-tag-input').value = _cFilt.fT;
-        gE('#set-focus-tag-btn').style.display = 'none'; // Hide the old set button
-        gE('#focus-tag-input').readOnly = true; // Make it read-only
+        // The input is now readonly in HTML, and the button is removed.
 
         // Populate category filter dropdown
         const populateFilterCategories = () => {
@@ -1107,7 +1106,7 @@ export function initUI() {
             // Reset spatial filter state
             appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: false, followedOnlyFilter: false } })); // New: Reset followedOnlyFilter
             gE('#spatial-filter-toggle').checked = false;
-            gE('#followed-only-toggle').checked = false; // New: Reset followed only toggle
+            gE('#followed-only-toggle').checked = false; // Reset followed only toggle
             applyAllFilters();
         };
 
@@ -1127,10 +1126,8 @@ export function initUI() {
             applyAllFilters(); // Re-apply filters immediately
         };
 
-        // New: Followed Only Toggle
-        const followedOnlyToggle = cE('input', { type: 'checkbox', id: 'followed-only-toggle' });
-        const followedOnlyLabel = cE('label', {}, [followedOnlyToggle, ' Show Only Followed Users']);
-        gE('#filter-controls').insertBefore(followedOnlyLabel, gE('#clear-drawn-shapes-btn')); // Insert before clear button
+        // Followed Only Toggle (now static in HTML)
+        const followedOnlyToggle = gE('#followed-only-toggle');
         followedOnlyToggle.checked = appStore.get().ui.followedOnlyFilter;
         followedOnlyToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
