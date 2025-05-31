@@ -1,5 +1,5 @@
 import { nip11 } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools'; // Changed import path
+import * as NostrTools from 'nostr-tools';
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
@@ -205,7 +205,7 @@ export const nostrSvc = {
         // Only re-initialize if _pool is not a valid SimplePool instance
         if (!_pool || typeof _pool.on !== 'function') {
             try {
-                const newPool = new SimplePool(); // Create a new instance
+                const newPool = new NostrTools.SimplePool();
                 // Validate the newly created instance immediately
                 if (typeof newPool.on !== 'function') {
                     console.error("SimplePool constructor returned an object without an 'on' method.");
