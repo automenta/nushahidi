@@ -224,7 +224,7 @@ gE('#geocode-address-btn',_repFormRoot).onclick=async()=>{
         if (d?.length > 0) {
             const {lat, lon, display_name} = d[0];
             _pFLoc = {lat: parseFloat(lat), lng: parseFloat(lon)};
-            gE('#pFLoc-coords',_repFormRoot).textContent=`${_pFLoc.lat.toFixed(5)},${_pFLoc.lng.toFixed(5)} (${sH(display_name)})`;
+            gE('#pFLoc-coords',_repFormRoot).textContent=`${_pFLoc.lat.toFixed(5)},${_pFLoc.lon.toFixed(5)} (${sH(display_name)})`;
             showToast(`Address found: ${display_name}`, 'success');
         } else {
             showToast("Address not found.", 'info');
@@ -651,9 +651,13 @@ const showReportDetails=async r=>{
     
     const imgsHTML=(r.imgs||[]).map(i=>`<img src="${sH(i.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`).join('');
     const descHTML=marked.parse(sH(r.ct||''));
+
+    // Fetch profile for NIP-05 display
+    const profile = await nostrSvc.fetchProf(r.pk);
+    const authorDisplay = profile?.nip05 ? sH(profile.nip05) : formatNpubShort(r.pk);
     
     dC.innerHTML=`<button id="back-to-list-btn" class="small-button">&lt; List</button><h2 id="detail-title">${sH(r.title||'Report')}</h2>
-    <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(r.pk)}" target="_blank" rel="noopener noreferrer">${formatNpubShort(r.pk)}</a></p>
+    <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(r.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a></p>
     <p><strong>Date:</strong> ${new Date(r.at*1000).toLocaleString()}</p>
     <p><strong>Summary:</strong> ${sH(r.sum||'N/A')}</p>
     <p><strong>Description:</strong></p><div class="markdown-content" tabindex="0">${descHTML}</div>
