@@ -70,6 +70,11 @@ const addFollowedPubkeyLogic = createAddLogicHandler(
     "Error adding user to followed list"
 );
 
+const reconnectRelays = () => {
+    nostrSvc.discAllRlys();
+    nostrSvc.connRlys();
+};
+
 export const settingsSections = [
     {
         type: 'list',
@@ -91,17 +96,13 @@ export const settingsSections = [
             onClick: r => {
                 const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
                 confSvc.setRlys(updatedRelays);
-                nostrSvc.discAllRlys();
-                nostrSvc.connRlys();
+                reconnectRelays();
             },
             confirm: { title: 'Remove Relay', message: 'Are you sure you want to remove this relay?' }
         }],
         itemWrapperClass: 'relay-entry',
         saveBtnId: 'save-rlys-btn',
-        onSaveCallback: () => {
-            nostrSvc.discAllRlys();
-            nostrSvc.connRlys();
-        }
+        onSaveCallback: reconnectRelays
     },
     {
         type: 'section',

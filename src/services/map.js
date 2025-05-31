@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import 'ali.leaflet.markercluster';
-import 'leaflet-draw'; // Imported as a module
+import 'leaflet-draw';
 import {appStore} from '../store.js';
 import {$, generateUUID, getGhPrefixes, showToast} from '../utils.js';
 import {showConfirmModal} from '../ui/modals.js';
@@ -12,39 +12,46 @@ let _mapTileLyr;
 let _drawnItems;
 let _drawControl;
 
-const handleDrawCreated = async e => {
-    const layer = e.layer;
-    const geojson = layer.toGeoJSON();
-    const shapeId = generateUUID();
-    geojson.properties = { ...geojson.properties, id: shapeId };
-    layer.options.id = shapeId;
+const updateDrawnShapesInStoreAndDb = async (action, data) => {
+    if (action === 'add') {
+        const layer = data;
+        const geojson = layer.toGeoJSON();
+        const shapeId = generateUUID();
+        geojson.properties = { ...geojson.properties, id: shapeId };
+        layer.options.id = shapeId;
+        _drawnItems.addLayer(layer);
+        await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
+        showToast("Shape drawn and saved!", 'success');
+    } else if (action === 'edit') {
+        for (const layer of Object.values(data._layers)) {
+            const geojson = layer.toGeoJSON();
+            const shapeId = layer.options.id;
+            geojson.properties = { ...geojson.properties, id: shapeId };
+            await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
+        }
+        showToast("Shape edited and saved!", 'success');
+    } else if (action === 'delete') {
+        for (const layer of Object.values(data._layers)) {
+            const shapeId = layer.options.id;
+            await dbSvc.rmDrawnShape(shapeId);
+        }
+        showToast("Shape deleted!", 'info');
+    }
 
-    _drawnItems.addLayer(layer);
-    await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
-    appStore.set(s => ({ drawnShapes: [...s.drawnShapes, geojson] }));
-    showToast("Shape drawn and saved!", 'success');
+    const updatedShapes = await dbSvc.getAllDrawnShapes();
+    appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
+};
+
+const handleDrawCreated = async e => {
+    await updateDrawnShapesInStoreAndDb('add', e.layer);
 };
 
 const handleDrawEdited = async e => {
-    for (const layer of Object.values(e.layers._layers)) {
-        const geojson = layer.toGeoJSON();
-        const shapeId = layer.options.id;
-        geojson.properties = { ...geojson.properties, id: shapeId };
-        await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
-    }
-    const updatedShapes = await dbSvc.getAllDrawnShapes();
-    appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
-    showToast("Shape edited and saved!", 'success');
+    await updateDrawnShapesInStoreAndDb('edit', e.layers);
 };
 
 const handleDrawDeleted = async e => {
-    for (const layer of Object.values(e.layers._layers)) {
-        const shapeId = layer.options.id;
-        await dbSvc.rmDrawnShape(shapeId);
-    }
-    const updatedShapes = await dbSvc.getAllDrawnShapes();
-    appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
-    showToast("Shape deleted!", 'info');
+    await updateDrawnShapesInStoreAndDb('delete', e.layers);
 };
 
 function setupMapEventListeners() {

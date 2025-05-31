@@ -142,12 +142,18 @@ const setupApplyResetButtons = filterForm => {
             },
             currentFocusTag: C.FOCUS_TAG_DEFAULT
         }));
-        $('#search-query-input', filterForm).value = '';
-        $('#focus-tag-input', filterForm).value = C.FOCUS_TAG_DEFAULT;
-        $('#filter-category', filterForm).value = '';
-        $('#filter-author', filterForm).value = '';
-        $('#filter-time-start', filterForm).value = '';
-        $('#filter-time-end', filterForm).value = '';
+
+        const resetFields = {
+            '#search-query-input': '',
+            '#focus-tag-input': C.FOCUS_TAG_DEFAULT,
+            '#filter-category': '',
+            '#filter-author': '',
+            '#filter-time-start': '',
+            '#filter-time-end': '',
+        };
+        for (const selector in resetFields) {
+            $(selector, filterForm).value = resetFields[selector];
+        }
         $('#spatial-filter-toggle', filterForm).checked = false;
         $('#followed-only-toggle', filterForm).checked = false;
         applyAllFilters();

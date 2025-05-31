@@ -20,7 +20,7 @@ const REPORT_FORM_FIELDS = (categories, initialFormData) => [
         id: 'cats-cont-form',
         name: 'category',
         class: 'cats-cont-form',
-        options: (categories || []).map(cat => ({ value: cat, label: cat })) // Added || []
+        options: (categories || []).map(cat => ({ value: cat, label: cat }))
     },
     { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
     {
@@ -68,6 +68,38 @@ const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     );
 };
 
+const buildReportTags = (formData, formState, imagesMetadata, reportToEdit, currentFocusTag) => {
+    const data = Object.fromEntries(formData.entries());
+    const tags = [['g', geohashEncode(formState.pFLoc.lat, formState.pFLoc.lng)]];
+
+    if (data.title) tags.push(['title', data.title]);
+    if (data.summary) tags.push(['summary', data.summary]);
+    if (currentFocusTag && currentFocusTag !== 'NostrMapper_Global') tags.push(['t', currentFocusTag.substring(1)]);
+
+    if (data.freeTags) {
+        data.freeTags.split(',').forEach(tag => {
+            const trimmedTag = tag.trim();
+            if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
+        });
+    }
+
+    const selectedCategories = formData.getAll('category');
+    selectedCategories.forEach(cat => {
+        tags.push(['L', 'report-category']);
+        tags.push(['l', cat, 'report-category']);
+    });
+
+    if (data.eventType) tags.push(['event_type', data.eventType]);
+    if (data.status) tags.push(['status', data.status]);
+
+    imagesMetadata.forEach(img => tags.push(['image', img.url, img.type, img.dim, `ox${img.hHex}`]));
+
+    const dTagValue = reportToEdit?.d || generateUUID();
+    tags.push(['d', dTagValue]);
+
+    return tags;
+};
+
 const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
     formElement.onsubmit = withLoading(withToast(async e => {
         e.preventDefault();
@@ -79,44 +111,15 @@ const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesM
 
         submitBtn.disabled = true;
 
-        const lat = formState.pFLoc.lat;
-        const lon = formState.pFLoc.lng;
-        const geohash = geohashEncode(lat, lon);
-        const focusTag = appStore.get().currentFocusTag.substring(1);
-
-        const tags = [['g', geohash]];
-
-        if (data.title) tags.push(['title', data.title]);
-        if (data.summary) tags.push(['summary', data.summary]);
-        if (focusTag && focusTag !== 'NostrMapper_Global') tags.push(['t', focusTag]);
-
-        if (data.freeTags) {
-            data.freeTags.split(',').forEach(tag => {
-                const trimmedTag = tag.trim();
-                if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
-            });
-        }
-
-        const selectedCategories = formData.getAll('category');
-        selectedCategories.forEach(cat => {
-            tags.push(['L', 'report-category']);
-            tags.push(['l', cat, 'report-category']);
-        });
-
-        if (data.eventType) tags.push(['event_type', data.eventType]);
-        if (data.status) tags.push(['status', data.status]);
-
-        imagesMetadata.forEach(img => tags.push(['image', img.url, img.type, img.dim, `ox${img.hHex}`]));
-
-        const dTagValue = reportToEdit?.d || generateUUID();
-        tags.push(['d', dTagValue]);
+        const currentFocusTag = appStore.get().currentFocusTag;
+        const tags = buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag);
 
         const eventData = { kind: C.NOSTR_KIND_REPORT, content: data.description, tags };
 
         await nostrSvc.pubEv(eventData);
         e.target.reset();
-        $('#pFLoc-coords', formElement).textContent = 'None'; // Use formElement as root
-        $('#upld-photos-preview', formElement).innerHTML = ''; // Use formElement as root
+        $('#pFLoc-coords', formElement).textContent = 'None';
+        $('#upld-photos-preview', formElement).innerHTML = '';
         formState.pFLoc = null;
         imagesMetadata.length = 0;
         hideModal('report-form-modal');
@@ -156,7 +159,6 @@ export function RepFormComp(reportToEdit = null) {
     };
 
     const formRoot = createModalWrapper('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
-        // Define functions that need access to modalContent (which is formRoot here)
         const updateLocationDisplay = (addressName = '') => {
             const coordsEl = $('#pFLoc-coords', modalContent);
             if (formState.pFLoc) {
@@ -240,7 +242,6 @@ export function RepFormComp(reportToEdit = null) {
         const form = renderForm(REPORT_FORM_FIELDS(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
 
-        // Attach image upload handler after form is rendered
         $('#rep-photos', form).onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview);
 
         setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
