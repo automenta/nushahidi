@@ -20,40 +20,37 @@ import {
 
 const setupOnboardingModal = () => {
     const onboardingModal = $('#onboarding-info');
-    if (onboardingModal) {
-        const closeBtn = $('.close-btn', onboardingModal);
-        const gotItBtn = $('button', onboardingModal);
+    if (!onboardingModal) return;
 
     const hideOnboarding = () => {
         localStorage.setItem(C.ONBOARDING_KEY, 'true');
         hideModal('onboarding-info');
     };
 
-        if (closeBtn) closeBtn.onclick = hideOnboarding;
-        if (gotItBtn) gotItBtn.onclick = hideOnboarding;
-    }
+    $('.close-btn', onboardingModal)?.addEventListener('click', hideOnboarding);
+    $('button', onboardingModal)?.addEventListener('click', hideOnboarding);
 };
 
 const initGlobalButtons = () => {
     $('#create-report-btn').onclick = () => {
         $('#report-form-modal').innerHTML = '';
-        $('#report-form-modal').appendChild(RepFormComp());
+        $('#report-form-modal').append(RepFormComp());
         showModal('report-form-modal', 'rep-title');
     };
 
     $('#auth-button').onclick = () => {
         appStore.get().user ?
-            showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout(), () => {}) :
+            showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
             (() => {
                 $('#auth-modal').innerHTML = '';
-                $('#auth-modal').appendChild(AuthModalComp());
+                $('#auth-modal').append(AuthModalComp());
                 showModal('auth-modal', 'conn-nip07-btn');
             })();
     };
 
     $('#settings-btn').onclick = () => {
         $('#settings-modal').innerHTML = '';
-        $('#settings-modal').appendChild(SettPanComp());
+        $('#settings-modal').append(SettPanComp());
         showModal('settings-modal');
     };
 };

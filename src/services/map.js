@@ -19,7 +19,7 @@ const updateDrawnShapesInStoreAndDb = withToast(async (action, data) => {
         const shapeId = layer.options.id || generateUUID();
         geojson.properties = { ...geojson.properties, id: shapeId };
         layer.options.id = shapeId;
-        await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
+        await dbSvc.addDrawnShape({ id: shapeId, geojson });
     };
 
     if (action === 'add') {
@@ -73,10 +73,7 @@ export const mapSvc = {
     async loadDrawnShapes() {
         _drawnItems.clearLayers();
         const geojsonShapes = [];
-        let drawnShapes = await dbSvc.getAllDrawnShapes();
-        if (!Array.isArray(drawnShapes)) {
-            drawnShapes = [];
-        }
+        const drawnShapes = await dbSvc.getAllDrawnShapes() || [];
         drawnShapes.forEach(s => {
             const layer = L.GeoJSON.geometryToLayer(s.geojson);
             layer.options.id = s.id;
@@ -134,7 +131,7 @@ export const mapSvc = {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
             const data = await response.json();
-            if (data?.length > 0) {
+            if (data?.[0]) {
                 const { lat, lon, display_name } = data[0];
                 _map.setView([parseFloat(lat), parseFloat(lon)], 12);
                 L.popup().setLatLng([parseFloat(lat), parseFloat(lon)]).setContent(display_name).openOn(_map);

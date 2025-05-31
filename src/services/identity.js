@@ -13,11 +13,6 @@ import {confSvc} from './config.js';
 let _locSk = null;
 
 export const idSvc = {
-    async init() {
-        const id = await confSvc.getId();
-        if (id) appStore.set({ user: { pk: id.pk, authM: id.authM } });
-    },
-
     nip07: withLoading(withToast(async () => {
         if (!window.nostr?.getPublicKey) {
             showToast("NIP-07 extension not found. Please install Alby or nos2x.", 'warning');
@@ -33,7 +28,7 @@ export const idSvc = {
     }, "NIP-07 connected successfully!", "NIP-07 connection error")),
 
     newProf: withLoading(withToast(async passphrase => {
-        if (!passphrase || passphrase.length < 8) {
+        if (passphrase?.length < 8) {
             showToast("Passphrase too short (min 8 chars).", 'warning');
             return null;
         }
@@ -45,17 +40,12 @@ export const idSvc = {
         appStore.set({ user: { pk, authM: 'local' } });
         _locSk = sk;
         showToast(`Profile created! Pubkey: ${nip19.npubEncode(pk)}.`, 'success');
-        showToast(
-            `CRITICAL: Backup your private key (nsec)!`,
-            'warning',
-            0,
-            nip19.nsecEncode(sk)
-        );
+        showToast(`CRITICAL: Backup your private key (nsec)!`, 'warning', 0, nip19.nsecEncode(sk));
         return { pk, sk };
     }, null, "Profile creation error")),
 
     impSk: withLoading(withToast(async (skInput, passphrase) => {
-        if (!passphrase || passphrase.length < 8) {
+        if (passphrase?.length < 8) {
             showToast("Passphrase too short (min 8 chars).", 'warning');
             return null;
         }
@@ -79,11 +69,7 @@ export const idSvc = {
         const identity = await confSvc.getId();
         if (!identity?.eSk || !promptPassphrase) return null;
 
-        const passphrase = await showPassphraseModal(
-            "Decrypt Private Key",
-            "Enter your passphrase to decrypt your private key:"
-        );
-
+        const passphrase = await showPassphraseModal("Decrypt Private Key", "Enter your passphrase to decrypt your private key:");
         if (!passphrase) {
             showToast("Decryption cancelled.", 'info');
             return null;
@@ -97,9 +83,8 @@ export const idSvc = {
 
     chgPass: withLoading(withToast(async (oldPassphrase, newPassphrase) => {
         const identity = await confSvc.getId();
-        if (!identity?.eSk || !['local', 'import'].includes(identity.authM)) {
-            throw new Error("No local key to change passphrase for.");
-        }
+        if (!identity?.eSk || !['local', 'import'].includes(identity.authM)) throw new Error("No local key to change passphrase for.");
+        
         const decryptedSk = await decrypt(identity.eSk, oldPassphrase);
         if (!decryptedSk) throw new Error("Old passphrase incorrect.");
 
@@ -119,7 +104,6 @@ export const idSvc = {
     async signEv(event) {
         const user = appStore.get().user;
         if (!user) throw new Error("No Nostr identity connected. Please connect or create one.");
-
         return user.authM === 'nip07' ? this.signEventNip07(event) : this.signEventLocal(event, user.pk);
     },
 
@@ -132,9 +116,14 @@ export const idSvc = {
         }
     },
 
-    async signEventLocal(eventTemplate, pubkey) {
+    async signEventLocal(eventTemplate) {
         const sk = await idSvc.getSk(true);
         if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
         return signEvNostr(eventTemplate, sk);
-    }
+    },
+
+    async init() {
+        const id = await confSvc.getId();
+        if (id) appStore.set({ user: { pk: id.pk, authM: id.authM } });
+    },
 };

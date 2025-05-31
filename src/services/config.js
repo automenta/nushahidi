@@ -42,13 +42,8 @@ const migrateTileSettings = currentSettings => {
 
 const updateFollowedPubkeysInDb = async newFollowed => {
     const currentFollowed = await dbSvc.getFollowedPubkeys();
-
-    for (const fp of newFollowed) {
-        if (!currentFollowed.some(cf => cf.pk === fp.pk)) await dbSvc.addFollowedPubkey(fp.pk);
-    }
-    for (const cfp of currentFollowed) {
-        if (!newFollowed.some(nfp => nfp.pk === cfp.pk)) await dbSvc.rmFollowedPubkey(cfp.pk);
-    }
+    for (const fp of newFollowed) if (!currentFollowed.some(cf => cf.pk === fp.pk)) await dbSvc.addFollowedPubkey(fp.pk);
+    for (const cfp of currentFollowed) if (!newFollowed.some(nfp => nfp.pk === cfp.pk)) await dbSvc.rmFollowedPubkey(cfp.pk);
 };
 
 const applySettingsToStore = (settings, followedPubkeys) => {
@@ -78,8 +73,8 @@ const applySettingsToStore = (settings, followedPubkeys) => {
 
 export const confSvc = {
     async load() {
-        let settings = await dbSvc.loadSetts() || getInitialSettings();
-        let followedPubkeys = await dbSvc.getFollowedPubkeys();
+        const settings = await dbSvc.loadSetts() || getInitialSettings();
+        const followedPubkeys = await dbSvc.getFollowedPubkeys();
         applySettingsToStore(settings, followedPubkeys);
         return settings;
     },
@@ -87,7 +82,6 @@ export const confSvc = {
     async save(partialSettings) {
         const currentSettings = await dbSvc.loadSetts() || {};
         await dbSvc.saveSetts({ ...currentSettings, ...partialSettings });
-
         if (partialSettings.followedPubkeys !== undefined) await updateFollowedPubkeysInDb(partialSettings.followedPubkeys);
         await this.load();
     },

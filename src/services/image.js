@@ -10,7 +10,7 @@ export const imgSvc = {
 
         const uploadUrl = nip96Host || imgHost || C.IMG_UPLOAD_NOSTR_BUILD;
         const headers = nip96Host && nip96Token ? { 'Authorization': `Bearer ${nip96Token}` } : {};
-        const body = nip96Host ? (headers['Content-Type'] = file.type, file) : (() => {
+        const body = nip96Host ? (Object.assign(headers, { 'Content-Type': file.type }), file) : (() => {
             const formData = new FormData();
             formData.append('file', file);
             return formData;
@@ -21,7 +21,7 @@ export const imgSvc = {
             if (!response.ok) throw new Error(`Upload failed: ${response.status} ${await response.text()}`);
             const data = await response.json();
 
-            const finalUrl = data.url || data.uri || data.link || (Array.isArray(data.data) && data.data[0]?.url) || (data.data?.url) || (typeof data === 'string' && data.startsWith('http') ? data : null);
+            const finalUrl = data.url || data.uri || data.link || (Array.isArray(data.data) && data.data[0]?.url) || data.data?.url || (typeof data === 'string' && data.startsWith('http') ? data : null);
             if (!finalUrl) throw new Error('Image URL not found in response from host.');
 
             return finalUrl;

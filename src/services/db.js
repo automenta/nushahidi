@@ -10,9 +10,17 @@ const getDbStore = async (storeName, mode = 'readonly') => {
             request.onsuccess = e => resolve(e.target.result);
             request.onupgradeneeded = e => {
                 const db = e.target.result;
-                [C.STORE_REPORTS, C.STORE_PROFILES, C.STORE_SETTINGS, C.STORE_OFFLINE_QUEUE, C.STORE_DRAWN_SHAPES, C.STORE_FOLLOWED_PUBKEYS]
-                    .forEach(store => { if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: store === C.STORE_OFFLINE_QUEUE ? 'qid' : 'id', autoIncrement: store === C.STORE_OFFLINE_QUEUE }); });
-                if (!db.objectStoreNames.contains(C.STORE_FOLLOWED_PUBKEYS)) db.createObjectStore(C.STORE_FOLLOWED_PUBKEYS, { keyPath: 'pk' });
+                const storeConfigs = {
+                    [C.STORE_REPORTS]: { keyPath: 'id' },
+                    [C.STORE_PROFILES]: { keyPath: 'pk' },
+                    [C.STORE_SETTINGS]: { keyPath: 'id' },
+                    [C.STORE_OFFLINE_QUEUE]: { keyPath: 'qid', autoIncrement: true },
+                    [C.STORE_DRAWN_SHAPES]: { keyPath: 'id' },
+                    [C.STORE_FOLLOWED_PUBKEYS]: { keyPath: 'pk' }
+                };
+                for (const store of Object.keys(storeConfigs)) {
+                    if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, storeConfigs[store]);
+                }
             };
         });
     }
@@ -76,10 +84,7 @@ export const dbSvc = {
             showToast(`Pruned ${toDelete.length} old reports.`, 'info');
         }
 
-        let allProfiles = await this.getAllProfiles();
-        if (!Array.isArray(allProfiles)) {
-            allProfiles = [];
-        }
+        const allProfiles = await this.getAllProfiles() || [];
         const profileStore = await getDbStore(C.STORE_PROFILES, 'readwrite');
         let profilesDeleted = 0;
         for (const prof of allProfiles) {

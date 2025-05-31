@@ -34,10 +34,7 @@ async function initializeApplication() {
 
         initUI();
 
-        let cachedReports = await dbSvc.getAllReps();
-        if (!Array.isArray(cachedReports)) {
-            cachedReports = [];
-        }
+        const cachedReports = await dbSvc.getAllReps() || [];
         appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
 
         await nostrSvc.refreshSubs();
@@ -51,5 +48,5 @@ async function initializeApplication() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    setupServiceWorker().then(_ => initializeApplication());
+    setupServiceWorker().then(() => initializeApplication());
 });

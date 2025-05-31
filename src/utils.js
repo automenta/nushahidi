@@ -38,20 +38,14 @@ export const $$ = (selector, parent = document) => Array.from(parent.querySelect
 
 export function createEl(tagName, attributes = {}, children = []) {
     const element = document.createElement(tagName);
-
     Object.entries(attributes).forEach(([key, value]) => {
         if (key.startsWith('on') && typeof value === 'function') element.addEventListener(key.substring(2).toLowerCase(), value);
-        else if (typeof value === 'boolean') value ? element.setAttribute(key, '') : element.removeAttribute(key);
         else if (key === 'textContent') element.textContent = value;
         else if (key === 'innerHTML') element.innerHTML = value;
+        else if (typeof value === 'boolean') value ? element.setAttribute(key, '') : element.removeAttribute(key);
         else element.setAttribute(key, value);
     });
-
-    (Array.isArray(children) ? children : [children]).forEach(child => {
-        if (typeof child === 'string') element.appendChild(document.createTextNode(child));
-        else if (child instanceof Node) element.appendChild(child);
-    });
-
+    element.append(...(Array.isArray(children) ? children : [children]).filter(Boolean).map(child => typeof child === 'string' ? document.createTextNode(child) : child));
     return element;
 }
 
@@ -60,31 +54,15 @@ export const sanitizeHTML = s => (s == null ? '' : String(s).replace(/[&<>"']/g,
 const CRYPTO = { ALG: 'AES-GCM', IV_L: 12, SALT_L: 16, ITER: 1e5 };
 
 async function deriveKey(passphrase, salt) {
-    const keyMaterial = await crypto.subtle.importKey(
-        'raw',
-        new TextEncoder().encode(passphrase),
-        { name: 'PBKDF2' },
-        false,
-        ['deriveKey']
-    );
-    return crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt: salt, iterations: CRYPTO.ITER, hash: 'SHA-256' },
-        keyMaterial,
-        { name: CRYPTO.ALG, length: 256 },
-        true,
-        ['encrypt', 'decrypt']
-    );
+    const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: CRYPTO.ITER, hash: 'SHA-256' }, keyMaterial, { name: CRYPTO.ALG, length: 256 }, true, ['encrypt', 'decrypt']);
 }
 
 export async function encrypt(data, passphrase) {
     const salt = crypto.getRandomValues(new Uint8Array(CRYPTO.SALT_L));
     const iv = crypto.getRandomValues(new Uint8Array(CRYPTO.IV_L));
     const key = await deriveKey(passphrase, salt);
-    const encryptedData = await crypto.subtle.encrypt(
-        { name: CRYPTO.ALG, iv: iv },
-        key,
-        new TextEncoder().encode(data)
-    );
+    const encryptedData = await crypto.subtle.encrypt({ name: CRYPTO.ALG, iv }, key, new TextEncoder().encode(data));
 
     const result = new Uint8Array(salt.length + iv.length + encryptedData.byteLength);
     result.set(salt, 0);
@@ -101,11 +79,7 @@ export async function decrypt(encryptedDataString, passphrase) {
         const iv = encryptedDataBytes.slice(CRYPTO.SALT_L, CRYPTO.SALT_L + CRYPTO.IV_L);
         const data = encryptedDataBytes.slice(CRYPTO.SALT_L + CRYPTO.IV_L);
         const key = await deriveKey(passphrase, salt);
-        const decryptedContent = await crypto.subtle.decrypt(
-            { name: CRYPTO.ALG, iv: iv },
-            key,
-            data
-        );
+        const decryptedContent = await crypto.subtle.decrypt({ name: CRYPTO.ALG, iv }, key, data);
         return new TextDecoder().decode(decryptedContent);
     } catch (e) {
         throw new Error('Decryption failed.');
@@ -124,24 +98,27 @@ export const geohashDecode = gStr => ngeohash.decode(gStr);
 
 export function parseReport(event) {
     const tags = event.tags;
+    const getTagValue = (tagName, index = 1) => tags.find(t => t[0] === tagName)?.[index];
+    const getFilteredTags = (tagName, filterIndex, filterValue) => tags.filter(t => t[0] === tagName && t[filterIndex] === filterValue).map(t => t[1]);
+
     const report = {
         id: event.id,
         pk: event.pubkey,
         at: event.created_at,
         tags: tags,
         ct: event.content,
-        title: tags.find(t => t[0] === 'title')?.[1] || '',
-        sum: tags.find(t => t[0] === 'summary')?.[1] || '',
-        gh: tags.find(t => t[0] === 'g')?.[1],
-        cat: tags.filter(t => t[0] === 'l' && t[2] === 'report-category').map(t => t[1]),
+        title: getTagValue('title') || '',
+        sum: getTagValue('summary') || '',
+        gh: getTagValue('g'),
+        cat: getFilteredTags('l', 2, 'report-category'),
         fTags: tags.filter(t => t[0] === 't').map(t => t[1]),
         imgs: tags.filter(t => t[0] === 'image').map(tg => ({ url: tg[1], type: tg[2], dim: tg[3], hHex: tg[4] })),
-        evType: tags.find(t => t[0] === 'event_type')?.[1],
-        stat: tags.find(t => t[0] === 'status')?.[1] || 'new',
+        evType: getTagValue('event_type'),
+        stat: getTagValue('status') || 'new',
         lat: null,
         lon: null,
         interactions: [],
-        d: tags.find(t => t[0] === 'd')?.[1] || null
+        d: getTagValue('d')
     };
 
     if (report.gh) {
@@ -186,22 +163,23 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
     }
 
     const toast = createEl('div', { class: `toast toast-${type}` });
-    toast.appendChild(createEl('span', { textContent: message }));
+    toast.append(createEl('span', { textContent: message }));
 
     if (valueToCopy) {
-        const copyButton = createEl('button', { class: 'copy-button', textContent: 'Copy' });
-        copyButton.onclick = async () => {
-            try {
-                await navigator.clipboard.writeText(valueToCopy);
-                showToast('Copied to clipboard!', 'success', 1500);
-            } catch (err) {
-                console.error('Failed to copy:', err);
-                showToast('Failed to copy to clipboard.', 'error', 1500);
+        const copyButton = createEl('button', {
+            class: 'copy-button', textContent: 'Copy', onclick: async () => {
+                try {
+                    await navigator.clipboard.writeText(valueToCopy);
+                    showToast('Copied to clipboard!', 'success', 1500);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                    showToast('Failed to copy to clipboard.', 'error', 1500);
+                }
             }
-        };
-        toast.appendChild(copyButton);
+        });
+        toast.append(copyButton);
     }
-    toastContainer.appendChild(toast);
+    toastContainer.append(toast);
 
     void toast.offsetWidth;
     toast.classList.add('show');
@@ -212,14 +190,9 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
     }, duration);
 }
 
-export const isValidUrl = string => {
-    try { new URL(string); return true; } catch { return false; }
-};
+export const isValidUrl = string => { try { new URL(string); return true; } catch { return false; } };
 
-export const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-});
+export const generateUUID = () => crypto.randomUUID();
 
 export const processImageFile = async file => {
     if (!file.type.startsWith('image/')) throw new Error('Invalid file type. Only images are allowed.');
