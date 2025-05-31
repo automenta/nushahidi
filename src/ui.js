@@ -1,6 +1,6 @@
 import { appStore } from './store.js';
 import { idSvc } from './services.js';
-import { $, C } from './utils.js';
+import { $, C, createEl } from './utils.js';
 import { hideModal, showConfirmModal, showModal } from './ui/modals.js';
 import { AuthModal } from './ui/components/AuthModal.js';
 import { ReportFormModal } from './ui/components/ReportFormModal.js';
@@ -17,8 +17,17 @@ import {
     updateSyncDisplay
 } from './ui/statusDisplays.js';
 
+const ensureContainerExists = (id, parent = document.body) => {
+    let container = $(`#${id}`);
+    if (!container) {
+        container = createEl('div', { id: id });
+        parent.appendChild(container);
+    }
+    return container;
+};
+
 const setupOnboardingModal = () => {
-    const onboardingModal = $('#onboarding-info');
+    const onboardingModal = ensureContainerExists('onboarding-info');
     if (!onboardingModal) return;
 
     const hideOnboarding = () => {
@@ -31,13 +40,17 @@ const setupOnboardingModal = () => {
 };
 
 export function initUI() {
-    // Render main UI components once
-    $('#auth-modal-container').appendChild(AuthModal());
-    $('#report-form-modal').appendChild(ReportFormModal());
-    $('#settings-modal-container').appendChild(SettingsModal());
-    $('#filter-controls').appendChild(FilterControls()); // Append FilterControls to its container
+    const authModalContainer = ensureContainerExists('auth-modal-container');
+    const reportFormModalContainer = ensureContainerExists('report-form-modal');
+    const settingsModalContainer = ensureContainerExists('settings-modal-container');
+    const filterControlsContainer = ensureContainerExists('filter-controls');
+    const reportDetailContainer = ensureContainerExists('report-detail-container');
 
-    // Setup global button click handlers
+    authModalContainer.appendChild(AuthModal());
+    reportFormModalContainer.appendChild(ReportFormModal());
+    settingsModalContainer.appendChild(SettingsModal());
+    filterControlsContainer.appendChild(FilterControls());
+
     $('#create-report-btn').onclick = () => showModal('report-form-modal', 'rep-title');
 
     $('#auth-button').onclick = () => {
@@ -48,7 +61,6 @@ export function initUI() {
 
     $('#settings-btn').onclick = () => showModal('settings-modal');
 
-    // Setup AppStore listeners for dynamic UI updates
     appStore.on((newState, oldState) => {
         if (newState.user?.pk !== oldState?.user?.pk) updateAuthDisplay(newState.user?.pk);
         if (newState.online !== oldState?.online) updateConnectionDisplay(newState.online);
@@ -60,15 +72,13 @@ export function initUI() {
         if (newState.ui.loading !== oldState?.ui?.loading) updateGlobalLoadingSpinner(newState.ui.loading);
     });
 
-    // Initial UI updates based on current store state
     updateAuthDisplay(appStore.get().user?.pk);
     updateConnectionDisplay(appStore.get().online);
     updateGlobalLoadingSpinner(appStore.get().ui.loading);
     updateFilterCategories(appStore.get().settings.cats);
     updateSyncDisplay();
-    applyAllFilters(); // Apply filters initially
+    applyAllFilters();
 
-    // Setup and show onboarding modal if not seen before
     setupOnboardingModal();
     if (!localStorage.getItem(C.ONBOARDING_KEY)) showModal('onboarding-info');
 }
