@@ -1,7 +1,7 @@
 import { marked } from 'marked';
 import { appStore } from './store.js';
 import { mapSvc, idSvc, confSvc, nostrSvc, imgSvc, dbSvc } from './services.js';
-import { C, $, $$, createEl, showModal, hideModal, sanitizeHTML, debounce, geohashEncode, sha256, getImgDims, formatNpubShort, npubToHex, showToast } from './utils.js';
+import { C, $, $$, createEl, showModal, hideModal, sanitizeHTML, debounce, geohashEncode, sha256, getImgDims, formatNpubShort, npubToHex, showToast, isValidUrl } from './utils.js';
 
 const gE=(id,p=document)=>$(id,p); /* gE: getElement */
 const cE=(t,a,c)=>createEl(t,a,c); /* cE: createElement */
@@ -429,14 +429,47 @@ function SettPanComp(){
     c.forEach(e=>r.appendChild(e));
 
     // Render functions for lists
-    const rendRlys=()=>{const l=gE('#rly-list',r);l.innerHTML='';appStore.get().relays.forEach((rly,i)=>{l.appendChild(cE('div',{class:'relay-entry'},[cE('input',{type:'url',class:'rly-url-in',value:rly.url,readOnly:!0}),cE('label',{},[cE('input',{type:'checkbox',class:'rly-read-cb',checked:rly.read,'data-idx':i}),'R']),cE('label',{},[cE('input',{type:'checkbox',class:'rly-write-cb',checked:rly.write,'data-idx':i}),'W']),cE('label',{},[cE('input',{type:'checkbox',class:'rly-nip52-cb',checked:rly.nip11?.supported_nips?.includes(52)||rly.supportsNip52,'data-idx':i}),'N52?']),cE('span',{class:'rly-stat',textContent:`(${rly.status})${rly.nip11?" NIPs:"+ (rly.nip11.supported_nips || []).join(',').substring(0,20)+'...':''}`}),cE('button',{class:'remove-relay-btn','data-idx':i,textContent:'X'})]))})};rendRlys();
+    const rendRlys=()=>{
+        const l=gE('#rly-list',r);
+        l.innerHTML='';
+        appStore.get().relays.forEach((rly,i)=>{
+            const relayEntry = cE('div',{class:'relay-entry'},[
+                cE('input',{type:'url',class:'rly-url-in',value:rly.url,readOnly:!0}),
+                cE('label',{},[cE('input',{type:'checkbox',class:'rly-read-cb',checked:rly.read,'data-idx':i}),'R']),
+                cE('label',{},[cE('input',{type:'checkbox',class:'rly-write-cb',checked:rly.write,'data-idx':i}),'W']),
+                cE('span',{class:'rly-stat',textContent:`(${rly.status})`}),
+                cE('button',{class:'remove-relay-btn','data-idx':i,textContent:'X'})
+            ]);
+
+            if (rly.nip11) {
+                const nip11Details = cE('details', {class: 'nip11-details'}, [
+                    cE('summary', {textContent: 'NIP-11 Info'}),
+                    cE('p', {innerHTML: `<strong>Name:</strong> ${sH(rly.nip11.name || 'N/A')}`}),
+                    cE('p', {innerHTML: `<strong>Description:</strong> ${sH(rly.nip11.description || 'N/A')}`}),
+                    cE('p', {innerHTML: `<strong>Pubkey:</strong> ${sH(rly.nip11.pubkey ? formatNpubShort(rly.nip11.pubkey) : 'N/A')}`}),
+                    cE('p', {innerHTML: `<strong>Contact:</strong> ${sH(rly.nip11.contact || 'N/A')}`}),
+                    cE('p', {innerHTML: `<strong>Supported NIPs:</strong> ${sH((rly.nip11.supported_nips || []).join(', ') || 'N/A')}`})
+                ]);
+                relayEntry.appendChild(nip11Details);
+            } else {
+                relayEntry.appendChild(cE('span', {class: 'nip11-info-na', textContent: 'NIP-11 Info N/A'}));
+            }
+            l.appendChild(relayEntry);
+        })
+    };
+    rendRlys();
     const rendCats=()=>{const l=gE('#cat-list',r);l.innerHTML='';appStore.get().settings.cats.forEach((cat,i)=>{l.appendChild(cE('div',{class:'category-entry'},[cE('input',{type:'text',class:'cat-name-in',value:cat,readOnly:!0}),cE('button',{class:'remove-category-btn','data-idx':i,textContent:'X'})]))})};rendCats();
     const rendFocusTags=()=>{const l=gE('#focus-tag-list',r);l.innerHTML='';appStore.get().focusTags.forEach((ft,i)=>{l.appendChild(cE('div',{class:'focus-tag-entry'},[cE('label',{},[cE('input',{type:'radio',name:'active-focus-tag',value:ft.tag,checked:ft.active,'data-idx':i}),` ${sH(ft.tag)}`]),cE('button',{class:'remove-focus-tag-btn','data-idx':i,textContent:'X'})]))})};rendFocusTags();
     const rendMuteList=()=>{const l=gE('#mute-list',r);l.innerHTML='';appStore.get().settings.mute.forEach((pk,i)=>{l.appendChild(cE('div',{class:'mute-entry'},[cE('span',{textContent:formatNpubShort(pk)}),cE('button',{class:'remove-mute-btn','data-idx':i,textContent:'X'})]))})};rendMuteList();
 
     // Event Listeners
     gE('#rly-list',r).onclick=e=>{const t=e.target;const idx=parseInt(t.dataset.idx);let rlys=[...appStore.get().relays];if(t.classList.contains('remove-relay-btn')){rlys.splice(idx,1)}else if(t.classList.contains('rly-read-cb')){rlys[idx].read=t.checked}else if(t.classList.contains('rly-write-cb')){rlys[idx].write=t.checked}else if(t.classList.contains('rly-nip52-cb')){rlys[idx].supportsNip52=t.checked}appStore.set({relays:rlys});rendRlys()};
-    gE('#add-rly-btn',r).onclick=()=>{const u=gE('#new-rly-url',r).value.trim();if(u){appStore.set(s=>({relays:[...s.relays,{url:u,read:!0,write:!0,status:'?',nip11:null,supportsNip52:false}]}));gE('#new-rly-url',r).value='';rendRlys()}};
+    gE('#add-rly-btn',r).onclick=()=>{
+        const u=gE('#new-rly-url',r).value.trim();
+        if(!u) return showToast("Relay URL cannot be empty.", 'warning');
+        if(!isValidUrl(u) || !u.startsWith('wss://')) return showToast("Invalid relay URL. Must be a valid wss:// URL.", 'warning');
+        appStore.set(s=>({relays:[...s.relays,{url:u,read:!0,write:!0,status:'?',nip11:null,supportsNip52:false}]}));gE('#new-rly-url',r).value='';rendRlys()
+    };
     gE('#save-rlys-btn',r).onclick=()=>{confSvc.setRlys(appStore.get().relays);nostrSvc.discAllRlys();nostrSvc.connRlys();showToast("Relays saved and reconnected.", 'success')};
 
     if(gE('#exp-sk-btn',r))gE('#exp-sk-btn',r).onclick=async()=>{
@@ -540,7 +573,18 @@ function SettPanComp(){
     };
 
     gE('#img-host-sel',r).onchange=e=>{const nip96Fields=gE('#nip96-fields',r);nip96Fields.style.display=e.target.value==='nip96'?'block':'none';if(e.target.value!==C.IMG_UPLOAD_NOSTR_BUILD)gE('#nip96-url-in',r).value=appStore.get().settings.nip96Host||'';else gE('#nip96-url-in',r).value='';gE('#nip96-token-in',r).value=appStore.get().settings.nip96Token||'';};
-    gE('#save-img-host-btn',r).onclick=()=>{const sel=gE('#img-host-sel',r).value;if(sel==='nip96'){const h=gE('#nip96-url-in',r).value.trim(),t=gE('#nip96-token-in',r).value.trim();if(!h)return showToast("NIP-96 URL required.", 'warning');confSvc.setImgHost(h,!0,t)}else{confSvc.setImgHost(C.IMG_UPLOAD_NOSTR_BUILD)}showToast("Image host saved.", 'success')};
+    gE('#save-img-host-btn',r).onclick=()=>{
+        const sel=gE('#img-host-sel',r).value;
+        if(sel==='nip96'){
+            const h=gE('#nip96-url-in',r).value.trim(),t=gE('#nip96-token-in',r).value.trim();
+            if(!h)return showToast("NIP-96 URL required.", 'warning');
+            if(!isValidUrl(h) || (!h.startsWith('http://') && !h.startsWith('https://'))) return showToast("Invalid NIP-96 URL. Must be a valid http(s):// URL.", 'warning');
+            confSvc.setImgHost(h,!0,t)
+        }else{
+            confSvc.setImgHost(C.IMG_UPLOAD_NOSTR_BUILD)
+        }
+        showToast("Image host saved.", 'success')
+    };
 
     gE('#mute-list',r).onclick=e=>{
         if(e.target.classList.contains('remove-mute-btn')){
@@ -557,7 +601,7 @@ function SettPanComp(){
         appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
         try {
             const pkHex = npubToHex(pkInput); // Convert npub to hex if needed
-            if (!isNostrId(pkHex)) throw new Error("Invalid Nostr ID format.");
+            if (!isNostrId(pkHex)) throw new Error("Invalid Nostr ID format (must be 64 hex characters).");
             confSvc.addMute(pkHex);
             gE('#new-mute-pk-input',r).value='';
             rendMuteList();

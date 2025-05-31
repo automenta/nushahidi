@@ -82,3 +82,13 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
         toast.addEventListener('transitionend', () => toast.remove());
     }, duration);
 }
+
+// New: URL validation helper
+export const isValidUrl = (string) => {
+    try {
+        new URL(string);
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
