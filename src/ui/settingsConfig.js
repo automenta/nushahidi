@@ -1,4 +1,4 @@
-import {C, createEl, formatNpubShort, npubToHex, sanitizeHTML, showToast} from '../utils.js';
+import {C, createEl, formatNpubShort, npubToHex, showToast} from '../utils.js';
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
 import {renderKeyManagementSection} from './settings/keyManagement.js';
@@ -82,6 +82,13 @@ const reconnectRelays = () => {
     nostrSvc.connRlys();
 };
 
+const removeActionConfig = (title, message, onClickHandler) => ({
+    label: 'Remove',
+    className: 'remove-btn',
+    onClick: onClickHandler,
+    confirm: { title, message }
+});
+
 export const settingsSections = [
     {
         type: 'list',
@@ -97,12 +104,7 @@ export const settingsSections = [
         addBtnId: 'add-rly-btn',
         addLogic: addRelayLogic,
         itemRenderer: renderRelayItem,
-        actionsConfig: [{
-            label: 'Remove',
-            className: 'remove-relay-btn',
-            onClick: handleRelayRemove,
-            confirm: { title: 'Remove Relay', message: 'Are you sure you want to remove this relay?' }
-        }],
+        actionsConfig: [removeActionConfig('Remove Relay', 'Are you sure you want to remove this relay?', handleRelayRemove)],
         itemWrapperClass: 'relay-entry',
         saveBtnId: 'save-rlys-btn',
         onSaveCallback: reconnectRelays,
@@ -127,12 +129,7 @@ export const settingsSections = [
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
         itemRenderer: renderFocusTagItem,
-        actionsConfig: [{
-            label: 'Remove',
-            className: 'remove-focus-tag-btn',
-            onClick: handleFocusTagRemove,
-            confirm: { title: 'Remove Focus Tag', message: 'Are you sure you want to remove this focus tag?' }
-        }],
+        actionsConfig: [removeActionConfig('Remove Focus Tag', 'Are you sure you want to remove this focus tag?', handleFocusTagRemove)],
         itemWrapperClass: 'focus-tag-entry',
         saveBtnId: 'save-focus-tags-btn',
         onSaveCallback: () => nostrSvc.refreshSubs(),
@@ -152,12 +149,7 @@ export const settingsSections = [
         addBtnId: 'add-cat-btn',
         addLogic: addCategoryLogic,
         itemRenderer: renderCategoryItem,
-        actionsConfig: [{
-            label: 'Remove',
-            className: 'remove-category-btn',
-            onClick: handleCategoryRemove,
-            confirm: { title: 'Remove Category', message: 'Are you sure you want to remove this category?' }
-        }],
+        actionsConfig: [removeActionConfig('Remove Category', 'Are you sure you want to remove this category?', handleCategoryRemove)],
         itemWrapperClass: 'category-entry',
         saveBtnId: 'save-cats-btn',
         getItems: () => appStore.get().settings.cats
@@ -186,12 +178,7 @@ export const settingsSections = [
         addBtnId: 'add-mute-btn',
         addLogic: addMutePubkeyLogic,
         itemRenderer: renderMutePubkeyItem,
-        actionsConfig: [{
-            label: 'Remove',
-            className: 'remove-mute-btn',
-            onClick: handleMutePubkeyRemove,
-            confirm: { title: 'Remove Muted Pubkey', message: 'Are you sure you want to unmute this pubkey?' }
-        }],
+        actionsConfig: [removeActionConfig('Remove Muted Pubkey', 'Are you sure you want to unmute this pubkey?', handleMutePubkeyRemove)],
         itemWrapperClass: 'mute-entry',
         saveBtnId: 'save-mute-list-btn',
         getItems: () => appStore.get().settings.mute
@@ -213,12 +200,7 @@ export const settingsSections = [
         addBtnId: 'add-followed-btn',
         addLogic: addFollowedPubkeyLogic,
         itemRenderer: renderFollowedPubkeyItem,
-        actionsConfig: [{
-            label: 'Unfollow',
-            className: 'remove-followed-btn',
-            onClick: handleFollowedPubkeyRemove,
-            confirm: { title: 'Unfollow User', message: 'Are you sure you want to unfollow this user?' }
-        }],
+        actionsConfig: [removeActionConfig('Unfollow User', 'Are you sure you want to unfollow this user?', handleFollowedPubkeyRemove)],
         itemWrapperClass: 'followed-entry',
         saveBtnId: 'save-followed-btn',
         uniqueListenersSetup: setupFollowedListUniqueListeners,
