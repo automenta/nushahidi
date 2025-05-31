@@ -6,13 +6,14 @@ import {$, generateUUID, getGhPrefixes, showToast} from '../utils.js';
 import {showConfirmModal} from '../ui/modals.js';
 import {dbSvc} from './db.js';
 import {confSvc} from './config.js';
+import {withToast} from '../decorators.js';
 
 let _map, _mapRepsLyr = L.layerGroup();
 let _mapTileLyr;
 let _drawnItems;
 let _drawControl;
 
-const updateDrawnShapesInStoreAndDb = async (action, data) => {
+const updateDrawnShapesInStoreAndDb = withToast(async (action, data) => {
     if (action === 'add') {
         const layer = data;
         const geojson = layer.toGeoJSON();
@@ -21,7 +22,6 @@ const updateDrawnShapesInStoreAndDb = async (action, data) => {
         layer.options.id = shapeId;
         _drawnItems.addLayer(layer);
         await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
-        showToast("Shape drawn and saved!", 'success');
     } else if (action === 'edit') {
         for (const layer of Object.values(data._layers)) {
             const geojson = layer.toGeoJSON();
@@ -29,18 +29,16 @@ const updateDrawnShapesInStoreAndDb = async (action, data) => {
             geojson.properties = { ...geojson.properties, id: shapeId };
             await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
         }
-        showToast("Shape edited and saved!", 'success');
     } else if (action === 'delete') {
         for (const layer of Object.values(data._layers)) {
             const shapeId = layer.options.id;
             await dbSvc.rmDrawnShape(shapeId);
         }
-        showToast("Shape deleted!", 'info');
     }
 
     const updatedShapes = await dbSvc.getAllDrawnShapes();
     appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
-};
+}, null, "Error updating drawn shapes");
 
 const handleDrawCreated = async e => {
     await updateDrawnShapesInStoreAndDb('add', e.layer);

@@ -46,7 +46,6 @@ async function initializeApplication() {
         await dbSvc.pruneDb();
     } catch (e) {
         console.error("Application initialization failed:", e);
-        // showToast(`App failed to load: ${e.message}`, 'error', 0); // Removed for now, as it might cause issues if toast container isn't ready
     } finally {
         appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     }

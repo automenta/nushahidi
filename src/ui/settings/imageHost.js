@@ -47,6 +47,7 @@ const setupImageHostListeners = (modalContent) => {
     const nip96TokenIn = $('#nip96-token-in', modalContent);
     const appState = appStore.get();
 
+    // Set initial display based on current settings
     if (appState.settings.nip96Host) {
         imgHostSel.value = 'nip96';
         nip96Fields.style.display = '';

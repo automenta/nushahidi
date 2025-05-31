@@ -206,20 +206,6 @@ export const nostrSvc = {
         if (!_pool || typeof _pool.on !== 'function') {
             try {
                 _pool = new SimplePool();
-                // Re-enable these listeners if real-time relay status updates are desired.
-                // They need to be carefully implemented to update appStore.relays correctly.
-                // _pool.on('relay:connect', (url) => {
-                //     updRlyStore(url, 'connected');
-                //     showToast(`Connected to ${url}`, 'success', 2000);
-                // });
-                // _pool.on('relay:disconnect', (url) => {
-                //     updRlyStore(url, 'disconnected');
-                //     showToast(`Disconnected from ${url}`, 'warning', 2000);
-                // });
-                // _pool.on('relay:error', (url) => {
-                //     updRlyStore(url, 'error');
-                //     showToast(`Error connecting to ${url}`, 'error', 2000);
-                // });
             } catch (e) {
                 console.error("Error initializing Nostr SimplePool:", e);
                 _pool = null; // Ensure _pool is null if initialization failed
