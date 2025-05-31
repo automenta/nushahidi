@@ -20,7 +20,7 @@ export const updateConnectionDisplay = isOnline => {
     connectionStatusElement.style.color = isOnline ? 'lightgreen' : 'lightcoral';
 };
 
-export const updateSyncDisplay = async () => {
+export const updateSyncDisplay = async (settingsModalElement) => {
     const syncStatusElement = $('#sync-status');
     if (!syncStatusElement) return;
     try {
@@ -29,7 +29,7 @@ export const updateSyncDisplay = async () => {
             syncStatusElement.textContent = `Syncing (${queue.length})...`;
             syncStatusElement.style.color = 'orange';
             syncStatusElement.disabled = false;
-            syncStatusElement.onclick = () => showModal('settings-modal');
+            syncStatusElement.onclick = () => showModal(settingsModalElement);
         } else {
             syncStatusElement.textContent = appStore.get().online ? 'Synced' : 'Offline';
             syncStatusElement.style.color = 'lightgreen';
@@ -71,16 +71,12 @@ export const updateFilterCategories = newCategories => {
     (newCategories || []).forEach(c => selectElement.appendChild(createEl('option', { value: c, textContent: sanitizeHTML(c) })));
 };
 
-export const handleModalFocus = (newModalId, oldModalId) => {
-    if (newModalId && newModalId !== oldModalId) $(`#${newModalId}`)?.focus();
-};
-
 export const handleReportViewing = (reportId, reports) => {
     if (reportId) {
         const report = reports.find(r => r.id === reportId);
         if (report) {
-            ReportDetailsModal(report);
-            showModal('report-detail-container', 'detail-title');
+            const reportDetailsModalElement = ReportDetailsModal(report);
+            showModal(reportDetailsModalElement, 'detail-title');
         }
     }
 };

@@ -2,7 +2,7 @@ import {marked} from 'marked';
 import {appStore} from '../../store.js';
 import {confSvc, nostrSvc} from '../../services.js';
 import {$, $$, C, createEl, formatNpubShort, sanitizeHTML, showToast} from '../../utils.js';
-import {Modal, hideModal, showConfirmModal} from '../modals.js';
+import {Modal, hideModal, showConfirmModal, showModal} from '../modals.js';
 import {renderForm} from '../forms.js';
 import {ReportFormModal} from './ReportFormModal.js';
 import {applyAllFilters} from './FilterControls.js';
@@ -10,6 +10,8 @@ import { nip19 } from 'nostr-tools';
 import {withLoading, withToast} from '../../decorators.js';
 
 export function ReportDetailsModal(report) {
+    let reportDetailsModalElement;
+
     const submitInteraction = async (kind, content, reportId, reportPk) => {
         if (!appStore.get().user) throw new Error("Please connect your Nostr identity to interact.");
 
@@ -20,9 +22,8 @@ export function ReportDetailsModal(report) {
         });
         const updatedReport = appStore.get().reports.find(r => r.id === reportId);
         if (updatedReport) {
-            // Re-render the detail modal for the updated report
-            ReportDetailsModal(updatedReport); // This will create and append a new modal
-            showModal('report-detail-container', 'detail-title'); // Show the new modal
+            ReportDetailsModal(updatedReport);
+            showModal(reportDetailsModalElement, 'detail-title');
         }
     };
 
@@ -84,12 +85,12 @@ export function ReportDetailsModal(report) {
     `;
 
     const setupReportDetailEventListeners = (rep, isAuthor, canFollow, detailContainer) => {
-        $('#back-to-list-btn', detailContainer).onclick = () => { hideModal('report-detail-container'); $('#report-list-container').style.display = 'block' };
+        $('#back-to-list-btn', detailContainer).onclick = () => { hideModal(reportDetailsModalElement); $('#report-list-container').style.display = 'block' };
 
         if (isAuthor) {
             $('#edit-report-btn', detailContainer).onclick = () => {
-                ReportFormModal(rep); // This will create and append the form modal
-                showModal('report-form-modal', 'rep-title');
+                const reportFormModalElement = ReportFormModal(rep);
+                showModal(reportFormModalElement, 'rep-title');
             };
             $('#delete-report-btn', detailContainer).onclick = () => {
                 showConfirmModal(
@@ -97,7 +98,7 @@ export function ReportDetailsModal(report) {
                     `Are you sure you want to delete the report "${sanitizeHTML(rep.title || rep.id.substring(0, 8) + '...')}"? This action publishes a deletion event to relays.`,
                     withLoading(withToast(async () => {
                         await nostrSvc.deleteEv(rep.id);
-                        hideModal('report-detail-container');
+                        hideModal(reportDetailsModalElement);
                         $('#report-list-container').style.display = 'block';
                         applyAllFilters();
                     }, null, "Failed to delete report")),
@@ -120,8 +121,8 @@ export function ReportDetailsModal(report) {
             isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
             const updatedReport = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
             if (updatedReport) {
-                ReportDetailsModal(updatedReport); // This will create and append a new modal
-                showModal('report-detail-container', 'detail-title'); // Show the new modal
+                ReportDetailsModal(updatedReport);
+                showModal(reportDetailsModalElement, 'detail-title');
             }
             return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
         }, null, "Error toggling follow status", () => btn.disabled = false))();
@@ -191,16 +192,18 @@ export function ReportDetailsModal(report) {
         }, null, "Error loading interactions"))();
     };
 
-    const initializeMiniMap = rep => {
+    const initializeMiniMap = (rep, modalContent) => {
         if (rep.lat && rep.lon && typeof L !== 'undefined') {
-            const miniMap = L.map('mini-map-det').setView([rep.lat, rep.lon], 13);
-            L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
-            setTimeout(() => miniMap.invalidateSize(), 0);
+            const miniMapEl = $('#mini-map-det', modalContent);
+            if (miniMapEl) {
+                const miniMap = L.map(miniMapEl).setView([rep.lat, rep.lon], 13);
+                L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
+                setTimeout(() => miniMap.invalidateSize(), 0);
+            }
         }
     };
 
-    // The Modal function now creates and appends the modal to document.body
-    const modalElement = Modal('report-detail-container', report.title || 'Report Details', async modalContent => {
+    reportDetailsModalElement = Modal('report-detail-container', report.title || 'Report Details', async modalContent => {
         const profile = await nostrSvc.fetchProf(report.pk);
         const currentUserPk = appStore.get().user?.pk;
         const isAuthor = currentUserPk && currentUserPk === report.pk;
@@ -210,10 +213,10 @@ export function ReportDetailsModal(report) {
         modalContent.innerHTML = renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
 
         setupReportDetailEventListeners(report, isAuthor, canFollow, modalContent);
-        initializeMiniMap(report);
+        initializeMiniMap(report, modalContent);
         await loadAndDisplayInteractions(report.id, report.pk, $(`#interactions-for-${report.id}`, modalContent));
         return modalContent;
     });
 
-    return modalElement;
+    return reportDetailsModalElement;
 }

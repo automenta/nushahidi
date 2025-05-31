@@ -6,6 +6,8 @@ import {Modal, hideModal, showModal} from '../modals.js';
 import {withLoading, withToast} from '../../decorators.js';
 
 export function ReportFormModal(reportToEdit = null) {
+    let reportFormModalElement;
+
     const categories = appStore.get().settings.cats;
 
     const formState = {
@@ -62,7 +64,7 @@ export function ReportFormModal(reportToEdit = null) {
         { type: 'custom-html', id: 'upld-photos-preview' },
         { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
         { label: initialData.isEdit ? 'Update Report' : 'Submit', type: 'button', id: 'submit-report-btn', buttonType: 'submit' },
-        { label: 'Cancel', type: 'button', id: 'cancel-report-btn', buttonType: 'button', class: 'secondary', onclick: () => hideModal('report-form-modal') }
+        { label: 'Cancel', type: 'button', id: 'cancel-report-btn', buttonType: 'button', class: 'secondary', onclick: () => hideModal(reportFormModalElement) }
     ];
 
     const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
@@ -119,11 +121,11 @@ export function ReportFormModal(reportToEdit = null) {
 
     const setupReportFormLocationHandlers = (formElement, formState, updateLocationDisplay) => {
         $('#pick-loc-map-btn', formElement).onclick = () => {
-            hideModal('report-form-modal');
+            hideModal(reportFormModalElement);
             mapSvc.enPickLoc(latlng => {
                 formState.pFLoc = latlng;
                 updateLocationDisplay();
-                showModal('report-form-modal', 'rep-title');
+                showModal(reportFormModalElement, 'rep-title');
             });
         };
 
@@ -158,7 +160,7 @@ export function ReportFormModal(reportToEdit = null) {
         }, null, "Geocoding error"));
     };
 
-    const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => async e => {
+    const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview, formElement) => async e => {
         for (const file of e.target.files) {
             await withLoading(withToast(async () => {
                 const processedImage = await processImageFile(file);
@@ -169,7 +171,7 @@ export function ReportFormModal(reportToEdit = null) {
                     dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
                     hHex: processedImage.hash
                 });
-                updatePreview();
+                updatePreview(formElement);
                 return `Image ${file.name} uploaded.`;
             }, null, `Failed to upload ${file.name}`))();
         }
@@ -195,15 +197,14 @@ export function ReportFormModal(reportToEdit = null) {
             $('#upld-photos-preview', formElement).innerHTML = '';
             formState.pFLoc = null;
             imagesMetadata.length = 0;
-            hideModal('report-form-modal');
+            hideModal(reportFormModalElement);
             return 'Report sent!';
         }, null, "Report submission error", e => {
             formElement.querySelector('button[type=submit]').disabled = false;
         }));
     };
 
-    // The Modal function now creates and appends the modal to document.body
-    const modalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
+    reportFormModalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
         const updateLocationDisplay = (addressName = '') => {
             const coordsEl = $('#pFLoc-coords', modalContent);
             coordsEl.textContent = formState.pFLoc ?
@@ -211,26 +212,26 @@ export function ReportFormModal(reportToEdit = null) {
                 'None';
         };
 
-        const updateImagePreview = () => {
-            const previewElement = $('#upld-photos-preview', modalContent);
+        const updateImagePreview = (scopeElement) => {
+            const previewElement = $('#upld-photos-preview', scopeElement || modalContent);
             renderImagePreview(previewElement, formState.uIMeta, index => {
                 formState.uIMeta.splice(index, 1);
-                updateImagePreview();
+                updateImagePreview(scopeElement);
             });
         };
 
         const form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
 
-        $('#rep-photos', form).onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview);
+        $('#rep-photos', form).onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview, form);
         setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
         setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
 
-        updateImagePreview();
+        updateImagePreview(form);
         updateLocationDisplay();
 
         return form;
     });
 
-    return modalElement;
+    return reportFormModalElement;
 }

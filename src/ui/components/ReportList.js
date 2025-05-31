@@ -21,16 +21,14 @@ export function ReportList(reports) {
             cardWrapper.innerHTML = renderReportCard(report);
             const cardElement = cardWrapper.firstElementChild;
             cardElement.addEventListener('click', () => {
-                // ReportDetailsModal now creates and appends itself to document.body
-                ReportDetailsModal(report);
-                showModal('report-detail-container', 'detail-title');
+                const reportDetailsModalElement = ReportDetailsModal(report);
+                showModal(reportDetailsModalElement, 'detail-title');
                 listContainer.style.display = 'none';
             });
             cardElement.addEventListener('keydown', e => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                    // ReportDetailsModal now creates and appends itself to document.body
-                    ReportDetailsModal(report);
-                    showModal('report-detail-container', 'detail-title');
+                    const reportDetailsModalElement = ReportDetailsModal(report);
+                    showModal(reportDetailsModalElement, 'detail-title');
                     listContainer.style.display = 'none';
                 }
             });

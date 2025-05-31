@@ -5,8 +5,10 @@ import {ConfigurableListSetting} from './ConfigurableListSetting.js';
 import {renderOfflineQueue} from '../settings/offlineQueue.js';
 
 export function SettingsModal() {
+    let settingsModalElement;
+
     const sectionRenderers = new Map([
-        ['list', (wrapper, section) => wrapper.appendChild(ConfigurableListSetting(section))],
+        ['list', (wrapper, section) => wrapper.appendChild(ConfigurableListSetting(section, wrapper))],
         ['section', (wrapper, section) => {
             const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
             const renderedContent = section.renderer(wrapper);
@@ -38,8 +40,7 @@ export function SettingsModal() {
         return settingsSectionsWrapper;
     };
 
-    // The Modal function now creates and appends the modal to document.body
-    const modalElement = Modal('settings-modal', 'Settings', settingsContentRenderer);
-    modalElement.querySelector('.modal-content').appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
-    return modalElement;
+    settingsModalElement = Modal('settings-modal', 'Settings', settingsContentRenderer);
+    settingsModalElement.querySelector('.modal-content').appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal(settingsModalElement), style: 'margin-top:1rem' }));
+    return settingsModalElement;
 }

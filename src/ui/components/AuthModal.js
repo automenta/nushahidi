@@ -1,15 +1,17 @@
 import {appStore} from '../../store.js';
 import {idSvc} from '../../services.js';
 import {$, createEl, showToast} from '../../utils.js';
-import {Modal, hideModal, showConfirmModal} from '../modals.js';
+import {Modal, hideModal, showConfirmModal, showModal} from '../modals.js';
 import {renderForm} from '../forms.js';
 import {withLoading, withToast} from '../../decorators.js';
 
 export function AuthModal() {
+    let authModalElement;
+
     const handleConnectNip07 = withLoading(async () => {
         await idSvc.nip07();
         if (!appStore.get().user) throw new Error("NIP-07 connection failed or user not found.");
-        hideModal('auth-modal');
+        hideModal(authModalElement);
     });
 
     const handleCreateProfile = async passphrase => {
@@ -19,7 +21,7 @@ export function AuthModal() {
             "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
             withLoading(async () => {
                 if (!await idSvc.newProf(passphrase)) throw new Error("Profile creation failed.");
-                hideModal('auth-modal');
+                hideModal(authModalElement);
             }),
             () => showToast("New profile creation cancelled.", 'info')
         );
@@ -32,7 +34,7 @@ export function AuthModal() {
             "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
             withLoading(async () => {
                 if (!await idSvc.impSk(privateKey, passphrase)) throw new Error("Private key import failed.");
-                hideModal('auth-modal');
+                hideModal(authModalElement);
             }),
             () => showToast("Private key import cancelled.", 'info')
         );
@@ -49,11 +51,10 @@ export function AuthModal() {
         { type: 'hr' },
         { label: 'Import Private Key (nsec/hex):', type: 'text', id: 'auth-sk' },
         { type: 'button', id: 'import-sk-btn', label: 'Import Key' },
-        { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => hideModal('auth-modal'), style: 'margin-top:1rem' }
+        { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => hideModal(authModalElement), style: 'margin-top:1rem' }
     ];
 
-    // The Modal function now creates and appends the modal to document.body
-    const modalElement = Modal('auth-modal', 'Nostr Identity', root => {
+    authModalElement = Modal('auth-modal', 'Nostr Identity', root => {
         const form = renderForm(authFormFields, {}, {id: 'auth-form'});
         root.appendChild(form);
         $('#conn-nip07-btn', form).onclick = handleConnectNip07;
@@ -62,5 +63,5 @@ export function AuthModal() {
         return form;
     });
 
-    return modalElement;
+    return authModalElement;
 }

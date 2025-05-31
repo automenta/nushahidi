@@ -2,12 +2,16 @@ import {appStore} from '../../store.js';
 import {createEl} from '../../utils.js';
 import {renderForm, renderList, setupAddRemoveListSection} from '../forms.js';
 
-export function ConfigurableListSetting(config) {
+export function ConfigurableListSetting(config, scopeElement = document) {
     const sectionEl = createEl('section', {}, [
         createEl('h3', { textContent: config.title }),
         createEl('div', { id: config.listId }),
-        config.formFields ? renderForm(config.formFields, {}, { id: config.formId }) : null
     ].filter(Boolean));
+
+    if (config.formFields) {
+        const form = renderForm(config.formFields, {}, { id: config.formId });
+        sectionEl.appendChild(form);
+    }
 
     const listRenderer = () => {
         const items = config.getItems();
