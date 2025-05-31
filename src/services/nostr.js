@@ -80,35 +80,19 @@ const buildReportFilter = (appState, mapGeohashes) => {
 };
 
 const _publishEventToRelays = async signedEvent => {
-    const writeRelays = appStore.get().relays.filter(r => r.write && _connectedRelays.has(r.url)).map(r => r.url);
-    if (!writeRelays.length) {
-        console.warn("No connected write relays available to publish event.");
-        return false; // Indicate failure
+    if (!_pool) {
+        console.warn("Nostr pool not initialized. Cannot publish event.");
+        return false;
     }
-
+    // In nostr-tools v2.0.0, _pool.publish publishes to all relays in the pool
+    // and returns a promise that resolves if at least one relay accepts, or rejects if all fail.
     try {
-        // Use Promise.any to resolve as soon as one relay publishes successfully
-        await Promise.any(writeRelays.map(url => {
-            const pub = _pool.publish(url, signedEvent);
-            return new Promise((resolve, reject) => {
-                pub.on('ok', () => {
-                    console.log(`Event ${signedEvent.id.substring(0, 8)}... published to ${url}`);
-                    resolve(true); // Resolve with true on success
-                });
-                pub.on('failed', reason => {
-                    console.error(`Failed to publish event ${signedEvent.id.substring(0, 8)}... to ${url}: ${reason}`);
-                    reject(new Error(`Failed to publish to ${url}: ${reason}`)); // Reject on failure
-                });
-                // Add a timeout for relays that don't respond
-                setTimeout(() => {
-                    reject(new Error(`Timeout publishing event ${signedEvent.id.substring(0, 8)}... to ${url}`));
-                }, 5000); // 5 second timeout
-            });
-        }));
-        return true; // At least one relay published successfully
+        await _pool.publish(signedEvent);
+        console.log(`Event ${signedEvent.id.substring(0, 8)}... published to at least one relay.`);
+        return true;
     } catch (e) {
-        console.error("All publish attempts failed or timed out:", e);
-        return false; // All attempts failed
+        console.error(`Failed to publish event ${signedEvent.id.substring(0, 8)}... to any connected relay:`, e);
+        return false;
     }
 };
 
@@ -170,7 +154,7 @@ export const nostrSvc = {
         }
 
         const filter = buildReportFilter(appState, appState.mapGhs);
-        const sub = _pool.sub(relaysToQuery, [filter], {
+        const sub = _pool.subscribe(relaysToQuery, [filter], { // Changed .sub to .subscribe
             onevent: event => handleEvent(event, event.relay),
             oneose: () => console.log('Reports EOSE')
         });
@@ -233,7 +217,7 @@ export const nostrSvc = {
         if (!relaysToQuery.length) return null;
 
         return new Promise(resolve => {
-            const sub = _pool.sub(relaysToQuery, [{ kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 }], {
+            const sub = _pool.subscribe(relaysToQuery, [{ kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 }], { // Changed .sub to .subscribe
                 onevent: async event => {
                     await handleEvent(event, event.relay);
                     resolve(JSON.parse(event.content));
@@ -252,7 +236,7 @@ export const nostrSvc = {
         if (!relaysToQuery.length) return [];
 
         return new Promise(resolve => {
-            const sub = _pool.sub(relaysToQuery, [{ kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 }], {
+            const sub = _pool.subscribe(relaysToQuery, [{ kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 }], { // Changed .sub to .subscribe
                 onevent: async event => {
                     const contacts = event.tags.filter(t => t[0] === 'p').map(t => ({ pubkey: t[1], relay: t[2], petname: t[3] }));
                     resolve(contacts);
@@ -296,7 +280,7 @@ export const nostrSvc = {
 
         const interactions = [];
         return new Promise(resolve => {
-            const sub = _pool.sub(relaysToQuery, [filter], {
+            const sub = _pool.subscribe(relaysToQuery, [filter], { // Changed .sub to .subscribe
                 onevent: event => {
                     interactions.push(event);
                 },
