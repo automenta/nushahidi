@@ -1,5 +1,5 @@
 import { nip11 } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools/pool';
+import * as NostrPool from 'nostr-tools/pool'; // Changed import to namespace
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
@@ -205,7 +205,9 @@ export const nostrSvc = {
         // Only re-initialize if _pool is not a valid SimplePool instance
         if (!_pool || typeof _pool.on !== 'function') {
             try {
-                const newPool = new SimplePool();
+                // Diagnostic log: What is NostrPool.SimplePool before instantiation?
+                console.log("NostrPool.SimplePool:", NostrPool.SimplePool);
+                const newPool = new NostrPool.SimplePool(); // Instantiated from namespace
                 // Validate the newly created instance immediately
                 if (typeof newPool.on !== 'function') {
                     console.error("SimplePool constructor returned an object without an 'on' method.");
