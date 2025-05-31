@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import 'leaflet.markercluster'; // Import the MarkerCluster plugin
 import { generatePrivateKey as genSk, getPublicKey as getPk, nip19, getEventHash as getEvH, signEvent as signEvNostr, relayInit,nip11 } from 'nostr-tools';
 import { appStore } from './store.js';
 import { C, $, encrypt, decrypt, sha256, npubToHex, geohashEncode, parseReport, getGhPrefixes, nsecToHex, isNostrId } from './utils.js';
@@ -76,7 +77,9 @@ export const offSvc={ /* offSvc: offlineService */
 
 let _map, _mapRepsLyr=L.layerGroup(), _mapTileLyr; /* map: mapInstance, mapRepsLyr: mapReportsLayer, mapTileLyr: mapTileLayer */
 export const mapSvc={ /* mapSvc: mapService */
-  init(id='map-container'){const tU=confSvc.getTileServer();_map=L.map(id).setView([20,0],3);_mapTileLyr=L.tileLayer(tU,{attribution:'&copy; OSM & NM',maxZoom:19}).addTo(_map);_map.addLayer(_mapRepsLyr);appStore.set({map:_map});_map.on('moveend zoomend',()=>{const b=_map.getBounds(),g=getGhPrefixes(b);appStore.set({mapBnds:b,mapGhs:g})});return _map},
+  init(id='map-container'){const tU=confSvc.getTileServer();_map=L.map(id).setView([20,0],3);_mapTileLyr=L.tileLayer(tU,{attribution:'&copy; OSM & NM',maxZoom:19}).addTo(_map);
+  _mapRepsLyr = L.markerClusterGroup(); // Changed to MarkerClusterGroup
+  _map.addLayer(_mapRepsLyr);appStore.set({map:_map});_map.on('moveend zoomend',()=>{const b=_map.getBounds(),g=getGhPrefixes(b);appStore.set({mapBnds:b,mapGhs:g})});return _map},
   updTile(url){if(_mapTileLyr)_mapTileLyr.setUrl(url)},
   updReps(reps){if(!_map)return;_mapRepsLyr.clearLayers();reps.forEach(r=>{if(r.lat&&r.lon){const m=L.marker([r.lat,r.lon]);m.bindPopup(`<b>${r.title||'Report'}</b><br>${r.sum||r.ct.substring(0,50)+'...'}`,{maxWidth:250});m.on('click',()=>{appStore.set(s=>({...s,ui:{...s.ui,viewingReport:r.id}}))});_mapRepsLyr.addLayer(m)}})},
   ctrUser(){if(!_map||!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(p=>{const ll=[p.coords.latitude,p.coords.longitude];_map.setView(ll,13);L.marker(ll).addTo(_map).bindPopup("You").openPopup()},e=>alert("GPS Err:"+e.message))},
