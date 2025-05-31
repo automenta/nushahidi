@@ -136,31 +136,27 @@ async function handleCommentSubmit(event) {
     }
 }
 
-export const showReportDetails = async report => {
-    const detailContainer = $('#report-detail-container');
-    const listContainer = $('#report-list-container');
-    if (!detailContainer || !listContainer) return;
-
-    listContainer.style.display = 'none';
-
+/**
+ * Generates the HTML content for the report details view.
+ * @param {object} report - The report object.
+ * @param {object} profile - The author's profile object.
+ * @param {boolean} isAuthor - True if the current user is the report author.
+ * @param {boolean} isFollowed - True if the author is currently followed.
+ * @param {boolean} canFollow - True if the current user can follow/unfollow the author.
+ * @returns {string} The HTML string for the report details.
+ */
+const _renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
     const imagesHtml = (report.imgs || []).map(img =>
         `<img src="${sanitizeHTML(img.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`
     ).join('');
     const descriptionHtml = marked.parse(sanitizeHTML(report.ct || ''));
 
-    // Fetch profile for NIP-05 display and other details
-    const profile = await nostrSvc.fetchProf(report.pk);
     const authorDisplay = profile?.name || (profile?.nip05 ? sanitizeHTML(profile.nip05) : formatNpubShort(report.pk));
     const authorPicture = profile?.picture ? `<img src="${sanitizeHTML(profile.picture)}" alt="Profile Picture" class="profile-picture">` : '';
     const authorAbout = profile?.about ? `<p class="profile-about">${sanitizeHTML(profile.about)}</p>` : '';
     const authorNip05 = profile?.nip05 ? `<span class="nip05-verified">${sanitizeHTML(profile.nip05)} ✅</span>` : '';
 
-    const currentUserPk = appStore.get().user?.pk;
-    const isAuthor = currentUserPk && currentUserPk === report.pk;
-    const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
-    const canFollow = currentUserPk && currentUserPk !== report.pk; // Can follow if logged in and not self
-
-    detailContainer.innerHTML = `
+    return `
         <button id="back-to-list-btn" class="small-button">&lt; List</button>
         ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right;">Edit Report</button>` : ''}
         ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
@@ -179,9 +175,17 @@ export const showReportDetails = async report => {
         <div id="mini-map-det" style="height:150px;margin-top:.7rem;border:1px solid #ccc"></div>
         <div class="interactions" id="interactions-for-${report.id}">Loading interactions...</div>
     `;
+};
 
-    detailContainer.style.display = 'block';
-    detailContainer.focus();
+/**
+ * Sets up event listeners for buttons in the report details view.
+ * @param {object} report - The report object.
+ * @param {boolean} isAuthor - True if the current user is the report author.
+ * @param {boolean} canFollow - True if the current user can follow/unfollow the author.
+ * @param {HTMLElement} detailContainer - The report detail container element.
+ * @param {HTMLElement} listContainer - The report list container element.
+ */
+const _setupReportDetailEventListeners = (report, isAuthor, canFollow, detailContainer, listContainer) => {
     $('#back-to-list-btn', detailContainer).onclick = () => { detailContainer.style.display = 'none'; listContainer.style.display = 'block' };
 
     if (isAuthor) {
@@ -216,6 +220,29 @@ export const showReportDetails = async report => {
     if (canFollow) {
         $('#follow-toggle-btn', detailContainer).onclick = handleFollowToggle;
     }
+};
+
+export const showReportDetails = async report => {
+    const detailContainer = $('#report-detail-container');
+    const listContainer = $('#report-list-container');
+    if (!detailContainer || !listContainer) return;
+
+    listContainer.style.display = 'none';
+
+    // Fetch profile for NIP-05 display and other details
+    const profile = await nostrSvc.fetchProf(report.pk);
+
+    const currentUserPk = appStore.get().user?.pk;
+    const isAuthor = currentUserPk && currentUserPk === report.pk;
+    const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
+    const canFollow = currentUserPk && currentUserPk !== report.pk; // Can follow if logged in and not self
+
+    detailContainer.innerHTML = _renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
+
+    detailContainer.style.display = 'block';
+    detailContainer.focus();
+
+    _setupReportDetailEventListeners(report, isAuthor, canFollow, detailContainer, listContainer);
 
     if (report.lat && report.lon && typeof L !== 'undefined') {
         const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);

@@ -886,6 +886,58 @@ let _map, _mapRepsLyr = L.layerGroup(),
 let _drawnItems; // FeatureGroup to store drawn items
 let _drawControl; // Leaflet.draw control instance
 
+/**
+ * Handles the 'created' event from Leaflet.draw.
+ * Saves the newly drawn shape to IndexedDB and updates the appStore.
+ * @param {L.DrawEvents.Created} e - The event object.
+ */
+const _handleDrawCreated = async e => {
+    const layer = e.layer;
+    const geojson = layer.toGeoJSON();
+    const shapeId = generateUUID(); // Generate a unique ID for the shape
+    geojson.properties = { ...geojson.properties, id: shapeId }; // Add ID to properties
+    layer.options.id = shapeId; // Store ID on the layer itself for easy lookup
+
+    _drawnItems.addLayer(layer);
+    await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
+    appStore.set(s => ({ drawnShapes: [...s.drawnShapes, geojson] }));
+    showToast("Shape drawn and saved!", 'success');
+};
+
+/**
+ * Handles the 'edited' event from Leaflet.draw.
+ * Updates the edited shapes in IndexedDB and appStore.
+ * @param {L.DrawEvents.Edited} e - The event object.
+ */
+const _handleDrawEdited = async e => {
+    for (const layer of Object.values(e.layers._layers)) {
+        const geojson = layer.toGeoJSON();
+        const shapeId = layer.options.id; // Retrieve ID from layer options
+        geojson.properties = { ...geojson.properties, id: shapeId };
+        await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson }); // Update in DB
+    }
+    // Re-fetch all drawn shapes to update appStore
+    const updatedShapes = await dbSvc.getAllDrawnShapes();
+    appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
+    showToast("Shape edited and saved!", 'success');
+};
+
+/**
+ * Handles the 'deleted' event from Leaflet.draw.
+ * Removes the deleted shapes from IndexedDB and appStore.
+ * @param {L.DrawEvents.Deleted} e - The event object.
+ */
+const _handleDrawDeleted = async e => {
+    for (const layer of Object.values(e.layers._layers)) {
+        const shapeId = layer.options.id; // Retrieve ID from layer options
+        await dbSvc.rmDrawnShape(shapeId); // Remove from DB
+    }
+    // Re-fetch all drawn shapes to update appStore
+    const updatedShapes = await dbSvc.getAllDrawnShapes();
+    appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
+    showToast("Shape deleted!", 'info');
+};
+
 export const mapSvc = { /* mapSvc: mapService */
     /**
      * Initializes the Leaflet map.
@@ -937,42 +989,9 @@ export const mapSvc = { /* mapSvc: mapService */
         });
 
         // Event handlers for Leaflet.draw
-        _map.on(L.Draw.Event.CREATED, async e => {
-            const layer = e.layer;
-            const geojson = layer.toGeoJSON();
-            const shapeId = generateUUID(); // Generate a unique ID for the shape
-            geojson.properties = { ...geojson.properties, id: shapeId }; // Add ID to properties
-            layer.options.id = shapeId; // Store ID on the layer itself for easy lookup
-
-            _drawnItems.addLayer(layer);
-            await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
-            appStore.set(s => ({ drawnShapes: [...s.drawnShapes, geojson] }));
-            showToast("Shape drawn and saved!", 'success');
-        });
-
-        _map.on(L.Draw.Event.EDITED, async e => {
-            for (const layer of Object.values(e.layers._layers)) {
-                const geojson = layer.toGeoJSON();
-                const shapeId = layer.options.id; // Retrieve ID from layer options
-                geojson.properties = { ...geojson.properties, id: shapeId };
-                await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson }); // Update in DB
-            }
-            // Re-fetch all drawn shapes to update appStore
-            const updatedShapes = await dbSvc.getAllDrawnShapes();
-            appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
-            showToast("Shape edited and saved!", 'success');
-        });
-
-        _map.on(L.Draw.Event.DELETED, async e => {
-            for (const layer of Object.values(e.layers._layers)) {
-                const shapeId = layer.options.id; // Retrieve ID from layer options
-                await dbSvc.rmDrawnShape(shapeId); // Remove from DB
-            }
-            // Re-fetch all drawn shapes to update appStore
-            const updatedShapes = await dbSvc.getAllDrawnShapes();
-            appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
-            showToast("Shape deleted!", 'info');
-        });
+        _map.on(L.Draw.Event.CREATED, _handleDrawCreated);
+        _map.on(L.Draw.Event.EDITED, _handleDrawEdited);
+        _map.on(L.Draw.Event.DELETED, _handleDrawDeleted);
 
         // Load existing drawn shapes from IndexedDB on startup
         this.loadDrawnShapes();

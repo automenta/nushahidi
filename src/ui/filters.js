@@ -74,6 +74,57 @@ export const applyAllFilters = () => {
 };
 export const debAppAllFilt = debounce(applyAllFilters, 350);
 
+/**
+ * Sets up event listeners for the filter controls.
+ * @param {HTMLElement} filterForm - The rendered filter form element.
+ */
+const _setupFilterEventListeners = (filterForm) => {
+    $('#search-query-input', filterForm).oninput = e => { _cFilt.q = e.target.value; debAppAllFilt() };
+    $('#filter-category', filterForm).onchange = e => { _cFilt.cat = e.target.value; applyAllFilters() };
+    $('#filter-author', filterForm).oninput = e => { _cFilt.auth = e.target.value.trim(); debAppAllFilt() };
+    $('#filter-time-start', filterForm).onchange = e => { _cFilt.tStart = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
+    $('#filter-time-end', filterForm).onchange = e => { _cFilt.tEnd = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
+    $('#apply-filters-btn', filterForm).onclick = applyAllFilters;
+
+    $('#reset-filters-btn', filterForm).onclick = () => {
+        _cFilt = { q: '', fT: appStore.get().currentFocusTag, cat: '', auth: '', tStart: null, tEnd: null, followedOnly: false };
+        $('#search-query-input', filterForm).value = '';
+        $('#focus-tag-input', filterForm).value = _cFilt.fT;
+        $('#filter-category', filterForm).value = '';
+        $('#filter-author', filterForm).value = '';
+        $('#filter-time-start', filterForm).value = '';
+        $('#filter-time-end', filterForm).value = '';
+        // Reset spatial filter state
+        appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: false, followedOnlyFilter: false } }));
+        $('#spatial-filter-toggle', filterForm).checked = false;
+        $('#followed-only-toggle', filterForm).checked = false;
+        applyAllFilters();
+    };
+
+    // Spatial Filter Toggle
+    const spatialFilterToggle = $('#spatial-filter-toggle', filterForm);
+    spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled; // Ensure initial state is correct
+    spatialFilterToggle.onchange = e => {
+        appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
+        applyAllFilters(); // Re-apply filters immediately
+    };
+
+    // Followed Only Toggle
+    const followedOnlyToggle = $('#followed-only-toggle', filterForm);
+    followedOnlyToggle.checked = appStore.get().ui.followedOnlyFilter; // Ensure initial state is correct
+    followedOnlyToggle.onchange = e => {
+        appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
+        _cFilt.followedOnly = e.target.checked; // Update local filter state
+        nostrSvc.refreshSubs(); // Refresh subscriptions to apply author filter if needed
+        applyAllFilters(); // Re-apply filters immediately
+    };
+
+    // Clear Drawn Shapes Button
+    $('#clear-drawn-shapes-btn', filterForm).onclick = () => {
+        mapSvc.clearAllDrawnShapes();
+    };
+};
+
 export const initFilterControls = () => {
     const filterControlsContainer = $('#filter-controls');
     const appState = appStore.get();
@@ -123,27 +174,7 @@ export const initFilterControls = () => {
     filterControlsContainer.appendChild(filterForm);
 
     // Attach filter event listeners to the new form elements
-    $('#search-query-input', filterForm).oninput = e => { _cFilt.q = e.target.value; debAppAllFilt() };
-    $('#filter-category', filterForm).onchange = e => { _cFilt.cat = e.target.value; applyAllFilters() };
-    $('#filter-author', filterForm).oninput = e => { _cFilt.auth = e.target.value.trim(); debAppAllFilt() };
-    $('#filter-time-start', filterForm).onchange = e => { _cFilt.tStart = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
-    $('#filter-time-end', filterForm).onchange = e => { _cFilt.tEnd = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
-    $('#apply-filters-btn', filterForm).onclick = applyAllFilters;
-
-    $('#reset-filters-btn', filterForm).onclick = () => {
-        _cFilt = { q: '', fT: appStore.get().currentFocusTag, cat: '', auth: '', tStart: null, tEnd: null, followedOnly: false };
-        $('#search-query-input', filterForm).value = '';
-        $('#focus-tag-input', filterForm).value = _cFilt.fT;
-        $('#filter-category', filterForm).value = '';
-        $('#filter-author', filterForm).value = '';
-        $('#filter-time-start', filterForm).value = '';
-        $('#filter-time-end', filterForm).value = '';
-        // Reset spatial filter state
-        appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: false, followedOnlyFilter: false } }));
-        $('#spatial-filter-toggle', filterForm).checked = false;
-        $('#followed-only-toggle', filterForm).checked = false;
-        applyAllFilters();
-    };
+    _setupFilterEventListeners(filterForm);
 
     // Map Drawing Controls
     const mapDrawControlsDiv = $('#map-draw-controls', filterForm);
@@ -152,27 +183,4 @@ export const initFilterControls = () => {
         // Append the draw control's toolbar to the designated div
         mapDrawControlsDiv.appendChild(drawControl.onAdd(mapSvc.get()));
     }
-
-    // Spatial Filter Toggle
-    const spatialFilterToggle = $('#spatial-filter-toggle', filterForm);
-    spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled; // Ensure initial state is correct
-    spatialFilterToggle.onchange = e => {
-        appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
-        applyAllFilters(); // Re-apply filters immediately
-    };
-
-    // Followed Only Toggle
-    const followedOnlyToggle = $('#followed-only-toggle', filterForm);
-    followedOnlyToggle.checked = appStore.get().ui.followedOnlyFilter; // Ensure initial state is correct
-    followedOnlyToggle.onchange = e => {
-        appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
-        _cFilt.followedOnly = e.target.checked; // Update local filter state
-        nostrSvc.refreshSubs(); // Refresh subscriptions to apply author filter if needed
-        applyAllFilters(); // Re-apply filters immediately
-    };
-
-    // Clear Drawn Shapes Button
-    $('#clear-drawn-shapes-btn', filterForm).onclick = () => {
-        mapSvc.clearAllDrawnShapes();
-    };
 };
