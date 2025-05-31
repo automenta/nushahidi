@@ -1,11 +1,9 @@
-import {$, createEl, sanitizeHTML, showToast} from '../utils.js';
+import {createEl, sanitizeHTML, showToast} from '../utils.js';
 import {showConfirmModal} from './modals.js';
 import {withToast} from '../decorators.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
-    const formAttrs = { id: formOptions.id || 'dynamic-form' };
-    for (const key in formOptions) if (key.startsWith('data-')) formAttrs[key] = formOptions[key];
-    const form = createEl('form', formAttrs);
+    const form = createEl('form', { id: formOptions.id || 'dynamic-form', ...formOptions });
     if (formOptions.onSubmit) form.onsubmit = formOptions.onSubmit;
 
     for (const field of fieldsConfig) {
@@ -114,37 +112,32 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
 }
 
 export const setupAddRemoveListSection = ({
-    modalContent, addInputId, addBtnId, addLogic, listRenderer, saveBtnId, onSaveCallback,
+    addInputEl, addBtnEl, addLogic, listRenderer, saveBtnEl, onSaveCallback,
     successMsg, errorMsg
 }) => {
-    const addInput = $(`#${addInputId}`, modalContent);
-    const addBtn = $(`#${addBtnId}`, modalContent);
-    const saveBtn = saveBtnId ? $(`#${saveBtnId}`, modalContent) : null;
+    if (!addInputEl || !addBtnEl) return;
 
-    if (!addInput || !addBtn) return;
-
-    addBtn.onclick = withToast(async () => {
-        const inputValue = addInput.value.trim();
+    addBtnEl.onclick = withToast(async () => {
+        const inputValue = addInputEl.value.trim();
         await addLogic(inputValue);
-        addInput.value = '';
+        addInputEl.value = '';
         listRenderer();
     }, successMsg, errorMsg);
 
-    if (saveBtn) saveBtn.onclick = withToast(async () => {
+    if (saveBtnEl) saveBtnEl.onclick = withToast(async () => {
         await onSaveCallback?.();
     }, "Settings saved.", "Error saving settings");
 };
 
-export const renderList = (containerId, items, itemRenderer, actionsConfig, itemWrapperClass, scopeElement = document) => {
-    const container = $(`#${containerId}`, scopeElement);
-    if (!container) {
-        console.warn(`Container with ID ${containerId} not found for list rendering.`);
+export const renderList = (containerElement, items, itemRenderer, actionsConfig, itemWrapperClass) => {
+    if (!containerElement) {
+        console.warn(`Container element not found for list rendering.`);
         return;
     }
-    container.innerHTML = '';
+    containerElement.innerHTML = '';
 
     if (!items.length) {
-        container.textContent = `No ${containerId.replace('-', ' ')}s configured.`;
+        containerElement.textContent = `No items configured.`; // Generic message
         return;
     }
 
@@ -172,6 +165,6 @@ export const renderList = (containerId, items, itemRenderer, actionsConfig, item
             });
             itemDiv.appendChild(actionBtn);
         });
-        container.appendChild(itemDiv);
+        containerElement.appendChild(itemDiv);
     });
 };

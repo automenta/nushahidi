@@ -33,9 +33,6 @@ export const C = {
     RELAY_RETRY_DELAY_MS: 5000
 };
 
-export const $ = (selector, parent = document) => parent.querySelector(selector);
-export const $$ = (selector, parent = document) => Array.from(parent.querySelectorAll(selector));
-
 export function createEl(tagName, attributes = {}, children = []) {
     const element = document.createElement(tagName);
     Object.entries(attributes).forEach(([key, value]) => {
@@ -156,7 +153,7 @@ export const formatNpubShort = pk => nip19.npubEncode(pk).substring(0, 12) + '..
 export const isNostrId = id => /^[0-9a-f]{64}$/.test(id);
 
 export function showToast(message, type = 'info', duration = 3000, valueToCopy = null) {
-    const toastContainer = $('#toast-container');
+    const toastContainer = document.getElementById('toast-container');
     if (!toastContainer) {
         console.warn('Toast container not found. Message:', message);
         return;

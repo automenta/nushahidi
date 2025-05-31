@@ -1,10 +1,11 @@
 import {appStore} from '../../store.js';
 import {confSvc} from '../../services.js';
-import {$, C, isValidUrl, createEl} from '../../utils.js';
+import {C, isValidUrl, createEl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export const renderImageHostSection = modalContent => {
+export const ImageHostSection = () => {
+    const sectionEl = document.createElement('section');
     const appState = appStore.get();
 
     const imageHostFormFields = [
@@ -33,13 +34,14 @@ export const renderImageHostSection = modalContent => {
     ];
 
     const form = renderForm(imageHostFormFields, {}, { id: 'image-host-form' });
-    modalContent.appendChild(form);
-    modalContent.appendChild(createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' }));
+    sectionEl.appendChild(form);
+    const saveBtn = createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' });
+    sectionEl.appendChild(saveBtn);
 
-    const imgHostSel = $('#img-host-sel', modalContent);
-    const nip96Fields = $('#nip96-fields', modalContent);
-    const nip96UrlIn = $('#nip96-url-in', modalContent);
-    const nip96TokenIn = $('#nip96-token-in', modalContent);
+    const imgHostSel = form.querySelector('#img-host-sel');
+    const nip96Fields = form.querySelector('#nip96-fields');
+    const nip96UrlIn = form.querySelector('#nip96-url-in');
+    const nip96TokenIn = form.querySelector('#nip96-token-in');
 
     nip96Fields.style.display = appState.settings.nip96Host ? '' : 'none';
 
@@ -47,7 +49,7 @@ export const renderImageHostSection = modalContent => {
         nip96Fields.style.display = imgHostSel.value === 'nip96' ? '' : 'none';
     };
 
-    $('#save-img-host-btn', modalContent).onclick = withToast(async () => {
+    saveBtn.onclick = withToast(async () => {
         const selectedHost = imgHostSel.value;
         if (selectedHost === 'nip96') {
             const nip96Url = nip96UrlIn.value.trim();
@@ -59,5 +61,5 @@ export const renderImageHostSection = modalContent => {
         }
     }, "Image host settings saved.", "Error saving image host settings");
 
-    return form;
+    return sectionEl;
 };

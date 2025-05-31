@@ -1,6 +1,6 @@
 import {appStore} from '../../store.js';
 import {imgSvc, mapSvc, nostrSvc} from '../../services.js';
-import {$, C, createEl, generateUUID, geohashEncode, processImageFile, sanitizeHTML, showToast} from '../../utils.js';
+import {C, createEl, generateUUID, geohashEncode, processImageFile, sanitizeHTML, showToast} from '../../utils.js';
 import {renderForm, renderList} from '../forms.js';
 import {Modal, hideModal, showModal} from '../modals.js';
 import {withLoading, withToast} from '../../decorators.js';
@@ -82,12 +82,11 @@ export function ReportFormModal(reportToEdit = null) {
         }];
 
         renderList(
-            previewElement.id,
+            previewElement, // Pass the element directly
             imagesMetadata,
             imageItemRenderer,
             imageActionsConfig,
-            'uploaded-image-item',
-            previewElement.parentNode
+            'uploaded-image-item'
         );
     };
 
@@ -99,15 +98,17 @@ export function ReportFormModal(reportToEdit = null) {
         if (data.summary) tags.push(['summary', data.summary]);
         if (currentFocusTag && currentFocusTag !== 'NostrMapper_Global') tags.push(['t', currentFocusTag.substring(1)]);
 
-        data.freeTags?.split(',').forEach(tag => {
-            const trimmedTag = tag.trim();
-            if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
-        });
-
         formData.getAll('category').forEach(cat => {
             tags.push(['L', 'report-category']);
             tags.push(['l', cat, 'report-category']);
         });
+
+        if (data.freeTags) {
+            data.freeTags.split(',').forEach(tag => {
+                const trimmedTag = tag.trim();
+                if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
+            });
+        }
 
         if (data.eventType) tags.push(['event_type', data.eventType]);
         if (data.status) tags.push(['status', data.status]);
@@ -120,7 +121,12 @@ export function ReportFormModal(reportToEdit = null) {
     };
 
     const setupReportFormLocationHandlers = (formElement, formState, updateLocationDisplay) => {
-        $('#pick-loc-map-btn', formElement).onclick = () => {
+        const pickLocMapBtn = formElement.querySelector('#pick-loc-map-btn');
+        const useGpsLocBtn = formElement.querySelector('#use-gps-loc-btn');
+        const geocodeAddressBtn = formElement.querySelector('#geocode-address-btn');
+        const repAddressInput = formElement.querySelector('#rep-address');
+
+        pickLocMapBtn.onclick = () => {
             hideModal(reportFormModalElement);
             mapSvc.enPickLoc(latlng => {
                 formState.pFLoc = latlng;
@@ -129,7 +135,7 @@ export function ReportFormModal(reportToEdit = null) {
             });
         };
 
-        $('#use-gps-loc-btn', formElement).onclick = () => {
+        useGpsLocBtn.onclick = () => {
             if (!navigator.geolocation) {
                 showToast("GPS not supported by your browser.", 'warning');
                 return;
@@ -143,8 +149,8 @@ export function ReportFormModal(reportToEdit = null) {
             );
         };
 
-        $('#geocode-address-btn', formElement).onclick = withLoading(withToast(async () => {
-            const address = $('#rep-address', formElement).value.trim();
+        geocodeAddressBtn.onclick = withLoading(withToast(async () => {
+            const address = repAddressInput.value.trim();
             if (!address) throw new Error("Please enter an address to geocode.");
 
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
@@ -193,8 +199,8 @@ export function ReportFormModal(reportToEdit = null) {
 
             await nostrSvc.pubEv({ kind: C.NOSTR_KIND_REPORT, content: data.description, tags });
             e.target.reset();
-            $('#pFLoc-coords', formElement).textContent = 'None';
-            $('#upld-photos-preview', formElement).innerHTML = '';
+            formElement.querySelector('#pFLoc-coords').textContent = 'None';
+            formElement.querySelector('#upld-photos-preview').innerHTML = '';
             formState.pFLoc = null;
             imagesMetadata.length = 0;
             hideModal(reportFormModalElement);
@@ -204,34 +210,38 @@ export function ReportFormModal(reportToEdit = null) {
         }));
     };
 
-    reportFormModalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
-        const updateLocationDisplay = (addressName = '') => {
-            const coordsEl = $('#pFLoc-coords', modalContent);
+    const modalContentContainer = createEl('div'); // This will be the actual content passed to Modal
+
+    const updateLocationDisplay = (addressName = '') => {
+        const coordsEl = modalContentContainer.querySelector('#pFLoc-coords');
+        if (coordsEl) {
             coordsEl.textContent = formState.pFLoc ?
                 `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}` :
                 'None';
-        };
+        }
+    };
 
-        const updateImagePreview = (scopeElement) => {
-            const previewElement = $('#upld-photos-preview', scopeElement || modalContent);
+    const updateImagePreview = () => {
+        const previewElement = modalContentContainer.querySelector('#upld-photos-preview');
+        if (previewElement) {
             renderImagePreview(previewElement, formState.uIMeta, index => {
                 formState.uIMeta.splice(index, 1);
-                updateImagePreview(scopeElement);
+                updateImagePreview();
             });
-        };
+        }
+    };
 
-        const form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
-        modalContent.appendChild(form);
+    const form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
+    modalContentContainer.appendChild(form);
 
-        $('#rep-photos', form).onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview, form);
-        setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
-        setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
+    form.querySelector('#rep-photos').onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview, form);
+    setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
+    setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
 
-        updateImagePreview(form);
-        updateLocationDisplay();
+    updateImagePreview();
+    updateLocationDisplay();
 
-        return form;
-    });
+    reportFormModalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContentContainer);
 
     return reportFormModalElement;
 }

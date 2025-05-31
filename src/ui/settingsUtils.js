@@ -1,6 +1,6 @@
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
-import {$, createEl, showToast, sanitizeHTML, formatNpubShort} from '../utils.js';
+import {createEl, showToast, sanitizeHTML, formatNpubShort} from '../utils.js';
 import {showConfirmModal} from './modals.js';
 import {withLoading, withToast} from '../decorators.js';
 import {C} from '../utils.js';
@@ -16,8 +16,8 @@ export function getSettingItems(listId) {
     }
 }
 
-export const setupFollowedListUniqueListeners = scopeElement => {
-    $(`#import-contacts-btn`, scopeElement).onclick = withLoading(withToast(async () => {
+export const setupFollowedListUniqueListeners = (importContactsBtn, publishContactsBtn) => {
+    importContactsBtn.onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) throw new Error("Please connect your Nostr identity to import contacts.");
         const contacts = await nostrSvc.fetchContacts();
         if (!contacts.length) return "No NIP-02 contact list found on relays for your account.";
@@ -30,7 +30,7 @@ export const setupFollowedListUniqueListeners = scopeElement => {
         return `Imported ${newFollowed.length} contacts from Nostr.`;
     }, null, "Error importing contacts"));
 
-    $(`#publish-contacts-btn`, scopeElement).onclick = () => {
+    publishContactsBtn.onclick = () => {
         if (!appStore.get().user) {
             showToast("Please connect your Nostr identity to publish contacts.", 'warning');
             return;

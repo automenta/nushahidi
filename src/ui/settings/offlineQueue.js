@@ -23,27 +23,34 @@ export const offlineQueueItemRenderer = item => {
     return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
 };
 
-export const offlineQueueActionsConfig = modalContent => [
-    {
-        label: 'Retry',
-        className: 'retry-offline-q-btn',
-        onClick: withLoading(withToast(async item => {
-            await nostrSvc.pubEv(item.event);
-            await dbSvc.rmOfflineQ(item.qid);
-            await renderOfflineQueue(modalContent);
-        }, null, "Error retrying event")),
-    },
-    {
-        label: 'Delete',
-        className: 'remove-offline-q-btn',
-        onClick: withLoading(withToast(async item => {
-            await dbSvc.rmOfflineQ(item.qid);
-            await renderOfflineQueue(modalContent);
-        }, null, "Error deleting event")),
-    }
-];
+export const OfflineQueueSection = (config) => {
+    const sectionEl = createEl('div', { id: config.listId });
 
-export const renderOfflineQueue = async modalContent => {
-    const queueItems = await dbSvc.getOfflineQ();
-    renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig(modalContent), 'offline-q-entry', modalContent);
+    const renderQueue = async () => {
+        const queueItems = await dbSvc.getOfflineQ();
+        const actionsConfig = [
+            {
+                label: 'Retry',
+                className: 'retry-offline-q-btn',
+                onClick: withLoading(withToast(async item => {
+                    await nostrSvc.pubEv(item.event);
+                    await dbSvc.rmOfflineQ(item.qid);
+                    await renderQueue();
+                }, null, "Error retrying event")),
+            },
+            {
+                label: 'Delete',
+                className: 'remove-offline-q-btn',
+                onClick: withLoading(withToast(async item => {
+                    await dbSvc.rmOfflineQ(item.qid);
+                    await renderQueue();
+                }, null, "Error deleting event")),
+            }
+        ];
+        renderList(sectionEl, queueItems, offlineQueueItemRenderer, actionsConfig, config.itemWrapperClass);
+    };
+
+    renderQueue(); // Initial render
+
+    return sectionEl;
 };

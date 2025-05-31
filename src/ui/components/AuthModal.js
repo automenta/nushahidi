@@ -1,7 +1,7 @@
 import {appStore} from '../../store.js';
 import {idSvc} from '../../services.js';
-import {$, createEl, showToast} from '../../utils.js';
-import {Modal, hideModal, showConfirmModal, showModal} from '../modals.js';
+import {createEl, showToast} from '../../utils.js';
+import {Modal, hideModal, showConfirmModal} from '../modals.js';
 import {renderForm} from '../forms.js';
 import {withLoading, withToast} from '../../decorators.js';
 
@@ -54,14 +54,21 @@ export function AuthModal() {
         { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => hideModal(authModalElement), style: 'margin-top:1rem' }
     ];
 
-    authModalElement = Modal('auth-modal', 'Nostr Identity', root => {
-        const form = renderForm(authFormFields, {}, {id: 'auth-form'});
-        root.appendChild(form);
-        $('#conn-nip07-btn', form).onclick = handleConnectNip07;
-        $('#create-prof-btn', form).onclick = withToast(() => handleCreateProfile($('#auth-pass', form).value), null, "Error creating profile");
-        $('#import-sk-btn', form).onclick = withToast(() => handleImportKey($('#auth-sk', form).value, $('#auth-pass', form).value), null, "Error importing key");
-        return form;
-    });
+    const form = renderForm(authFormFields, {}, {id: 'auth-form'});
+
+    const connNip07Btn = form.querySelector('#conn-nip07-btn');
+    const authPassInput = form.querySelector('#auth-pass');
+    const createProfBtn = form.querySelector('#create-prof-btn');
+    const authSkInput = form.querySelector('#auth-sk');
+    const importSkBtn = form.querySelector('#import-sk-btn');
+    const cancelAuthModalBtn = form.querySelector('#cancel-auth-modal-btn');
+
+    connNip07Btn.onclick = handleConnectNip07;
+    createProfBtn.onclick = withToast(() => handleCreateProfile(authPassInput.value), null, "Error creating profile");
+    importSkBtn.onclick = withToast(() => handleImportKey(authSkInput.value, authPassInput.value), null, "Error importing key");
+    cancelAuthModalBtn.onclick = () => hideModal(authModalElement);
+
+    authModalElement = Modal('auth-modal', 'Nostr Identity', form);
 
     return authModalElement;
 }

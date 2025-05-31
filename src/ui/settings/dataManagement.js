@@ -1,11 +1,13 @@
 import {appStore} from '../../store.js';
 import {confSvc, dbSvc} from '../../services.js';
-import {$, showToast} from '../../utils.js';
+import {showToast} from '../../utils.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showConfirmModal} from '../modals.js';
 
-export const renderDataManagementSection = modalContent => {
+export const DataManagementSection = () => {
+    const sectionEl = document.createElement('section');
+
     const dataManagementFormFields = [
         { type: 'button', id: 'clr-reps-btn', label: 'Clear Cached Reports' },
         { type: 'button', id: 'exp-setts-btn', label: 'Export Settings' },
@@ -13,9 +15,13 @@ export const renderDataManagementSection = modalContent => {
     ];
 
     const form = renderForm(dataManagementFormFields, {}, { id: 'data-management-form' });
-    modalContent.appendChild(form);
+    sectionEl.appendChild(form);
 
-    $('#clr-reps-btn', form).onclick = () => {
+    const clearReportsBtn = form.querySelector('#clr-reps-btn');
+    const exportSettingsBtn = form.querySelector('#exp-setts-btn');
+    const importSettingsFile = form.querySelector('#imp-setts-file');
+
+    clearReportsBtn.onclick = () => {
         showConfirmModal(
             "Clear Cached Reports",
             "Are you sure you want to clear all cached reports from your local database? This will not delete them from relays.",
@@ -27,7 +33,7 @@ export const renderDataManagementSection = modalContent => {
         );
     };
 
-    $('#exp-setts-btn', form).onclick = withLoading(withToast(async () => {
+    exportSettingsBtn.onclick = withLoading(withToast(async () => {
         const exportData = { settings: await dbSvc.loadSetts(), followedPubkeys: await dbSvc.getFollowedPubkeys() };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -38,7 +44,7 @@ export const renderDataManagementSection = modalContent => {
         downloadAnchorNode.remove();
     }, "Settings exported.", "Error exporting settings"));
 
-    $('#imp-setts-file', form).onchange = async e => {
+    importSettingsFile.onchange = async e => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -67,5 +73,5 @@ export const renderDataManagementSection = modalContent => {
         };
         reader.readAsText(file);
     };
-    return form;
+    return sectionEl;
 };

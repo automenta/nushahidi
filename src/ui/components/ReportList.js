@@ -1,4 +1,4 @@
-import {$, createEl, formatNpubShort, sanitizeHTML} from '../../utils.js';
+import {createEl, formatNpubShort, sanitizeHTML} from '../../utils.js';
 import {ReportDetailsModal} from './ReportDetailsModal.js';
 import {showModal} from '../modals.js';
 import {appStore} from '../../store.js';
@@ -42,9 +42,11 @@ export function ReportList() {
     };
 
     appStore.on(newState => {
+        // Only update if filteredReports actually changed to avoid unnecessary re-renders
         if (newState.filteredReports !== appStore.get().filteredReports) {
             updateList(newState.filteredReports);
         }
+        // Only update display style if showReportList changed
         if (newState.ui.showReportList !== appStore.get().ui.showReportList) {
             listContainer.style.display = newState.ui.showReportList ? 'block' : 'none';
         }

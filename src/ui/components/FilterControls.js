@@ -1,7 +1,7 @@
 import {booleanPointInPolygon, point} from '@turf/turf';
 import {appStore} from '../../store.js';
 import {mapSvc, nostrSvc} from '../../services.js';
-import {$, C, debounce, npubToHex, createEl, sanitizeHTML} from '../../utils.js';
+import {C, debounce, npubToHex, createEl, sanitizeHTML} from '../../utils.js';
 import {renderForm} from '../forms.js';
 
 // This function will now update the store, and ReportList will react to store changes.
@@ -42,12 +42,12 @@ const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => !fo
 
 
 export function FilterControls() {
-    let filterFormElement; // Renamed to avoid conflict with renderFilterForm's local `filterForm`
+    let filterFormElement; // This will hold the root form element of the component
 
     const updateFilterState = (key, value) => appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
 
     const setupFilterInput = (formScope, id, stateKey, handler = applyAllFilters, debounceInput = false) => {
-        const inputElement = $(`#${id}`, formScope);
+        const inputElement = formScope.querySelector(`#${id}`);
         if (!inputElement) return;
         inputElement.oninput = e => {
             updateFilterState(stateKey, e.target.value.trim());
@@ -56,7 +56,7 @@ export function FilterControls() {
     };
 
     const setupFilterSelect = (formScope, id, stateKey, handler = applyAllFilters) => {
-        const selectElement = $(`#${id}`, formScope);
+        const selectElement = formScope.querySelector(`#${id}`);
         if (!selectElement) return;
         selectElement.onchange = e => {
             updateFilterState(stateKey, e.target.value);
@@ -65,7 +65,7 @@ export function FilterControls() {
     };
 
     const setupFilterTimeInput = (formScope, id, stateKey) => {
-        const inputElement = $(`#${id}`, formScope);
+        const inputElement = formScope.querySelector(`#${id}`);
         if (!inputElement) return;
         inputElement.onchange = e => {
             updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
@@ -118,8 +118,8 @@ export function FilterControls() {
         setupFilterTimeInput(newForm, 'filter-time-start', 'tStart');
         setupFilterTimeInput(newForm, 'filter-time-end', 'tEnd');
 
-        $('#apply-filters-btn', newForm).onclick = applyAllFilters;
-        $('#reset-filters-btn', newForm).onclick = () => {
+        newForm.querySelector('#apply-filters-btn').onclick = applyAllFilters;
+        newForm.querySelector('#reset-filters-btn').onclick = () => {
             appStore.set(s => ({
                 ui: {
                     ...s.ui,
@@ -133,14 +133,14 @@ export function FilterControls() {
             filterFormElement.replaceWith(renderFilterForm(appStore.get()));
         };
 
-        const spatialFilterToggle = $('#spatial-filter-toggle', newForm);
+        const spatialFilterToggle = newForm.querySelector('#spatial-filter-toggle');
         spatialFilterToggle.checked = appState.ui.spatialFilterEnabled;
         spatialFilterToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
             applyAllFilters();
         };
 
-        const followedOnlyToggle = $('#followed-only-toggle', newForm);
+        const followedOnlyToggle = newForm.querySelector('#followed-only-toggle');
         followedOnlyToggle.checked = appState.ui.followedOnlyFilter;
         followedOnlyToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
@@ -148,9 +148,9 @@ export function FilterControls() {
             applyAllFilters();
         };
 
-        $('#clear-drawn-shapes-btn', newForm).onclick = mapSvc.clearAllDrawnShapes;
+        newForm.querySelector('#clear-drawn-shapes-btn').onclick = mapSvc.clearAllDrawnShapes;
 
-        const mapDrawControlsDiv = $('#map-draw-controls', newForm);
+        const mapDrawControlsDiv = newForm.querySelector('#map-draw-controls');
         mapDrawControlsDiv.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 
         return newForm;

@@ -77,7 +77,6 @@ export const settingsSections = [
             { type: 'button', id: 'add-rly-btn', label: 'Add Relay', buttonType: 'button' },
             { type: 'button', id: 'save-rlys-btn', label: 'Save & Reconnect Relays', buttonType: 'button' }
         ],
-        formId: 'relay-form',
         addInputId: 'new-rly-url',
         addBtnId: 'add-rly-btn',
         addLogic: addRelayLogic,
@@ -105,7 +104,6 @@ export const settingsSections = [
             { type: 'button', id: 'add-focus-tag-btn', label: 'Add Focus Tag', buttonType: 'button' },
             { type: 'button', id: 'save-focus-tags-btn', label: 'Save Focus Tags', buttonType: 'button' }
         ],
-        formId: 'focus-tag-form',
         addInputId: 'new-focus-tag-input',
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
@@ -128,7 +126,6 @@ export const settingsSections = [
             { type: 'button', id: 'add-cat-btn', label: 'Add Category', buttonType: 'button' },
             { type: 'button', id: 'save-cats-btn', label: 'Save Categories', buttonType: 'button' }
         ],
-        formId: 'category-form',
         addInputId: 'new-cat-name',
         addBtnId: 'add-cat-btn',
         addLogic: addCategoryLogic,
@@ -160,7 +157,6 @@ export const settingsSections = [
             { type: 'button', id: 'add-mute-btn', label: 'Add to Mute List', buttonType: 'button' },
             { type: 'button', id: 'save-mute-list-btn', label: 'Save Mute List', buttonType: 'button' }
         ],
-        formId: 'mute-list-form',
         addInputId: 'new-mute-pk-input',
         addBtnId: 'add-mute-btn',
         addLogic: addMutePubkeyLogic,
@@ -185,7 +181,6 @@ export const settingsSections = [
             { label: 'Import NIP-02 Contacts', type: 'button', id: 'import-contacts-btn', buttonType: 'button' },
             { label: 'Publish NIP-02 Contacts', type: 'button', id: 'publish-contacts-btn', buttonType: 'button' }
         ],
-        formId: 'followed-list-form',
         addInputId: 'new-followed-pk-input',
         addBtnId: 'add-followed-btn',
         addLogic: addFollowedPubkeyLogic,
@@ -206,7 +201,7 @@ export const settingsSections = [
         itemRenderer: OfflineQueueSection.itemRenderer,
         actionsConfig: OfflineQueueSection.actionsConfig,
         itemWrapperClass: 'offline-q-entry',
-        renderer: OfflineQueueSection // OfflineQueueSection now returns the full component
+        renderer: OfflineQueueSection
     },
     {
         type: 'section',

@@ -1,13 +1,14 @@
 import {nip19} from 'nostr-tools';
 import {appStore} from '../../store.js';
 import {idSvc} from '../../services.js';
-import {$, showToast} from '../../utils.js';
+import {showToast} from '../../utils.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export const renderKeyManagementSection = modalContent => {
+export const KeyManagementSection = () => {
+    const sectionEl = document.createElement('section');
     const appState = appStore.get();
-    if (!appState.user || !['local', 'import'].includes(appState.user.authM)) return null;
+    if (!appState.user || !['local', 'import'].includes(appState.user.authM)) return sectionEl;
 
     const keyManagementFormFields = [
         { type: 'button', id: 'exp-sk-btn', label: 'Export Private Key' },
@@ -17,9 +18,14 @@ export const renderKeyManagementSection = modalContent => {
     ];
 
     const form = renderForm(keyManagementFormFields, {}, { id: 'key-management-form' });
-    modalContent.appendChild(form);
+    sectionEl.appendChild(form);
 
-    $('#exp-sk-btn', form).onclick = withLoading(withToast(async () => {
+    const exportSkBtn = form.querySelector('#exp-sk-btn');
+    const oldPassInput = form.querySelector('#chg-pass-old');
+    const newPassInput = form.querySelector('#chg-pass-new');
+    const changePassBtn = form.querySelector('#chg-pass-btn');
+
+    exportSkBtn.onclick = withLoading(withToast(async () => {
         const user = appStore.get().user;
         if (!user) throw new Error("No Nostr identity connected.");
         if (user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
@@ -34,14 +40,14 @@ export const renderKeyManagementSection = modalContent => {
         );
     }, null, "Export failed"));
 
-    $('#chg-pass-btn', form).onclick = withLoading(withToast(async () => {
-        const oldPass = $('#chg-pass-old', form).value;
-        const newPass = $('#chg-pass-new', form).value;
+    changePassBtn.onclick = withLoading(withToast(async () => {
+        const oldPass = oldPassInput.value;
+        const newPass = newPassInput.value;
         if (!oldPass || !newPass || newPass.length < 8) throw new Error("Both passphrases are required, new must be min 8 chars.");
         await idSvc.chgPass(oldPass, newPass);
-        $('#chg-pass-old', form).value = '';
-        $('#chg-pass-new', form).value = '';
+        oldPassInput.value = '';
+        newPassInput.value = '';
     }, null, "Passphrase change failed"));
 
-    return form;
+    return sectionEl;
 };
