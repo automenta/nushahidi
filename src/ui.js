@@ -57,7 +57,7 @@ async function handleReactionSubmit(event) {
         await nostrSvc.pubEv({
             kind: C.NOSTR_KIND_REACTION,
             content: reactionContent,
-            tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().focusTag.substring(1) || 'NostrMapper_Global']]
+            tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
         alert("Reaction sent!");
         // Optionally refresh interactions, or wait for subscription update
@@ -78,7 +78,7 @@ async function handleCommentSubmit(event) {
         await nostrSvc.pubEv({
             kind: C.NOSTR_KIND_NOTE,
             content: commentText,
-            tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().focusTag.substring(1) || 'NostrMapper_Global']]
+            tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
         alert("Comment sent!");
         form.reset();
@@ -115,7 +115,7 @@ gE('#geocode-address-btn',_repFormRoot).onclick=async()=>{
     }
 };
 gE('#rep-photos',_repFormRoot).onchange=async e=>{const fs=e.target.files,pEl=gE('#upld-photos-preview',_repFormRoot);pEl.innerHTML='Processing...';_uIMeta=[];for(const f of fs){try{if(f.size>C.IMG_SIZE_LIMIT_BYTES)throw new Error(`Max ${C.IMG_SIZE_LIMIT_BYTES/1024/1024}MB`);const b=await f.arrayBuffer(),h=await sha256(b),d=await getImgDims(f),uR=await imgSvc.upload(f);_uIMeta.push({url:uR,type:f.type,dim:`${d.w}x${d.h}`,hHex:h});pEl.innerHTML+=`<p>${sH(f.name)} ready</p>`}catch(er){pEl.innerHTML+=`<p style="color:red;">${sH(f.name)} Err: ${er.message}</p>`}}if(_uIMeta.length>0&&pEl.innerHTML.startsWith('Processing...'))pEl.innerHTML=pEl.innerHTML.substring(13)};
-gE('form',_repFormRoot).onsubmit=async e=>{e.preventDefault();const fD=new FormData(e.target),d=Object.fromEntries(fD.entries());if(!_pFLoc)return alert("Location missing.");const lat=_pFLoc.lat,lon=_pFLoc.lng,gh=geohashEncode(lat,lon),fT=appStore.get().focusTag.substring(1),tags=[['g',gh]];if(d.title)tags.push(['title',d.title]);if(d.summary)tags.push(['summary',d.summary]);if(fT&&fT!=='NostrMapper_Global')tags.push(['t',fT]);if(d.freeTags)d.freeTags.split(',').forEach(t=>{const tr=t.trim();if(tr)tags.push(['t',tr.replace(/^#/,'')])});$$('input[name="category"]:checked',e.target).forEach(cb=>{tags.push(['L','report-category']);tags.push(['l',cb.value,'report-category'])});if(d.eventType)tags.push(['event_type',d.eventType]);if(d.status)tags.push(['status',d.status]);_uIMeta.forEach(i=>tags.push(['image',i.url,i.type,i.dim,`ox${i.hHex}`]));const evD={kind:C.NOSTR_KIND_REPORT,content:d.description,tags};try{e.target.querySelector('button[type=submit]').disabled=!0;await nostrSvc.pubEv(evD);alert('Report sent!');e.target.reset();gE('#pFLoc-coords',_repFormRoot).textContent='None';gE('#upld-photos-preview',_repFormRoot).innerHTML='';_pFLoc=null;_uIMeta=[];hideModal('report-form-modal')}catch(er){alert("Submit err: "+er.message)}finally{e.target.querySelector('button[type=submit]').disabled=!1}};
+gE('form',_repFormRoot).onsubmit=async e=>{e.preventDefault();const fD=new FormData(e.target),d=Object.fromEntries(fD.entries());if(!_pFLoc)return alert("Location missing.");const lat=_pFLoc.lat,lon=_pFLoc.lng,gh=geohashEncode(lat,lon),fT=appStore.get().currentFocusTag.substring(1),tags=[['g',gh]];if(d.title)tags.push(['title',d.title]);if(d.summary)tags.push(['summary',d.summary]);if(fT&&fT!=='NostrMapper_Global')tags.push(['t',fT]);if(d.freeTags)d.freeTags.split(',').forEach(t=>{const tr=t.trim();if(tr)tags.push(['t',tr.replace(/^#/,'')])});$$('input[name="category"]:checked',e.target).forEach(cb=>{tags.push(['L','report-category']);tags.push(['l',cb.value,'report-category'])});if(d.eventType)tags.push(['event_type',d.eventType]);if(d.status)tags.push(['status',d.status]);_uIMeta.forEach(i=>tags.push(['image',i.url,i.type,i.dim,`ox${i.hHex}`]));const evD={kind:C.NOSTR_KIND_REPORT,content:d.description,tags};try{e.target.querySelector('button[type=submit]').disabled=!0;await nostrSvc.pubEv(evD);alert('Report sent!');e.target.reset();gE('#pFLoc-coords',_repFormRoot).textContent='None';gE('#upld-photos-preview',_repFormRoot).innerHTML='';_pFLoc=null;_uIMeta=[];hideModal('report-form-modal')}catch(er){alert("Submit err: "+er.message)}finally{e.target.querySelector('button[type=submit]').disabled=!1}};
 _pFLoc=null;_uIMeta=[];if(gE('#pFLoc-coords',_repFormRoot))gE('#pFLoc-coords',_repFormRoot).textContent='None';if(gE('#upld-photos-preview',_repFormRoot))gE('#upld-photos-preview',_repFormRoot).innerHTML='';if(gE('form',_repFormRoot))gE('form',_repFormRoot).reset();return _repFormRoot}
 
 // AuthModal
@@ -125,24 +125,208 @@ gE('#create-prof-btn',r).onclick=async()=>{const p=gE('#auth-pass',r).value;if(c
 gE('#import-sk-btn',r).onclick=async()=>{const sk=gE('#auth-sk',r).value,p=gE('#auth-pass',r).value;if(confirm("Importing is risky.")){const res=await idSvc.impSk(sk,p);if(res)hideModal('auth-modal')}};return r}
 
 // SettingsPanel
-function SettPanComp(){const r=cE('div',{class:'modal-content',style:'max-width:700px'});const s=appStore.get();const c=[cE('span',{class:'close-btn',innerHTML:'&times;',onclick:()=>hideModal('settings-modal')}),cE('h2',{id:'settings-modal-heading',textContent:'Settings'}),cE('section',{},[cE('h3',{textContent:'Relays'}),cE('div',{id:'rly-list'}),cE('input',{type:'url',id:'new-rly-url',placeholder:'wss://new.relay.com'}),cE('button',{id:'add-rly-btn',textContent:'Add Relay'}),cE('button',{id:'save-rlys-btn',textContent:'Save & Reconnect Relays'})]),cE('hr'),s.user&&(s.user.authM==='local'||s.user.authM==='import')?cE('section',{},[cE('h3',{textContent:'Local Key Mgt'}),cE('button',{id:'exp-sk-btn',textContent:'Export Private Key'}),cE('br'),cE('label',{for:'chg-pass-old',textContent:'Old Pass:'}),cE('input',{type:'password',id:'chg-pass-old'}),cE('label',{for:'chg-pass-new',textContent:'New Pass:'}),cE('input',{type:'password',id:'chg-pass-new'}),cE('button',{id:'chg-pass-btn',textContent:'Change Passphrase'})]):cE('div'),cE('hr'),cE('section',{},[cE('h3',{textContent:'Categories'}),cE('div',{id:'cat-list'}),cE('input',{type:'text',id:'new-cat-name',placeholder:'New Category'}),cE('button',{id:'add-cat-btn',textContent:'Add Category'}),cE('button',{id:'save-cats-btn',textContent:'Save Categories'})]),cE('hr'),cE('section',{},[cE('h3',{textContent:'Map Tiles'}),cE('label',{for:'tile-url-in',textContent:'Tile URL Template:'}),cE('input',{type:'url',id:'tile-url-in',value:s.settings.tile}),cE('button',{id:'save-tile-btn',textContent:'Save Tiles'})]),cE('hr'),cE('section',{},[cE('h3',{textContent:'Image Host'}),cE('label',{for:'img-host-sel',textContent:'Provider:'}),cE('select',{id:'img-host-sel'},[cE('option',{value:C.IMG_UPLOAD_NOSTR_BUILD,textContent:'nostr.build (Default)'}),cE('option',{value:'nip96',textContent:'NIP-96 Server'})]),cE('div',{id:'nip96-fields',style:s.settings.nip96Host?'':'display:none'},[cE('label',{for:'nip96-url-in',textContent:'NIP-96 Server URL:'}),cE('input',{type:'url',id:'nip96-url-in',value:s.settings.nip96Host,placeholder:'https://your.nip96.server'}),cE('label',{for:'nip96-token-in',textContent:'NIP-96 Auth Token (Optional):'}),cE('input',{type:'text',id:'nip96-token-in',value:s.settings.nip96Token})]),cE('button',{id:'save-img-host-btn',textContent:'Save Image Host'})]),cE('hr'),cE('section',{},[cE('h3',{textContent:'Data Mgt'}),cE('button',{id:'clr-reps-btn',textContent:'Clear Cached Reports'}),cE('button',{id:'exp-setts-btn',textContent:'Export Settings'}),cE('label',{for:'imp-setts-file',textContent:'Import Settings:'}),cE('input',{type:'file',id:'imp-setts-file',accept:'.json'})]),cE('button',{type:'button',class:'secondary',textContent:'Close',onclick:()=>hideModal('settings-modal'),style:'margin-top:1rem'})];c.forEach(e=>r.appendChild(e));
-const rendRlys=()=>{const l=gE('#rly-list',r);l.innerHTML='';appStore.get().relays.forEach((rly,i)=>{l.appendChild(cE('div',{class:'relay-entry'},[cE('input',{type:'url',class:'rly-url-in',value:rly.url,readOnly:!0}),cE('label',{},[cE('input',{type:'checkbox',class:'rly-read-cb',checked:rly.read,'data-idx':i}),'R']),cE('label',{},[cE('input',{type:'checkbox',class:'rly-write-cb',checked:rly.write,'data-idx':i}),'W']),cE('label',{},[cE('input',{type:'checkbox',class:'rly-nip52-cb',checked:rly.nip11?.supported_nips?.includes(52)||rly.supportsNip52,'data-idx':i}),'N52?']),cE('span',{class:'rly-stat',textContent:`(${rly.status})${rly.nip11?" NIPs:"+ (rly.nip11.supported_nips || []).join(',').substring(0,20)+'...':''}`}),cE('button',{class:'remove-relay-btn','data-idx':i,textContent:'X'})]))})};rendRlys();
-const rendCats=()=>{const l=gE('#cat-list',r);l.innerHTML='';appStore.get().settings.cats.forEach((cat,i)=>{l.appendChild(cE('div',{class:'category-entry'},[cE('input',{type:'text',class:'cat-name-in',value:cat,readOnly:!0}),cE('button',{class:'remove-category-btn','data-idx':i,textContent:'X'})]))})};rendCats();
-gE('#rly-list',r).onclick=e=>{const t=e.target;const idx=parseInt(t.dataset.idx);let rlys=[...appStore.get().relays];if(t.classList.contains('remove-relay-btn')){rlys.splice(idx,1)}else if(t.classList.contains('rly-read-cb')){rlys[idx].read=t.checked}else if(t.classList.contains('rly-write-cb')){rlys[idx].write=t.checked}else if(t.classList.contains('rly-nip52-cb')){rlys[idx].supportsNip52=t.checked}appStore.set({relays:rlys});rendRlys()};
-gE('#add-rly-btn',r).onclick=()=>{const u=gE('#new-rly-url',r).value.trim();if(u){appStore.set(s=>({relays:[...s.relays,{url:u,read:!0,write:!0,status:'?',nip11:null,supportsNip52:false}]}));gE('#new-rly-url',r).value='';rendRlys()}};
-gE('#save-rlys-btn',r).onclick=()=>{confSvc.setRlys(appStore.get().relays);nostrSvc.discAllRlys();nostrSvc.connRlys();alert("Relays saved.")};
-if(gE('#exp-sk-btn',r))gE('#exp-sk-btn',r).onclick=async()=>{const sk=await idSvc.getSk();if(sk)prompt("BACKUP NSEC:",nip19.nsecEncode(sk))};
-if(gE('#chg-pass-btn',r))gE('#chg-pass-btn',r).onclick=async()=>{const o=gE('#chg-pass-old',r).value,n=gE('#chg-pass-new',r).value;try{await idSvc.chgPass(o,n)}catch(e){alert(e.message)}};
-gE('#cat-list',r).onclick=e=>{if(e.target.classList.contains('remove-category-btn')){const idx=parseInt(e.target.dataset.idx),cats=[...appStore.get().settings.cats];cats.splice(idx,1);appStore.set(s=>({...s,settings:{...s.settings,cats}}));rendCats()}};
-gE('#add-cat-btn',r).onclick=()=>{const n=gE('#new-cat-name',r).value.trim();if(n){appStore.set(s=>({...s,settings:{...s.settings,cats:[...s.settings.cats,n]}}));gE('#new-cat-name',r).value='';rendCats()}};
-gE('#save-cats-btn',r).onclick=()=>{confSvc.setCats(appStore.get().settings.cats);alert("Categories saved.")};
-gE('#save-tile-btn',r).onclick=()=>{const u=gE('#tile-url-in',r).value.trim();if(u){confSvc.setTile(u);mapSvc.updTile(u);alert("Tile server saved.")}};
-gE('#img-host-sel',r).onchange=e=>{const nip96Fields=gE('#nip96-fields',r);nip96Fields.style.display=e.target.value==='nip96'?'block':'none';if(e.target.value!==C.IMG_UPLOAD_NOSTR_BUILD)gE('#nip96-url-in',r).value=appStore.get().settings.nip96Host||'';else gE('#nip96-url-in',r).value='';gE('#nip96-token-in',r).value=appStore.get().settings.nip96Token||'';};
-gE('#save-img-host-btn',r).onclick=()=>{const sel=gE('#img-host-sel',r).value;if(sel==='nip96'){const h=gE('#nip96-url-in',r).value.trim(),t=gE('#nip96-token-in',r).value.trim();if(!h)return alert("NIP-96 URL required.");confSvc.setImgHost(h,!0,t)}else{confSvc.setImgHost(C.IMG_UPLOAD_NOSTR_BUILD)}alert("Image host saved.")};
-gE('#clr-reps-btn',r).onclick=async()=>{if(confirm("Clear ALL cached reports?"))await dbSvc.clearReps(),appStore.set({reports:[]}),alert("Reports cleared.")};
-gE('#exp-setts-btn',r).onclick=async()=>{const s=await dbSvc.loadSetts();if(s){const j=JSON.stringify(s,null,2),b=new Blob([j],{type:'application/json'}),u=URL.createObjectURL(b),a=cE('a',{href:u,download:'nm-setts.json'});document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)}};
-gE('#imp-setts-file',r).onchange=async e=>{const f=e.target.files[0];if(f){const rdr=new FileReader();rdr.onload=async ev=>{try{const iS=JSON.parse(ev.target.result);if(iS.rls&&iS.tile){await confSvc.save(iS);alert("Settings imported. Reconnecting relays...");nostrSvc.discAllRlys();nostrSvc.connRlys();mapSvc.updTile(iS.tile);hideModal('settings-modal');setTimeout(()=>{$('#settings-btn').click()},100)/*reopen to refresh*/}}catch(er){alert("Import err:"+er.message)}};rdr.readAsText(f);e.target.value=''}};
-return r}
+function SettPanComp(){
+    const r=cE('div',{class:'modal-content',style:'max-width:700px'});
+    const s=appStore.get();
+    const c=[
+        cE('span',{class:'close-btn',innerHTML:'&times;',onclick:()=>hideModal('settings-modal')}),
+        cE('h2',{id:'settings-modal-heading',textContent:'Settings'}),
+        cE('section',{},[
+            cE('h3',{textContent:'Relays'}),
+            cE('div',{id:'rly-list'}),
+            cE('input',{type:'url',id:'new-rly-url',placeholder:'wss://new.relay.com'}),
+            cE('button',{id:'add-rly-btn',textContent:'Add Relay'}),
+            cE('button',{id:'save-rlys-btn',textContent:'Save & Reconnect Relays'})
+        ]),
+        cE('hr'),
+        s.user&&(s.user.authM==='local'||s.user.authM==='import')?cE('section',{},[
+            cE('h3',{textContent:'Local Key Mgt'}),
+            cE('button',{id:'exp-sk-btn',textContent:'Export Private Key'}),
+            cE('br'),
+            cE('label',{for:'chg-pass-old',textContent:'Old Pass:'}),
+            cE('input',{type:'password',id:'chg-pass-old'}),
+            cE('label',{for:'chg-pass-new',textContent:'New Pass:'}),
+            cE('input',{type:'password',id:'chg-pass-new'}),
+            cE('button',{id:'chg-pass-btn',textContent:'Change Passphrase'})
+        ]):cE('div'),
+        cE('hr'),
+        cE('section',{},[ // Focus Tags Section
+            cE('h3',{textContent:'Focus Tags'}),
+            cE('div',{id:'focus-tag-list'}),
+            cE('input',{type:'text',id:'new-focus-tag-input',placeholder:'#NewFocusTag'}),
+            cE('button',{id:'add-focus-tag-btn',textContent:'Add Focus Tag'}),
+            cE('button',{id:'save-focus-tags-btn',textContent:'Save Focus Tags'})
+        ]),
+        cE('hr'),
+        cE('section',{},[
+            cE('h3',{textContent:'Categories'}),
+            cE('div',{id:'cat-list'}),
+            cE('input',{type:'text',id:'new-cat-name',placeholder:'New Category'}),
+            cE('button',{id:'add-cat-btn',textContent:'Add Category'}),
+            cE('button',{id:'save-cats-btn',textContent:'Save Categories'})
+        ]),
+        cE('hr'),
+        cE('section',{},[ // Map Tiles Section
+            cE('h3',{textContent:'Map Tiles'}),
+            cE('label',{for:'tile-preset-sel',textContent:'Tile Server Preset:'}),
+            cE('select',{id:'tile-preset-sel'},
+                C.TILE_SERVERS_PREDEFINED.map(p => cE('option',{value:p.name,textContent:p.name}))
+            ),
+            cE('label',{for:'tile-url-in',textContent:'Custom Tile URL Template:'}),
+            cE('input',{type:'url',id:'tile-url-in',value:s.settings.tileUrl}),
+            cE('button',{id:'save-tile-btn',textContent:'Save Tiles'})
+        ]),
+        cE('hr'),
+        cE('section',{},[
+            cE('h3',{textContent:'Image Host'}),
+            cE('label',{for:'img-host-sel',textContent:'Provider:'}),
+            cE('select',{id:'img-host-sel'},[cE('option',{value:C.IMG_UPLOAD_NOSTR_BUILD,textContent:'nostr.build (Default)'}),cE('option',{value:'nip96',textContent:'NIP-96 Server'})]),
+            cE('div',{id:'nip96-fields',style:s.settings.nip96Host?'':'display:none'},[cE('label',{for:'nip96-url-in',textContent:'NIP-96 Server URL:'}),cE('input',{type:'url',id:'nip96-url-in',value:s.settings.nip96Host,placeholder:'https://your.nip96.server'}),cE('label',{for:'nip96-token-in',textContent:'NIP-96 Auth Token (Optional):'}),cE('input',{type:'text',id:'nip96-token-in',value:s.settings.nip96Token})]),
+            cE('button',{id:'save-img-host-btn',textContent:'Save Image Host'})
+        ]),
+        cE('hr'),
+        cE('section',{},[ // Mute List Section
+            cE('h3',{textContent:'Mute List'}),
+            cE('div',{id:'mute-list'}),
+            cE('input',{type:'text',id:'new-mute-pk-input',placeholder:'npub... or hex pubkey'}),
+            cE('button',{id:'add-mute-btn',textContent:'Add to Mute List'}),
+            cE('button',{id:'save-mute-list-btn',textContent:'Save Mute List'})
+        ]),
+        cE('hr'),
+        cE('section',{},[
+            cE('h3',{textContent:'Data Mgt'}),
+            cE('button',{id:'clr-reps-btn',textContent:'Clear Cached Reports'}),
+            cE('button',{id:'exp-setts-btn',textContent:'Export Settings'}),
+            cE('label',{for:'imp-setts-file',textContent:'Import Settings:'}),
+            cE('input',{type:'file',id:'imp-setts-file',accept:'.json'})
+        ]),
+        cE('button',{type:'button',class:'secondary',textContent:'Close',onclick:()=>hideModal('settings-modal'),style:'margin-top:1rem'})
+    ];
+    c.forEach(e=>r.appendChild(e));
+
+    // Render functions for lists
+    const rendRlys=()=>{const l=gE('#rly-list',r);l.innerHTML='';appStore.get().relays.forEach((rly,i)=>{l.appendChild(cE('div',{class:'relay-entry'},[cE('input',{type:'url',class:'rly-url-in',value:rly.url,readOnly:!0}),cE('label',{},[cE('input',{type:'checkbox',class:'rly-read-cb',checked:rly.read,'data-idx':i}),'R']),cE('label',{},[cE('input',{type:'checkbox',class:'rly-write-cb',checked:rly.write,'data-idx':i}),'W']),cE('label',{},[cE('input',{type:'checkbox',class:'rly-nip52-cb',checked:rly.nip11?.supported_nips?.includes(52)||rly.supportsNip52,'data-idx':i}),'N52?']),cE('span',{class:'rly-stat',textContent:`(${rly.status})${rly.nip11?" NIPs:"+ (rly.nip11.supported_nips || []).join(',').substring(0,20)+'...':''}`}),cE('button',{class:'remove-relay-btn','data-idx':i,textContent:'X'})]))})};rendRlys();
+    const rendCats=()=>{const l=gE('#cat-list',r);l.innerHTML='';appStore.get().settings.cats.forEach((cat,i)=>{l.appendChild(cE('div',{class:'category-entry'},[cE('input',{type:'text',class:'cat-name-in',value:cat,readOnly:!0}),cE('button',{class:'remove-category-btn','data-idx':i,textContent:'X'})]))})};rendCats();
+    const rendFocusTags=()=>{const l=gE('#focus-tag-list',r);l.innerHTML='';appStore.get().focusTags.forEach((ft,i)=>{l.appendChild(cE('div',{class:'focus-tag-entry'},[cE('label',{},[cE('input',{type:'radio',name:'active-focus-tag',value:ft.tag,checked:ft.active,'data-idx':i}),` ${sH(ft.tag)}`]),cE('button',{class:'remove-focus-tag-btn','data-idx':i,textContent:'X'})]))})};rendFocusTags();
+    const rendMuteList=()=>{const l=gE('#mute-list',r);l.innerHTML='';appStore.get().settings.mute.forEach((pk,i)=>{l.appendChild(cE('div',{class:'mute-entry'},[cE('span',{textContent:formatNpubShort(pk)}),cE('button',{class:'remove-mute-btn','data-idx':i,textContent:'X'})]))})};rendMuteList();
+
+    // Event Listeners
+    gE('#rly-list',r).onclick=e=>{const t=e.target;const idx=parseInt(t.dataset.idx);let rlys=[...appStore.get().relays];if(t.classList.contains('remove-relay-btn')){rlys.splice(idx,1)}else if(t.classList.contains('rly-read-cb')){rlys[idx].read=t.checked}else if(t.classList.contains('rly-write-cb')){rlys[idx].write=t.checked}else if(t.classList.contains('rly-nip52-cb')){rlys[idx].supportsNip52=t.checked}appStore.set({relays:rlys});rendRlys()};
+    gE('#add-rly-btn',r).onclick=()=>{const u=gE('#new-rly-url',r).value.trim();if(u){appStore.set(s=>({relays:[...s.relays,{url:u,read:!0,write:!0,status:'?',nip11:null,supportsNip52:false}]}));gE('#new-rly-url',r).value='';rendRlys()}};
+    gE('#save-rlys-btn',r).onclick=()=>{confSvc.setRlys(appStore.get().relays);nostrSvc.discAllRlys();nostrSvc.connRlys();alert("Relays saved.")};
+
+    if(gE('#exp-sk-btn',r))gE('#exp-sk-btn',r).onclick=async()=>{const sk=await idSvc.getSk();if(sk)prompt("BACKUP NSEC:",nip19.nsecEncode(sk))};
+    if(gE('#chg-pass-btn',r))gE('#chg-pass-btn',r).onclick=async()=>{const o=gE('#chg-pass-old',r).value,n=gE('#chg-pass-new',r).value;try{await idSvc.chgPass(o,n)}catch(e){alert(e.message)}};
+
+    gE('#focus-tag-list',r).onclick=e=>{
+        const t=e.target;
+        const idx=parseInt(t.dataset.idx);
+        let focusTags=[...appStore.get().focusTags];
+        if(t.classList.contains('remove-focus-tag-btn')){
+            if(focusTags.length === 1) return alert("Cannot remove the last focus tag.");
+            const removedTag = focusTags[idx].tag;
+            focusTags.splice(idx,1);
+            if(removedTag === appStore.get().currentFocusTag){ // If removed active tag, set first as active
+                focusTags[0].active = true;
+                confSvc.setCurrentFocusTag(focusTags[0].tag);
+            }
+            confSvc.setFocusTags(focusTags);
+        } else if(t.name === 'active-focus-tag'){
+            focusTags.forEach((ft,i)=>ft.active=(i===idx));
+            confSvc.setFocusTags(focusTags);
+            confSvc.setCurrentFocusTag(focusTags[idx].tag);
+        }
+        rendFocusTags();
+    };
+    gE('#add-focus-tag-btn',r).onclick=()=>{
+        let newTag = gE('#new-focus-tag-input',r).value.trim();
+        if (!newTag) return;
+        if (!newTag.startsWith('#')) newTag = `#${newTag}`;
+        const focusTags = [...appStore.get().focusTags];
+        if (focusTags.some(ft => ft.tag === newTag)) return alert("Tag already exists.");
+        focusTags.push({tag:newTag, active:false});
+        confSvc.setFocusTags(focusTags);
+        gE('#new-focus-tag-input',r).value='';
+        rendFocusTags();
+    };
+    gE('#save-focus-tags-btn',r).onclick=()=>{
+        confSvc.setFocusTags(appStore.get().focusTags); // Ensure saved
+        nostrSvc.refreshSubs(); // Resubscribe with potentially new active tag
+        alert("Focus tags saved.");
+    };
+
+    gE('#cat-list',r).onclick=e=>{if(e.target.classList.contains('remove-category-btn')){const idx=parseInt(e.target.dataset.idx),cats=[...appStore.get().settings.cats];cats.splice(idx,1);appStore.set(s=>({...s,settings:{...s.settings,cats}}));rendCats()}};
+    gE('#add-cat-btn',r).onclick=()=>{const n=gE('#new-cat-name',r).value.trim();if(n){appStore.set(s=>({...s,settings:{...s.settings,cats:[...s.settings.cats,n]}}));gE('#new-cat-name',r).value='';rendCats()}};
+    gE('#save-cats-btn',r).onclick=()=>{confSvc.setCats(appStore.get().settings.cats);alert("Categories saved.")};
+
+    gE('#tile-preset-sel',r).onchange=e=>{
+        const selectedPresetName = e.target.value;
+        const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === selectedPresetName);
+        if (selectedPreset) {
+            gE('#tile-url-in',r).value = selectedPreset.url;
+            confSvc.setTilePreset(selectedPreset.name, selectedPreset.url);
+            mapSvc.updTile(selectedPreset.url);
+        } else { // Should not happen if options are from predefined list
+            gE('#tile-url-in',r).value = '';
+            confSvc.setTilePreset('Custom', '');
+        }
+    };
+    // Set initial value for preset selector
+    gE('#tile-preset-sel',r).value = s.settings.tilePreset;
+    if (gE('#tile-preset-sel',r).value !== s.settings.tilePreset) { // If current URL is custom, set preset to Custom
+        gE('#tile-preset-sel',r).value = 'Custom';
+        const customOption = cE('option', {value: 'Custom', textContent: 'Custom'});
+        gE('#tile-preset-sel',r).appendChild(customOption);
+    }
+
+    gE('#save-tile-btn',r).onclick=()=>{
+        const u=gE('#tile-url-in',r).value.trim();
+        const p=gE('#tile-preset-sel',r).value;
+        if(u){
+            confSvc.setTileUrl(u); // This also sets preset to 'Custom'
+            mapSvc.updTile(u);
+            alert("Tile server saved.");
+        } else {
+            alert("Tile URL cannot be empty.");
+        }
+    };
+
+    gE('#img-host-sel',r).onchange=e=>{const nip96Fields=gE('#nip96-fields',r);nip96Fields.style.display=e.target.value==='nip96'?'block':'none';if(e.target.value!==C.IMG_UPLOAD_NOSTR_BUILD)gE('#nip96-url-in',r).value=appStore.get().settings.nip96Host||'';else gE('#nip96-url-in',r).value='';gE('#nip96-token-in',r).value=appStore.get().settings.nip96Token||'';};
+    gE('#save-img-host-btn',r).onclick=()=>{const sel=gE('#img-host-sel',r).value;if(sel==='nip96'){const h=gE('#nip96-url-in',r).value.trim(),t=gE('#nip96-token-in',r).value.trim();if(!h)return alert("NIP-96 URL required.");confSvc.setImgHost(h,!0,t)}else{confSvc.setImgHost(C.IMG_UPLOAD_NOSTR_BUILD)}alert("Image host saved.")};
+
+    gE('#mute-list',r).onclick=e=>{
+        if(e.target.classList.contains('remove-mute-btn')){
+            const idx=parseInt(e.target.dataset.idx);
+            let muteList=[...appStore.get().settings.mute];
+            muteList.splice(idx,1);
+            confSvc.rmMute(appStore.get().settings.mute[idx]); // Use the service to update
+            rendMuteList();
+        }
+    };
+    gE('#add-mute-btn',r).onclick=async()=>{
+        let pkInput = gE('#new-mute-pk-input',r).value.trim();
+        if (!pkInput) return;
+        try {
+            const pkHex = npubToHex(pkInput); // Convert npub to hex if needed
+            if (!isNostrId(pkHex)) throw new Error("Invalid Nostr ID format.");
+            confSvc.addMute(pkHex);
+            gE('#new-mute-pk-input',r).value='';
+            rendMuteList();
+        } catch (e) {
+            alert("Error adding pubkey: " + e.message);
+        }
+    };
+    gE('#save-mute-list-btn',r).onclick=()=>{
+        // Mute list is saved immediately by addMute/rmMute, this button just confirms
+        alert("Mute list saved.");
+    };
+
+
+    gE('#clr-reps-btn',r).onclick=async()=>{if(confirm("Clear ALL cached reports?"))await dbSvc.clearReps(),appStore.set({reports:[]}),alert("Reports cleared.")};
+    gE('#exp-setts-btn',r).onclick=async()=>{const s=await dbSvc.loadSetts();if(s){const j=JSON.stringify(s,null,2),b=new Blob([j],{type:'application/json'}),u=URL.createObjectURL(b),a=cE('a',{href:u,download:'nm-setts.json'});document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)}};
+    gE('#imp-setts-file',r).onchange=async e=>{const f=e.target.files[0];if(f){const rdr=new FileReader();rdr.onload=async ev=>{try{const iS=JSON.parse(ev.target.result);if(iS.rls&&iS.tileUrl){await confSvc.save(iS);alert("Settings imported. Reconnecting relays...");nostrSvc.discAllRlys();nostrSvc.connRlys();mapSvc.updTile(iS.tileUrl);hideModal('settings-modal');setTimeout(()=>{$('#settings-btn').click()},100)/*reopen to refresh*/}}catch(er){alert("Import err:"+er.message)}};rdr.readAsText(f);e.target.value=''}};
+    return r
+}
 
 // --- Report List & Detail ---
 const rendRepCard=r=>{const s=r.sum||(r.ct?r.ct.substring(0,100)+'...':'N/A');return`<div class="report-card" data-rep-id="${sH(r.id)}" role="button" tabindex="0" aria-labelledby="card-title-${r.id}">
@@ -160,7 +344,7 @@ ${imgsHTML?`<h3>Images:</h3>${imgsHTML}`:''}
 <div id="mini-map-det" style="height:150px;margin-top:.7rem;border:1px solid #ccc"></div>
 <div class="interactions" id="interactions-for-${r.id}">Loading interactions...</div>`;
 dC.style.display='block';dC.focus();gE('#back-to-list-btn',dC).onclick=()=>{dC.style.display='none';lC.style.display='block'};
-if(r.lat&&r.lon&&typeof L!=='undefined'){const mm=L.map('mini-map-det').setView([r.lat,r.lon],13);L.tileLayer(confSvc.getTileServer(),{attribution:'&copy; OSM'}).addTo(mm);L.marker([r.lat,r.lon]).addTo(mm)}
+if(r.lat&&r.lon&&typeof L!=='undefined'){const mm=L.map('mini-map-det').setView([r.lat,r.lon],13);L.tileLayer(confSvc.getTileServer(),{attribution:'&copy; OSM'}).addTo(mm)}
 loadAndDisplayInteractions(r.id, r.pk, gE(`#interactions-for-${r.id}`, dC));
 // Update local report with fetched interactions (if needed for caching)
 const fetchedInteractions = await nostrSvc.fetchInteractions(r.id, r.pk);
@@ -187,17 +371,44 @@ export function initUI(){
 gE('#create-report-btn').onclick=()=>{gE('#report-form-modal').innerHTML='';gE('#report-form-modal').appendChild(RepFormComp());showModal('report-form-modal','rep-title')};
 gE('#auth-button').onclick=()=>{if(appStore.get().user){if(confirm("Logout?"))idSvc.logout()}else{gE('#auth-modal').innerHTML='';gE('#auth-modal').appendChild(AuthModalComp());showModal('auth-modal','conn-nip07-btn')}};
 gE('#settings-btn').onclick=()=>{gE('#settings-modal').innerHTML='';gE('#settings-modal').appendChild(SettPanComp());showModal('settings-modal')};
-_cFilt.fT=confSvc.getCurrentFocusTag();gE('#focus-tag-input').value=_cFilt.fT;
+
+// Initialize focus tag filter display
+_cFilt.fT=appStore.get().currentFocusTag;
+gE('#focus-tag-input').value=_cFilt.fT;
+
+// Main filter event listeners
 gE('#search-query-input').oninput=e=>{_cFilt.q=e.target.value;debAppAllFilt()};
-gE('#set-focus-tag-btn').onclick=()=>{const t=gE('#focus-tag-input').value.trim();_cFilt.fT=(t&&t.startsWith('#'))?t:(t?`#${t}`:C.FOCUS_TAG_DEFAULT);gE('#focus-tag-input').value=_cFilt.fT;confSvc.setFocus(_cFilt.fT);nostrSvc.refreshSubs();appAllFilt()};
+// The focus tag input in the main UI is now just a display of the current active tag
+// The setting/changing of focus tags happens in the settings modal
+gE('#set-focus-tag-btn').style.display = 'none'; // Hide the old set button
+gE('#focus-tag-input').readOnly = true; // Make it read-only
+
 const popFiltCats=()=>{const s=gE('#filter-category');s.innerHTML='<option value="">All</option>';appStore.get().settings.cats.forEach(c=>s.appendChild(cE('option',{value:c,textContent:sH(c)})))};popFiltCats();
 gE('#filter-category').onchange=e=>{_cFilt.cat=e.target.value;appAllFilt()};
 gE('#filter-author').oninput=e=>{_cFilt.auth=e.target.value.trim();debAppAllFilt()};
 gE('#filter-time-start').onchange=e=>{_cFilt.tStart=e.target.value?new Date(e.target.value).getTime()/1000:null;appAllFilt()};
 gE('#filter-time-end').onchange=e=>{_cFilt.tEnd=e.target.value?new Date(e.target.value).getTime()/1000:null;appAllFilt()};
 gE('#apply-filters-btn').onclick=appAllFilt;
-gE('#reset-filters-btn').onclick=()=>{_cFilt={q:'',fT:confSvc.getCurrentFocusTag(),cat:'',auth:'',tStart:null,tEnd:null};gE('#search-query-input').value='';gE('#focus-tag-input').value=_cFilt.fT;gE('#filter-category').value='';gE('#filter-author').value='';gE('#filter-time-start').value='';gE('#filter-time-end').value='';appAllFilt()};
-appStore.on((s,oS)=>{updAuthDisp(s.user?.pk);updConnDisp(s.online);updSyncDisp();if(s.reports!==oS?.reports||s.settings.mute!==oS?.settings?.mute||s.focusTag!==oS?.focusTag){if(s.focusTag!==_cFilt.fT){_cFilt.fT=s.focusTag;gE('#focus-tag-input').value=_cFilt.fT}appAllFilt()}if(s.settings.cats!==oS?.settings?.cats)popFiltCats();if(s.ui.modalOpen&&!oS?.ui?.modalOpen&&gE(`#${s.ui.modalOpen}`))gE(`#${s.ui.modalOpen}`).focus();if(s.ui.viewingReport && s.ui.viewingReport !== oS?.ui?.viewingReport){const rep=s.reports.find(r=>r.id===s.ui.viewingReport);if(rep)showReportDetails(rep)}});
+gE('#reset-filters-btn').onclick=()=>{_cFilt={q:'',fT:appStore.get().currentFocusTag,cat:'',auth:'',tStart:null,tEnd:null};gE('#search-query-input').value='';gE('#focus-tag-input').value=_cFilt.fT;gE('#filter-category').value='';gE('#filter-author').value='';gE('#filter-time-start').value='';gE('#filter-time-end').value='';appAllFilt()};
+
+appStore.on((s,oS)=>{
+    updAuthDisp(s.user?.pk);
+    updConnDisp(s.online);
+    updSyncDisp();
+    if(s.reports!==oS?.reports||s.settings.mute!==oS?.settings?.mute||s.currentFocusTag!==oS?.currentFocusTag){ // Listen to currentFocusTag
+        if(s.currentFocusTag!==_cFilt.fT){
+            _cFilt.fT=s.currentFocusTag;
+            gE('#focus-tag-input').value=_cFilt.fT;
+        }
+        appAllFilt()
+    }
+    if(s.settings.cats!==oS?.settings?.cats)popFiltCats();
+    if(s.ui.modalOpen&&!oS?.ui?.modalOpen&&gE(`#${s.ui.modalOpen}`))gE(`#${s.ui.modalOpen}`).focus();
+    if(s.ui.viewingReport && s.ui.viewingReport !== oS?.ui?.viewingReport){
+        const rep=s.reports.find(r=>r.id===s.ui.viewingReport);
+        if(rep)showReportDetails(rep)
+    }
+});
 // Onboarding
 if (!localStorage.getItem(C.ONBOARDING_KEY)) {
     showModal('onboarding-info');

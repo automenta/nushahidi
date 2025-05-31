@@ -21,9 +21,90 @@ export const dbSvc={ /* dbSvc: dbService */
 };
 
 export const confSvc={ /* confSvc: configService */
-  async load(){let s=await dbSvc.loadSetts();if(!s)s={rls:C.RELAYS_DEFAULT.map(u=>({url:u,read:!0,write:!0,status:'?',nip11:null})),tile:C.TILE_SERVER_DEFAULT,focus:C.FOCUS_TAG_DEFAULT,cats:['Incident','Observation','Aid'],mute:[],id:null,imgH:C.IMG_UPLOAD_NOSTR_BUILD,nip96H:'',nip96T:''};s.rls=s.rls||C.RELAYS_DEFAULT.map(u=>({url:u,read:!0,write:!0,status:'?',nip11:null}));s.rls.forEach(r=>{if(r.status===undefined)r.status='?';if(r.nip11===undefined)r.nip11=null});appStore.set({relays:s.rls,focusTag:s.focus,settings:{...appStore.get().settings,tile:s.tile,cats:s.cats,mute:s.mute,imgHost:s.imgH,nip96Host:s.nip96H,nip96Token:s.nip96T},user:s.id?{pk:s.id.pk,authM:s.id.authM}:null});return s},
-  async save(p){const cS=await dbSvc.loadSetts()||{};const uS={...cS,...p};await dbSvc.saveSetts(uS);appStore.set(s=>({relays:uS.rls||s.relays,focusTag:uS.focus||s.focusTag,settings:{...s.settings,tile:uS.tile||s.settings.tile,cats:uS.cats||s.settings.cats,mute:uS.mute||s.settings.mute,imgHost:uS.imgH||s.settings.imgHost,nip96Host:uS.nip96H||s.settings.nip96Host,nip96Token:uS.nip96T||s.settings.nip96Token},user:uS.id?{pk:uS.id.pk,authM:uS.id.authM}:s.user}))},
-  setRlys:rls=>confSvc.save({rls}),setFocus:f=>confSvc.save({focus:f}),setTile:t=>confSvc.save({tile:t}),setCats:c=>confSvc.save({cats:c}),addMute:pk=>{const m=appStore.get().settings.mute;if(!m.includes(pk))confSvc.save({mute:[...m,pk]})},rmMute:pk=>confSvc.save({mute:appStore.get().settings.mute.filter(p=>p!==pk)}),saveId:id=>confSvc.save({id}),getId:async()=>(await dbSvc.loadSetts())?.id,clearId:()=>{appStore.set({user:null});confSvc.save({id:null})},
+  async load(){
+    let s=await dbSvc.loadSetts();
+    if(!s)s={
+      rls:C.RELAYS_DEFAULT.map(u=>({url:u,read:!0,write:!0,status:'?',nip11:null})),
+      tileUrl:C.TILE_SERVER_DEFAULT,
+      tilePreset:'OpenStreetMap',
+      focusTags:[{tag:C.FOCUS_TAG_DEFAULT,active:true}], // New structure
+      cats:['Incident','Observation','Aid'],
+      mute:[],
+      id:null,
+      imgH:C.IMG_UPLOAD_NOSTR_BUILD,
+      nip96H:'',
+      nip96T:''
+    };
+    // Ensure backward compatibility and proper initialization
+    s.rls = s.rls || C.RELAYS_DEFAULT.map(u=>({url:u,read:!0,write:!0,status:'?',nip11:null}));
+    s.rls.forEach(r=>{if(r.status===undefined)r.status='?';if(r.nip11===undefined)r.nip11=null});
+
+    // Handle focus tag migration from string to array of objects
+    if (typeof s.focus === 'string') {
+      s.focusTags = [{tag: s.focus, active: true}];
+      delete s.focus; // Remove old property
+    } else if (!s.focusTags || s.focusTags.length === 0) {
+      s.focusTags = [{tag: C.FOCUS_TAG_DEFAULT, active: true}];
+    }
+    const currentFocusTag = s.focusTags.find(t => t.active)?.tag || C.FOCUS_TAG_DEFAULT;
+
+    // Handle tile server migration
+    s.tileUrl = s.tileUrl || s.tile || C.TILE_SERVER_DEFAULT;
+    s.tilePreset = s.tilePreset || (s.tile === C.TILE_SERVER_DEFAULT ? 'OpenStreetMap' : 'Custom');
+    delete s.tile; // Remove old property
+
+    appStore.set({
+      relays:s.rls,
+      focusTags:s.focusTags, // New
+      currentFocusTag:currentFocusTag, // New
+      settings:{
+        ...appStore.get().settings,
+        tileUrl:s.tileUrl, // New
+        tilePreset:s.tilePreset, // New
+        cats:s.cats,
+        mute:s.mute,
+        imgHost:s.imgH,
+        nip96Host:s.nip96H,
+        nip96Token:s.nip96T
+      },
+      user:s.id?{pk:s.id.pk,authM:s.id.authM}:null
+    });
+    return s
+  },
+  async save(p){
+    const cS=await dbSvc.loadSetts()||{};
+    const uS={...cS,...p};
+    await dbSvc.saveSetts(uS);
+    appStore.set(s=>({
+      relays:uS.rls||s.relays,
+      focusTags:uS.focusTags||s.focusTags, // New
+      currentFocusTag:uS.currentFocusTag||s.currentFocusTag, // New
+      settings:{
+        ...s.settings,
+        tileUrl:uS.tileUrl||s.settings.tileUrl, // New
+        tilePreset:uS.tilePreset||s.settings.tilePreset, // New
+        cats:uS.cats||s.settings.cats,
+        mute:uS.mute||s.settings.mute,
+        imgHost:uS.imgH||s.settings.imgHost,
+        nip96Host:uS.nip96H||s.settings.nip96Host,
+        nip96Token:uS.nip96T||s.settings.nip96Token
+      },
+      user:uS.id?{pk:uS.id.pk,authM:uS.id.authM}:s.user
+    }))
+  },
+  setRlys:rls=>confSvc.save({rls}),
+  setFocusTags:tags=>confSvc.save({focusTags:tags}), // New
+  setCurrentFocusTag:tag=>confSvc.save({currentFocusTag:tag}), // New
+  setCats:c=>confSvc.save({cats:c}),
+  addMute:pk=>{const m=appStore.get().settings.mute;if(!m.includes(pk))confSvc.save({mute:[...m,pk]})},
+  rmMute:pk=>confSvc.save({mute:appStore.get().settings.mute.filter(p=>p!==pk)}),
+  saveId:id=>confSvc.save({id}),
+  getId:async()=>(await dbSvc.loadSetts())?.id,
+  clearId:()=>{appStore.set({user:null});confSvc.save({id:null})},
+  setTileUrl:u=>confSvc.save({tileUrl:u, tilePreset:'Custom'}), // New
+  setTilePreset:(p,u)=>confSvc.save({tilePreset:p, tileUrl:u}), // New
+  getTileServer:()=>appStore.get().settings.tileUrl, // Updated to use tileUrl
+  getCurrentFocusTag:()=>appStore.get().currentFocusTag, // Updated to use currentFocusTag
   setImgHost:(h,isNip96=false,token='')=>confSvc.save(isNip96?{nip96H:h,nip96T:token,imgH:''}:{imgH:h,nip96H:'',nip96T:''}),
 };
 
@@ -37,6 +118,27 @@ export const idSvc={ /* idSvc: identityService */
   async chgPass(oP,nP){const i=await confSvc.getId();if(!i?.eSk||(i.authM!=='local'&&i.authM!=='import'))throw new Error("No local key.");let dSk;try{dSk=await decrypt(i.eSk,oP)}catch(e){throw new Error("Old pass incorrect.")}if(!dSk)throw new Error("Decryption failed.");const nESk=await encrypt(dSk,nP);await confSvc.saveId({...i,eSk:nESk});_locSk=dSk;alert("Passphrase changed.")},
   logout(){_locSk=null;confSvc.clearId();alert("Logged out.")},
   currU:()=>appStore.get().user,
+  // CRITICAL FIX: Add signEv function
+  async signEv(event) {
+    const user = appStore.get().user;
+    if (!user) throw new Error("No Nostr identity connected.");
+
+    if (user.authM === 'nip07') {
+      if (!window.nostr?.signEvent) throw new Error("NIP-07 extension not found or not enabled.");
+      try {
+        return await window.nostr.signEvent(event);
+      } catch (e) {
+        throw new Error("NIP-07 signing failed: " + e.message);
+      }
+    } else if (user.authM === 'local' || user.authM === 'import') {
+      const sk = await idSvc.getSk(true); // Prompt for passphrase if needed
+      if (!sk) throw new Error("Private key not available for signing.");
+      const signedEvent = { ...event, pubkey: user.pk, id: getEvH(event), sig: signEvNostr(event, sk) };
+      return signedEvent;
+    } else {
+      throw new Error("Unsupported authentication method.");
+    }
+  }
 };
 
 let _nostrRlys=new Map(), _nostrSubs=new Map(); /* nostrRlys: nostrRelays, nostrSubs: nostrSubscriptions */
@@ -44,7 +146,7 @@ const updRlyStore=(url,st,nip11Doc=null)=>{const r=appStore.get().relays.map(r=>
 export const nostrSvc={ /* nostrSvc: nostrService */
   async connRlys(){appStore.get().relays.forEach(async rConf=>{if(_nostrRlys.has(rConf.url)&&_nostrRlys.get(rConf.url).status===1)return;try{const r=relayInit(rConf.url);r.on('connect',async()=>{_nostrRlys.set(r.url,r);const nip11Doc=await nip11.fetchRelayInformation(r.url).catch(()=>null);updRlyStore(r.url,'connected',nip11Doc);this.subToReps(r)});r.on('disconnect',()=>{updRlyStore(r.url,'disconnected')});r.on('error',()=>{updRlyStore(r.url,'error')});await r.connect()}catch(e){updRlyStore(rConf.url,'error')}})},
   discAllRlys(){_nostrRlys.forEach(r=>r.close());_nostrRlys.clear();_nostrSubs.forEach(s=>s.sub.unsub());_nostrSubs.clear();appStore.set(s=>({relays:s.relays.map(r=>({...r,status:'disconnected'}))}))},
-  async subToReps(specRly=null){this.unsubAllReps();const fTag=appStore.get().focusTag,mapGhs=appStore.get().mapGhs,filt={kinds:[C.NOSTR_KIND_REPORT]};if(fTag&&fTag!==C.FOCUS_TAG_DEFAULT)filt['#t']=[fTag.substring(1)];const rlysToQ=specRly?[specRly]:Array.from(_nostrRlys.values());rlysToQ.forEach(r=>{const rC=appStore.get().relays.find(rc=>rc.url===r.url);if(r.status!==1||!rC?.read)return;let cFilt={...filt};if(rC.nip11?.supported_nips?.includes(52)&&mapGhs?.length>0)cFilt['#g']=mapGhs;const sId=`reps-${r.url}-${Date.now()}`;try{const sub=r.sub([cFilt]);sub.on('event',async ev=>{const rep=parseReport(ev);if(appStore.get().settings.mute.includes(rep.pk))return;await dbSvc.addRep(rep);const existingInteractions = (await dbSvc.getRep(rep.id))?.interactions || []; rep.interactions = existingInteractions;appStore.set(s=>{const i=s.reports.findIndex(rp=>rp.id===rep.id);return{reports: (i>-1?[...s.reports.slice(0,i),rep,...s.reports.slice(i+1)]:[...s.reports,rep]).sort((a,b)=>b.at-a.at)}})});sub.on('eose',()=>{});_nostrSubs.set(sId,{sub,rU:r.url,filt:cFilt,type:'reports'})}catch(e){console.error(`SubErr ${r.url}:`,e)}})},
+  async subToReps(specRly=null){this.unsubAllReps();const fTag=appStore.get().currentFocusTag,mapGhs=appStore.get().mapGhs,filt={kinds:[C.NOSTR_KIND_REPORT]};if(fTag&&fTag!==C.FOCUS_TAG_DEFAULT)filt['#t']=[fTag.substring(1)];const rlysToQ=specRly?[specRly]:Array.from(_nostrRlys.values());rlysToQ.forEach(r=>{const rC=appStore.get().relays.find(rc=>rc.url===r.url);if(r.status!==1||!rC?.read)return;let cFilt={...filt};if(rC.nip11?.supported_nips?.includes(52)&&mapGhs?.length>0)cFilt['#g']=mapGhs;const sId=`reps-${r.url}-${Date.now()}`;try{const sub=r.sub([cFilt]);sub.on('event',async ev=>{const rep=parseReport(ev);if(appStore.get().settings.mute.includes(rep.pk))return;await dbSvc.addRep(rep);const existingInteractions = (await dbSvc.getRep(rep.id))?.interactions || []; rep.interactions = existingInteractions;appStore.set(s=>{const i=s.reports.findIndex(rp=>rp.id===rep.id);return{reports: (i>-1?[...s.reports.slice(0,i),rep,...s.reports.slice(i+1)]:[...s.reports,rep]).sort((a,b)=>b.at-a.at)}})});sub.on('eose',()=>{});_nostrSubs.set(sId,{sub,rU:r.url,filt:cFilt,type:'reports'})}catch(e){console.error(`SubErr ${r.url}:`,e)}})},
   unsubAllReps(){_nostrSubs.forEach((s,id)=>{if(s.type==='reports'){try{s.sub.unsub()}catch{};_nostrSubs.delete(id)}})},
   refreshSubs(){this.unsubAllReps();const cCnt=Array.from(_nostrRlys.values()).filter(r=>r.status===1).length;if(cCnt===0)this.connRlys();else this.subToReps()},
   async pubEv(evD){const sEv=await idSvc.signEv(evD);if(appStore.get().online){try{const rsp=await fetch('/api/publishNostrEvent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sEv)});if(!rsp.ok&&rsp.status!==503)console.error("PubErr SWP:",rsp.statusText);else if(rsp.status===503){console.log("Pub deferred by SW");if(sEv.kind===C.NOSTR_KIND_REPORT){const r=parseReport(sEv);await dbSvc.addRep(r);appStore.set(s=>({reports:[...s.reports,r].sort((a,b)=>b.at-a.at)}))}}}catch(e){console.warn("PubNetErr, SW handles:",e);if(sEv.kind===C.NOSTR_KIND_REPORT){const r=parseReport(sEv);await dbSvc.addRep(r);appStore.set(s=>({reports:[...s.reports,r].sort((a,b)=>b.at-a.at)}))}}}else{await dbSvc.addOfflineQ({event:sEv,ts:Date.now()});if(sEv.kind===C.NOSTR_KIND_REPORT){const r=parseReport(sEv);await dbSvc.addRep(r);appStore.set(s=>({reports:[...s.reports,r].sort((a,b)=>b.at-a.at)}))}}return sEv},

@@ -5,6 +5,12 @@ export const C = { // Constants
     NOSTR_KIND_REPORT: 30315, NOSTR_KIND_REACTION: 7, NOSTR_KIND_NOTE: 1, NOSTR_KIND_PROFILE: 0,
     RELAYS_DEFAULT: ['wss://relay.damus.io','wss://relay.snort.social','wss://nostr.wine','wss://nos.lol'],
     TILE_SERVER_DEFAULT: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    TILE_SERVERS_PREDEFINED: [ // New: Predefined tile servers
+        {name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'},
+        {name: 'Stamen Toner', url: 'http://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}.png'},
+        {name: 'Stamen Terrain', url: 'http://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png'},
+        {name: 'ESRI World Imagery', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'}
+    ],
     FOCUS_TAG_DEFAULT: '#NostrMapper_Global',
     DB_NAME: 'NostrMapperDB_vFinal', DB_VERSION: 1,
     STORE_REPORTS: 'reports', STORE_PROFILES: 'profiles', STORE_SETTINGS: 'settings', STORE_OFFLINE_QUEUE: 'offlineQueue',
@@ -15,8 +21,8 @@ export const C = { // Constants
 export const $ = (s,p=document)=>p.querySelector(s);
 export const $$ = (s,p=document)=>Array.from(p.querySelectorAll(s));
 export function createEl(t,a={},c=[]){const e=document.createElement(t);Object.entries(a).forEach(([k,v])=>{if(k.startsWith('on')&&typeof v==='function')e.addEventListener(k.substring(2).toLowerCase(),v);else if(typeof v==='boolean')v?e.setAttribute(k,''):e.removeAttribute(k);else if(k==='textContent')e.textContent=v;else if(k==='innerHTML')e.innerHTML=v;else e.setAttribute(k,v)});(Array.isArray(c)?c:[c]).forEach(ch=>{if(typeof ch==='string')e.appendChild(document.createTextNode(ch));else if(ch instanceof Node)e.appendChild(ch)});return e}
-export const showModal=(id, focusElId)=>{const m=$(`#${id}`);if(m){m.style.display='block';m.setAttribute('aria-hidden','false');if(focusElId)$(focusElId,m)?.focus()}appStore.setState(s=>({...s,ui:{...s.ui,modalOpen:id}}))};
-export const hideModal=(id)=>{const m=$(`#${id}`);if(m){m.style.display='none';m.setAttribute('aria-hidden','true')}appStore.setState(s=>({...s,ui:{...s.ui,modalOpen:null}}))};
+export const showModal=(id, focusElId)=>{const m=$(`#${id}`);if(m){m.style.display='block';m.setAttribute('aria-hidden','false');if(focusElId)$(focusElId,m)?.focus()}appStore.set(s=>({...s,ui:{...s.ui,modalOpen:id}}))};
+export const hideModal=(id)=>{const m=$(`#${id}`);if(m){m.style.display='none';m.setAttribute('aria-hidden','true')}appStore.set(s=>({...s,ui:{...s.ui,modalOpen:null}}))};
 export const sanitizeHTML=s=>(s==null?'':String(s).replace(/[&<>"']/g,m=>{return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]}));
 const CRYPTO={ALG:'AES-GCM',IV_L:12,SALT_L:16,ITER:1e5};
 async function deriveKey(p,s){const kM=await crypto.subtle.importKey('raw',new TextEncoder().encode(p),{name:'PBKDF2'},!1,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:CRYPTO.ITER,hash:'SHA-256'},kM,{name:CRYPTO.ALG,length:256},!0,['encrypt','decrypt'])}
