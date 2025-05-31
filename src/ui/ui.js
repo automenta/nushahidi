@@ -1,6 +1,6 @@
 import { appStore } from '../store.js';
-import { idSvc } from '../services.js';
-import { C, createEl, formatNpubShort, sanitizeHTML, showToast } from '../utils.js';
+import { idSvc, dbSvc } from '../services.js'; // dbSvc needed for ConnectionStatus
+import { C, createEl, formatNpubShort, showToast } from '../utils.js';
 import { hideModal, showConfirmModal, showModal, Modal } from './modals.js';
 import { AuthModal } from './components/AuthModal.js';
 import { ReportFormModal } from './components/ReportFormModal.js';
@@ -10,12 +10,12 @@ import { handleReportAndFilterUpdates, handleReportViewing } from './statusDispl
 import { ReportList } from './components/ReportList.js';
 
 // Component: AppHeader
-const AppHeader = (reportFormModal, authModal, settingsModal) => {
+const AppHeader = ({ reportFormModal, authModal, settingsModal }) => {
     const headerEl = createEl('header', { class: 'app-header' });
-    const createReportBtn = createEl('button', { id: 'create-report-btn', textContent: 'Create Report' });
-    const authButton = createEl('button', { id: 'auth-button', textContent: 'Connect Identity' });
-    const settingsButton = createEl('button', { id: 'settings-btn', textContent: 'Settings' });
-    const userDisplay = createEl('span', { id: 'user-display', class: 'user-display' });
+    const createReportBtn = createEl('button', { textContent: 'Create Report' });
+    const authButton = createEl('button', { textContent: 'Connect Identity' });
+    const settingsButton = createEl('button', { textContent: 'Settings' });
+    const userDisplay = createEl('span', { class: 'user-display' });
 
     createReportBtn.onclick = () => showModal(reportFormModal, 'rep-title');
     settingsButton.onclick = () => showModal(settingsModal);
@@ -23,7 +23,7 @@ const AppHeader = (reportFormModal, authModal, settingsModal) => {
     authButton.onclick = () => {
         appStore.get().user ?
             showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
-            showModal(authModal, 'conn-nip07-btn');
+            showModal(authModal, authModal.querySelector('#conn-nip07-btn'));
     };
 
     const updateAuthDisplay = (pubkey) => {
@@ -55,11 +55,11 @@ const AppHeader = (reportFormModal, authModal, settingsModal) => {
 };
 
 // Component: ConnectionStatus
-const ConnectionStatus = (settingsModal) => {
-    const statusEl = createEl('div', { id: 'connection-status', class: 'connection-status' });
-    const onlineStatusSpan = createEl('span', { id: 'online-status', textContent: 'Offline' });
-    const syncStatusSpan = createEl('span', { id: 'sync-status', textContent: 'Sync Status: Unknown' });
-    const offlineQueueCountSpan = createEl('span', { id: 'offline-queue-count', textContent: '' });
+const ConnectionStatus = ({ settingsModal }) => {
+    const statusEl = createEl('div', { class: 'connection-status' });
+    const onlineStatusSpan = createEl('span', { textContent: 'Offline' });
+    const syncStatusSpan = createEl('span', { textContent: 'Sync Status: Unknown' });
+    const offlineQueueCountSpan = createEl('span', { textContent: '' });
 
     const updateConnectionDisplay = (online) => {
         onlineStatusSpan.textContent = online ? 'Online' : 'Offline';
@@ -68,7 +68,7 @@ const ConnectionStatus = (settingsModal) => {
 
     const updateSyncDisplay = async () => {
         const { online, reports } = appStore.get();
-        const offlineQueue = await dbSvc.getOfflineQ(); // Assuming dbSvc is available globally or passed as prop
+        const offlineQueue = await dbSvc.getOfflineQ();
         const pendingEvents = offlineQueue.length;
 
         if (!online) {
@@ -89,9 +89,10 @@ const ConnectionStatus = (settingsModal) => {
             updateConnectionDisplay(newState.online);
             updateSyncDisplay();
         }
-        // Also update sync display if reports or offline queue change (though offline queue changes are not directly in appStore)
-        // For offline queue, we'll rely on explicit calls or a more granular store update if it were part of appStore.
-        // For now, it's called on online status change.
+        // Also update sync display if reports change (offline queue changes are not directly in appStore)
+        if (newState.reports !== oldState?.reports) {
+            updateSyncDisplay();
+        }
     });
 
     // Initial render
@@ -104,7 +105,7 @@ const ConnectionStatus = (settingsModal) => {
 
 // Component: GlobalLoadingSpinner
 const GlobalLoadingSpinner = () => {
-    const spinnerEl = createEl('div', { id: 'global-loading-spinner', class: 'spinner-overlay', style: 'display: none;' });
+    const spinnerEl = createEl('div', { class: 'spinner-overlay', style: 'display: none;' });
     spinnerEl.appendChild(createEl('div', { class: 'spinner' }));
 
     appStore.on((newState, oldState) => {
@@ -118,9 +119,11 @@ const GlobalLoadingSpinner = () => {
 
 // Component: OnboardingModal
 const OnboardingModalComponent = () => {
-    const onboardingModalElement = Modal('onboarding-info', 'Welcome to NostrMapper!', contentRoot => {
+    let onboardingModalElement; // Declare here so it's accessible in hideOnboarding
+
+    onboardingModalElement = Modal('onboarding-info', 'Welcome to NostrMapper!', (contentRoot, modalEl) => {
         const gotItBtn = createEl('button', { textContent: 'Got It!' });
-        const closeBtn = contentRoot.querySelector('.close-btn'); // Modal utility adds this
+        const closeBtn = modalEl.querySelector('.close-btn'); // Modal utility adds this
 
         const hideOnboarding = () => {
             localStorage.setItem(C.ONBOARDING_KEY, 'true');
@@ -155,10 +158,10 @@ export function initUI() {
     const onboardingModalElement = OnboardingModalComponent();
 
     // Render main UI components into the root
-    const header = AppHeader(reportFormModalElement, authModalElement, settingsModalElement);
-    const filterControls = FilterControls();
-    const reportList = ReportList();
-    const connectionStatus = ConnectionStatus(settingsModalElement);
+    const header = AppHeader({ reportFormModal: reportFormModalElement, authModal: authModalElement, settingsModal: settingsModalElement });
+    const filterControls = FilterControls(); // FilterControls now returns its root element
+    const reportList = ReportList(); // ReportList now returns its root element
+    const connectionStatus = ConnectionStatus({ settingsModal: settingsModalElement });
     const globalLoadingSpinner = GlobalLoadingSpinner();
 
     root.append(

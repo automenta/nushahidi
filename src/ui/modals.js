@@ -16,7 +16,12 @@ export function Modal(modalId, title, contentElementOrElements) {
         modalContent
     );
 
-    const contentArray = Array.isArray(contentElementOrElements) ? contentElementOrElements : [contentElementOrElements];
+    // If contentElementOrElements is a function, call it with modalContent and modalElement as context
+    const contentToAppend = typeof contentElementOrElements === 'function' ?
+        contentElementOrElements(modalContent, modalElement) :
+        contentElementOrElements;
+
+    const contentArray = Array.isArray(contentToAppend) ? contentToAppend : [contentToAppend];
     contentArray.filter(Boolean).forEach(el => modalContent.appendChild(el));
 
     document.body.appendChild(modalElement);
@@ -33,7 +38,7 @@ export const showConfirmModal = (title, message, onConfirm, onCancel) => {
         ])
     ];
     const confirmModalElement = Modal('confirm-modal', title, content);
-    showModal(confirmModalElement, `${confirmModalElement.id}-heading`);
+    showModal(confirmModalElement, confirmModalElement.querySelector(`#${confirmModalElement.id}-heading`)); // Pass element directly
 };
 
 export const showPassphraseModal = (title, message) => {
@@ -54,11 +59,11 @@ export const showPassphraseModal = (title, message) => {
             ])
         ];
         const passphraseModalElement = Modal('passphrase-modal', title, content);
-        showModal(passphraseModalElement, 'passphrase-input');
+        showModal(passphraseModalElement, passphraseModalElement.querySelector('#passphrase-input')); // Pass element directly
     });
 };
 
-export const showModal = (modalElement, focusElSelectorOrElement) => {
+export const showModal = (modalElement, focusElOrSelector) => {
     if (!modalElement) {
         console.warn('Attempted to show a null modal element.');
         return;
@@ -66,7 +71,12 @@ export const showModal = (modalElement, focusElSelectorOrElement) => {
     modalElement.style.display = 'block';
     modalElement.removeAttribute('inert');
 
-    const focusEl = typeof focusElSelectorOrElement === 'string' ? modalElement.querySelector(focusElSelectorOrElement) : focusElSelectorOrElement;
+    let focusEl = null;
+    if (focusElOrSelector instanceof Element) {
+        focusEl = focusElOrSelector;
+    } else if (typeof focusElOrSelector === 'string') {
+        focusEl = modalElement.querySelector(focusElOrSelector);
+    }
     focusEl?.focus();
 
     appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: modalElement } }));

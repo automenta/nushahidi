@@ -130,7 +130,7 @@ export function FilterControls() {
                 currentFocusTag: C.FOCUS_TAG_DEFAULT
             }));
             // Re-render the form to reflect reset values
-            filterFormElement.replaceWith(renderFilterForm(appStore.get()));
+            // This will be handled by the appStore.on listener below
         };
 
         const spatialFilterToggle = newForm.querySelector('#spatial-filter-toggle');
@@ -160,8 +160,14 @@ export function FilterControls() {
 
     appStore.on((newState, oldState) => {
         // Only re-render the form if categories or currentFocusTag change,
-        // as other filter changes are handled by input listeners.
-        if (newState.settings?.cats !== oldState?.settings?.cats || newState.currentFocusTag !== oldState?.currentFocusTag) {
+        // or if filters are reset (which changes multiple filter values at once).
+        // This ensures the select options and focus tag input are updated.
+        const categoriesChanged = newState.settings?.cats !== oldState?.settings?.cats;
+        const focusTagChanged = newState.currentFocusTag !== oldState?.currentFocusTag;
+        const filtersReset = JSON.stringify(newState.ui.filters) !== JSON.stringify(oldState?.ui?.filters) &&
+                             (newState.ui.filters.q === '' && newState.ui.filters.cat === '' && newState.ui.filters.auth === '' && newState.ui.filters.tStart === null && newState.ui.filters.tEnd === null);
+
+        if (categoriesChanged || focusTagChanged || filtersReset) {
             const newForm = renderFilterForm(newState);
             filterFormElement.replaceWith(newForm);
             filterFormElement = newForm;

@@ -4,8 +4,8 @@ import {showModal} from '../modals.js';
 import {appStore} from '../../store.js';
 
 export function ReportList() {
-    const listContainer = createEl('div', { id: 'report-list-container' });
-    const listElement = createEl('div', { id: 'report-list' });
+    const listContainer = createEl('div', { class: 'report-list-container' }); // Removed ID
+    const listElement = createEl('div', { class: 'report-list' }); // Removed ID
     listContainer.appendChild(listElement);
 
     const renderReportCard = report => `
