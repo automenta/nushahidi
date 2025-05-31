@@ -51,7 +51,7 @@ const updSyncDisp = async () => {
 // --- Generic Confirmation Modal ---
 let _confirmModalRoot;
 
-function showConfirmModal(title, message, onConfirm, onCancel) {
+export function showConfirmModal(title, message, onConfirm, onCancel) {
     if (!_confirmModalRoot) {
         _confirmModalRoot = cE('div', { class: 'modal-content' });
         gE('#confirm-modal').appendChild(_confirmModalRoot);
@@ -784,7 +784,8 @@ const showReportDetails = async report => {
                 async () => {
                     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
                     try {
-                        await nostrSvc.deleteEv(report.id); // Assuming deleteEv exists or will be added
+                        await nostrSvc.deleteEv(report.id); // Call the new deleteEv method
+                        // The deleteEv method already updates appStore and DB, and shows toast
                         hideModal('report-detail-container'); // Hide detail view after deletion
                         listContainer.style.display = 'block'; // Show list view
                     } catch (e) {
@@ -1206,7 +1207,5 @@ export function initUI() {
     // Onboarding check
     if (!localStorage.getItem(C.ONBOARDING_KEY)) {
         showModal('onboarding-info');
-        // Fix: Use the constant C.ONBOARDING_KEY instead of hardcoded string
-        localStorage.setItem(C.ONBOARDING_KEY, 'true'); // Set it after showing
     }
 } // End initUI

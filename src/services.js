@@ -4,7 +4,7 @@ import 'leaflet.markercluster'; // Import the MarkerCluster plugin
 import { generatePrivateKey as genSk, getPublicKey as getPk, nip19, getEventHash as getEvH, signEvent as signEvNostr, relayInit, nip11 } from 'nostr-tools';
 import { appStore } from './store.js';
 import { C, $, encrypt, decrypt, sha256, npubToHex, geohashEncode, parseReport, getGhPrefixes, nsecToHex, isNostrId, showToast, generateUUID } from './utils.js';
-import { showPassphraseModal } from './ui.js'; // Import the new modal function
+import { showPassphraseModal, showConfirmModal } from './ui.js'; // Import the new modal function
 
 let _db; /* db instance */
 
@@ -629,17 +629,32 @@ export const nostrSvc = { /* nostrSvc: nostrService */
             }
         }
 
-        // If it's a deletion event (Kind 5), remove the original event from appStore and DB
-        if (signedEvent.kind === 5) {
-            const eventIdToDelete = signedEvent.tags.find(tag => tag[0] === 'e')?.[1];
-            if (eventIdToDelete) {
-                appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventIdToDelete) }));
-                await dbSvc.rmRep(eventIdToDelete);
-                showToast("Report deleted successfully (NIP-09).", 'info');
-            }
-        }
-
         return signedEvent;
+    },
+
+    /**
+     * Publishes a NIP-09 event (Kind 5) to delete a specific event.
+     * @param {string} eventIdToDelete - The ID of the event to delete.
+     * @returns {Promise<object>} The signed deletion event.
+     */
+    async deleteEv(eventIdToDelete) {
+        const user = appStore.get().user;
+        if (!user) throw new Error("No Nostr identity connected to delete events.");
+
+        const eventData = {
+            kind: 5, // NIP-09 event kind for deletion
+            content: "Reason for deletion (optional)", // Can be empty or a reason
+            tags: [['e', eventIdToDelete]] // Tag the event to be deleted
+        };
+
+        const signedDeletionEvent = await this.pubEv(eventData);
+
+        // Immediately remove from local state and DB for UI responsiveness
+        appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventIdToDelete) }));
+        await dbSvc.rmRep(eventIdToDelete);
+        showToast("Report deletion event sent (NIP-09).", 'info');
+
+        return signedDeletionEvent;
     },
 
     /**

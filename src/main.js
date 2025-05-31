@@ -3,9 +3,6 @@ import { confSvc, idSvc, nostrSvc, mapSvc, dbSvc, offSvc } from './services.js';
 import { initUI } from './ui.js';
 import { $, C } from './utils.js';
 
-// Define gE locally as it's a simple utility and not exported from ui.js
-const gE = (id, p = document) => $(id, p);
-
 async function main() {
     appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start global loading
 
@@ -34,7 +31,7 @@ async function main() {
     await idSvc.init();
 
     if (!mapSvc.init('map-container')) {
-        gE('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
+        $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
     }
 
     initUI();
