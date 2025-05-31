@@ -31,8 +31,8 @@ export class ReportFormModal extends Modal {
         this.pFLocCoordsEl = null;
         this.upldPhotosPreviewEl = null;
 
-        // Call show() to perform the initial rendering and setup.
-        this.show();
+        // Initial rendering and setup will happen when show() is explicitly called.
+        // Removed this.show() from constructor to prevent it from appearing on app startup.
     }
 
     show(focusElOrSelector, reportToEdit = null) {

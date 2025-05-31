@@ -11,7 +11,7 @@ import {AuthModal} from './components/AuthModal.js';
 import {ReportFormModal} from './components/ReportFormModal.js';
 import {SettingsModal} from './components/SettingsModal.js';
 import {OnboardingModal} from './components/OnboardingModal.js';
-import {SidebarControls} from './components/SidebarControls.js';
+// Removed import for SidebarControls as it's no longer needed
 import {FilterControls} from './components/FilterControls.js';
 
 export class App {
@@ -37,7 +37,7 @@ export class App {
         this.reportFormModal = null;
         this.settingsModal = null;
         this.appHeader = null;
-        this.sidebarControls = null;
+        // Removed this.sidebarControls as it's no longer needed
         this.filterControls = null;
         this.reportList = null;
         this.globalLoadingSpinner = null;
@@ -70,11 +70,12 @@ export class App {
         });
         this.headerEl.appendChild(this.appHeader.element);
 
-        this.sidebarControls = new SidebarControls({
-            onCreateReport: () => this.reportFormModal.show('.nstr-rep-form #field-title'),
-            onShowSettings: () => this.settingsModal.show('.settings-sections h3')
-        });
-        this.sidebarEl.appendChild(this.sidebarControls.element);
+        // Removed instantiation and appending of SidebarControls
+        // this.sidebarControls = new SidebarControls({
+        //     onCreateReport: () => this.reportFormModal.show('.nstr-rep-form #field-title'),
+        //     onShowSettings: () => this.settingsModal.show('.settings-sections h3')
+        // });
+        // this.sidebarEl.appendChild(this.sidebarControls.element);
 
         this.filterControls = new FilterControls();
         this.sidebarEl.appendChild(this.filterControls.element);
