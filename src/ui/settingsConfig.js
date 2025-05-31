@@ -1,22 +1,21 @@
-import {npubToHex} from '../utils.js';
+import {npubToHex, C} from '../utils.js';
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
 import {KeyManagementSection} from './settings/keyManagement.js';
 import {MapTilesSection} from './settings/mapTiles.js';
 import {ImageHostSection} from './settings/imageHost.js';
-import {
-    renderRelayItem, handleRelayRemove,
-    renderFocusTagItem, handleFocusTagRadioChange, handleFocusTagRemove,
-    renderCategoryItem, handleCategoryRemove,
-    renderMutePubkeyItem, handleMutePubkeyRemove,
-    renderFollowedPubkeyItem, handleFollowedPubkeyRemove
-} from './settingsUtils.js';
 import {DataManagementSection} from './settings/dataManagement.js';
 import {OfflineQueueSection} from './settings/offlineQueue.js';
 import {ConfigurableListSetting} from './components/ConfigurableListSetting.js';
 import {withLoading, withToast} from '../decorators.js';
 import {showConfirmModal} from './modals.js';
 import {showToast} from '../utils.js';
+
+import {RelayItem} from './components/settings/RelayItem.js';
+import {FocusTagItem} from './components/settings/FocusTagItem.js';
+import {CategoryItem} from './components/settings/CategoryItem.js';
+import {MutePubkeyItem} from './components/settings/MutePubkeyItem.js';
+import {FollowedPubkeyItem} from './components/settings/FollowedPubkeyItem.js';
 
 const createAddLogicHandler = (confSvcMethod, itemExistsChecker, itemExistsErrorMsg) => async inputValue => {
     if (!inputValue) throw new Error("Input cannot be empty.");
@@ -30,11 +29,20 @@ const addRelayLogic = createAddLogicHandler(
     "Relay already exists."
 );
 
+const handleRelayRemove = r => {
+    const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
+    confSvc.setRlys(updatedRelays);
+    nostrSvc.discAllRlys();
+    nostrSvc.connRlys();
+};
+
 const addCategoryLogic = createAddLogicHandler(
     cat => confSvc.setCats([...appStore.get().settings.cats, cat]),
     cat => appStore.get().settings.cats.includes(cat),
     "Category already exists."
 );
+
+const handleCategoryRemove = c => confSvc.setCats(appStore.get().settings.cats.filter(cat => cat !== c));
 
 const addFocusTagLogic = createAddLogicHandler(
     async tag => {
@@ -45,17 +53,33 @@ const addFocusTagLogic = createAddLogicHandler(
     "Focus tag already exists."
 );
 
+const handleFocusTagRemove = t => {
+    const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
+    confSvc.setFocusTags(updatedTags);
+    if (t.active && updatedTags.length) {
+        confSvc.setCurrentFocusTag(updatedTags[0].tag);
+        updatedTags[0].active = true;
+    } else if (!updatedTags.length) {
+        confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
+        confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
+    }
+};
+
 const addMutePubkeyLogic = createAddLogicHandler(
     async pk => confSvc.addMute(npubToHex(pk)),
     pk => appStore.get().settings.mute.includes(npubToHex(pk)),
     "Pubkey already muted."
 );
 
+const handleMutePubkeyRemove = pk => confSvc.rmMute(pk);
+
 const addFollowedPubkeyLogic = createAddLogicHandler(
     async pk => confSvc.addFollowed(npubToHex(pk)),
     pk => appStore.get().followedPubkeys.some(f => f.pk === npubToHex(pk)),
     "User already followed."
 );
+
+const handleFollowedPubkeyRemove = f => confSvc.rmFollowed(f.pk);
 
 const reconnectRelays = () => {
     nostrSvc.discAllRlys();
@@ -116,7 +140,7 @@ export const settingsSections = [
         addInputId: 'new-rly-url',
         addBtnId: 'add-rly-btn',
         addLogic: addRelayLogic,
-        itemRenderer: renderRelayItem,
+        itemRenderer: (item) => new RelayItem(item).element,
         actionsConfig: [removeActionConfig('Remove Relay', 'Are you sure you want to remove this relay?', handleRelayRemove)],
         itemWrapperClass: 'relay-entry',
         saveBtnId: 'save-rlys-btn',
@@ -143,7 +167,7 @@ export const settingsSections = [
         addInputId: 'new-focus-tag-input',
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
-        itemRenderer: renderFocusTagItem,
+        itemRenderer: (item) => new FocusTagItem(item).element,
         actionsConfig: [removeActionConfig('Remove Focus Tag', 'Are you sure you want to remove this focus tag?', handleFocusTagRemove)],
         itemWrapperClass: 'focus-tag-entry',
         saveBtnId: 'save-focus-tags-btn',
@@ -165,7 +189,7 @@ export const settingsSections = [
         addInputId: 'new-cat-name',
         addBtnId: 'add-cat-btn',
         addLogic: addCategoryLogic,
-        itemRenderer: renderCategoryItem,
+        itemRenderer: (item) => new CategoryItem(item).element,
         actionsConfig: [removeActionConfig('Remove Category', 'Are you sure you want to remove this category?', handleCategoryRemove)],
         itemWrapperClass: 'category-entry',
         saveBtnId: 'save-cats-btn',
@@ -196,7 +220,7 @@ export const settingsSections = [
         addInputId: 'new-mute-pk-input',
         addBtnId: 'add-mute-btn',
         addLogic: addMutePubkeyLogic,
-        itemRenderer: renderMutePubkeyItem,
+        itemRenderer: (item) => new MutePubkeyItem(item).element,
         actionsConfig: [removeActionConfig('Remove Muted Pubkey', 'Are you sure you want to unmute this pubkey?', handleMutePubkeyRemove)],
         itemWrapperClass: 'mute-entry',
         saveBtnId: 'save-mute-list-btn',
@@ -220,7 +244,7 @@ export const settingsSections = [
         addInputId: 'new-followed-pk-input',
         addBtnId: 'add-followed-btn',
         addLogic: addFollowedPubkeyLogic,
-        itemRenderer: renderFollowedPubkeyItem,
+        itemRenderer: (item) => new FollowedPubkeyItem(item).element,
         actionsConfig: [removeActionConfig('Unfollow User', 'Are you sure you want to unfollow this user?', handleFollowedPubkeyRemove)],
         itemWrapperClass: 'followed-entry',
         saveBtnId: 'save-followed-btn',
@@ -231,12 +255,8 @@ export const settingsSections = [
         renderer: ConfigurableListSetting
     },
     {
-        type: 'offline-queue',
+        type: 'section',
         title: 'Offline Queue',
-        listId: 'offline-queue-list',
-        itemRenderer: offlineQueueItemRenderer,
-        actionsConfig: OfflineQueueSection.actionsConfig,
-        itemWrapperClass: 'offline-q-entry',
         renderer: OfflineQueueSection
     },
     {
