@@ -7,6 +7,7 @@ import {renderForm} from '../forms.js';
 import {applyAllFilters} from './FilterControls.js';
 import {nip19} from 'nostr-tools';
 import {withLoading, withToast} from '../../decorators.js';
+import {InteractionItem} from './InteractionItem.js';
 
 export class ReportDetailsModal extends Modal {
     constructor(report, reportFormModal) {
@@ -47,7 +48,7 @@ export class ReportDetailsModal extends Modal {
         container.innerHTML = this.renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
 
         this.setupReportDetailEventListeners(report, isAuthor, canFollow, container);
-        this.initializeMiniMap(report, container);
+        this.initializeMiniMap(report, container.querySelector('.mini-map-det'));
         this.loadAndDisplayInteractions(report.id, report.pk, container.querySelector('.interactions'));
     }
 
@@ -168,23 +169,18 @@ export class ReportDetailsModal extends Modal {
         }, null, "Error toggling follow status", () => btn.disabled = false))();
     };
 
-    renderInteractionItem(interaction) {
-        const interactionUser = formatNpubShort(interaction.pubkey);
-        const interactionTime = new Date(interaction.created_at * 1000).toLocaleString();
-        const contentHtml = interaction.kind === C.NOSTR_KIND_REACTION ?
-            `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(interaction.content)} <small>(${interactionTime})</small>` :
-            `<strong>${sanitizeHTML(interactionUser)}</strong> commented: ${marked.parse(sanitizeHTML(interaction.content))} <small>(${interactionTime})</small>`;
+    renderInteractionsContent(interactions, container) {
+        container.innerHTML = '';
+        container.appendChild(createEl('h4', {textContent: 'Interactions'}));
 
-        return createEl('div', {class: 'interaction-item', innerHTML: contentHtml});
-    }
-
-    renderInteractionsContent(interactions) {
-        const fragment = document.createDocumentFragment();
-        fragment.appendChild(createEl('h4', {textContent: 'Interactions'}));
-
-        if (!interactions.length) fragment.appendChild(createEl('p', {textContent: 'No interactions yet.'}));
-        else interactions.forEach(i => fragment.appendChild(this.renderInteractionItem(i)));
-        return fragment;
+        if (!interactions.length) {
+            container.appendChild(createEl('p', {textContent: 'No interactions yet.'}));
+        } else {
+            interactions.forEach(i => {
+                const interactionItem = new InteractionItem(i);
+                container.appendChild(interactionItem.element);
+            });
+        }
     }
 
     setupInteractionControls(reportId, reportPk, container) {
@@ -216,8 +212,7 @@ export class ReportDetailsModal extends Modal {
         await withLoading(withToast(async () => {
             const interactions = await nostrSvc.fetchInteractions(reportId, reportPk);
 
-            container.innerHTML = '';
-            container.appendChild(this.renderInteractionsContent(interactions));
+            this.renderInteractionsContent(interactions, container);
             this.setupInteractionControls(reportId, reportPk, container);
 
             appStore.set(s => {
@@ -232,14 +227,11 @@ export class ReportDetailsModal extends Modal {
         }, null, "Error loading interactions"))();
     }
 
-    initializeMiniMap(rep, modalContent) {
-        if (rep.lat && rep.lon && typeof L !== 'undefined') {
-            const miniMapEl = modalContent.querySelector('.mini-map-det');
-            if (miniMapEl) {
-                const miniMap = L.map(miniMapEl).setView([rep.lat, rep.lon], 13);
-                L.tileLayer(confSvc.getTileServer(), {attribution: '&copy; OSM'}).addTo(miniMap);
-                setTimeout(() => miniMap.invalidateSize(), 0);
-            }
+    initializeMiniMap(rep, miniMapEl) {
+        if (rep.lat && rep.lon && typeof L !== 'undefined' && miniMapEl) {
+            const miniMap = L.map(miniMapEl).setView([rep.lat, rep.lon], 13);
+            L.tileLayer(confSvc.getTileServer(), {attribution: '&copy; OSM'}).addTo(miniMap);
+            setTimeout(() => miniMap.invalidateSize(), 0);
         }
     }
 }

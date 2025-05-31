@@ -23,13 +23,20 @@ export const getOfflineQueueEventType = kind => {
     }
 };
 
-export const offlineQueueItemRenderer = item => {
-    const eventType = getOfflineQueueEventType(item.event.kind);
-    const timestamp = new Date(item.ts).toLocaleString();
-    const contentSnippet = item.event.content.substring(0, 50) + (item.event.content.length > 50 ? '...' : '');
-    const eventIdSnippet = item.event.id.substring(0, 8);
-    return createEl('span', {innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>`});
-};
+class OfflineQueueItem {
+    constructor(item) {
+        this.item = item;
+        this.element = this.render();
+    }
+
+    render() {
+        const eventType = getOfflineQueueEventType(this.item.event.kind);
+        const timestamp = new Date(this.item.ts).toLocaleString();
+        const contentSnippet = this.item.event.content.substring(0, 50) + (this.item.event.content.length > 50 ? '...' : '');
+        const eventIdSnippet = this.item.event.id.substring(0, 8);
+        return createEl('span', {innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>`});
+    }
+}
 
 export class OfflineQueueSection {
     constructor(config) {
@@ -71,6 +78,6 @@ export class OfflineQueueSection {
         this.sectionEl.appendChild(createEl('p', {textContent: 'Events waiting to be published when online.'}));
         const listContainer = createEl('div');
         this.sectionEl.appendChild(listContainer);
-        renderList(listContainer, queueItems, offlineQueueItemRenderer, actionsConfig, 'offline-q-entry');
+        renderList(listContainer, queueItems, OfflineQueueItem, actionsConfig, 'offline-q-entry');
     }
 }

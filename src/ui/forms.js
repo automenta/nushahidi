@@ -119,7 +119,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     return {form, fields};
 }
 
-export const renderList = (containerElement, items, itemRenderer, actionsConfig, itemWrapperClass) => {
+export const renderList = (containerElement, items, ItemComponent, actionsConfig, itemWrapperClass) => {
     if (!containerElement) {
         console.warn(`Container element not found for list rendering.`);
         return;
@@ -132,15 +132,10 @@ export const renderList = (containerElement, items, itemRenderer, actionsConfig,
     }
 
     items.forEach((item, index) => {
-        const itemContent = itemRenderer(item, index);
+        const itemInstance = new ItemComponent(item);
         const itemDiv = createEl('div', {class: itemWrapperClass});
 
-        if (typeof itemContent === 'string') itemDiv.innerHTML = itemContent;
-        else if (itemContent instanceof Node) itemDiv.appendChild(itemContent);
-        else {
-            console.warn('itemRenderer must return a string or HTMLElement.');
-            return;
-        }
+        itemDiv.appendChild(itemInstance.element);
 
         actionsConfig.forEach(action => {
             const actionBtn = createEl('button', {

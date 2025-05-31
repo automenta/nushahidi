@@ -4,13 +4,14 @@ import {settingsSections} from '../settingsConfig.js';
 
 export class SettingsModal extends Modal {
     constructor() {
-        const contentRenderer = (contentRoot, modalRoot) => {
+        const contentRenderer = () => {
             const settingsContent = createEl('div', {class: 'settings-sections'});
             settingsSections.forEach(sectionConfig => {
                 const sectionEl = createEl('section');
                 sectionEl.appendChild(createEl('h3', {textContent: sectionConfig.title}));
 
-                const sectionInstance = new sectionConfig.renderer(sectionConfig);
+                const SectionComponent = sectionConfig.renderer;
+                const sectionInstance = new SectionComponent(sectionConfig);
                 const renderedContent = sectionInstance.element;
 
                 if (Array.isArray(renderedContent)) renderedContent.forEach(el => sectionEl.appendChild(el));

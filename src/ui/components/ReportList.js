@@ -1,5 +1,6 @@
-import {createEl, formatNpubShort, sanitizeHTML} from '../../utils.js';
+import {createEl} from '../../utils.js';
 import {appStore} from '../../store.js';
+import {ReportCard} from './ReportCard.js';
 
 export class ReportList {
     constructor() {
@@ -16,31 +17,12 @@ export class ReportList {
         });
     }
 
-    renderReportCard(report) {
-        return `
-            <div class="report-card" data-rep-id="${sanitizeHTML(report.id)}" role="button" tabindex="0" aria-labelledby="card-title-${report.id}">
-                <h3 id="card-title-${report.id}">${sanitizeHTML(report.title || 'Report')}</h3><p>${sanitizeHTML(report.sum || (report.ct ? report.ct.substring(0, 100) + '...' : 'N/A'))}</p>
-                <small>By: ${formatNpubShort(report.pk)} | ${new Date(report.at * 1000).toLocaleDateString()}</small>
-                <small>Cats: ${report.cat.map(sanitizeHTML).join(', ') || 'N/A'}</small>
-            </div>`;
-    }
-
     updateList(reports) {
         this.listElement.innerHTML = '';
         if (reports.length > 0) {
             reports.forEach(report => {
-                const cardWrapper = createEl('div');
-                cardWrapper.innerHTML = this.renderReportCard(report);
-                const cardElement = cardWrapper.firstElementChild;
-                cardElement.addEventListener('click', () => {
-                    appStore.set(s => ({ui: {...s.ui, reportIdToView: report.id, showReportList: false}}));
-                });
-                cardElement.addEventListener('keydown', e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        appStore.set(s => ({ui: {...s.ui, reportIdToView: report.id, showReportList: false}}));
-                    }
-                });
-                this.listElement.appendChild(cardElement);
+                const reportCard = new ReportCard(report);
+                this.listElement.appendChild(reportCard.element);
             });
         } else {
             this.listElement.innerHTML = '<p>No reports match filters.</p>';

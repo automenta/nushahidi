@@ -4,6 +4,7 @@ import {C, createEl, generateUUID, geohashEncode, processImageFile, sanitizeHTML
 import {renderForm, renderList} from '../forms.js';
 import {Modal} from '../modals.js';
 import {withLoading, withToast} from '../../decorators.js';
+import {ImagePreviewItem} from './ImagePreviewItem.js';
 
 export class ReportFormModal extends Modal {
     constructor() {
@@ -124,23 +125,13 @@ export class ReportFormModal extends Modal {
             return;
         }
 
-        const imageItemRenderer = img => createEl('span', {textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1))});
-        const imageActionsConfig = [{
-            label: 'x',
-            className: 'remove-image-btn',
-            onClick: (item, index) => {
+        imagesMetadata.forEach((img, index) => {
+            const item = new ImagePreviewItem(img, () => {
                 imagesMetadata.splice(index, 1);
                 this.renderImagePreview(imagesMetadata);
-            }
-        }];
-
-        renderList(
-            this.upldPhotosPreviewEl,
-            imagesMetadata,
-            imageItemRenderer,
-            imageActionsConfig,
-            'uploaded-image-item'
-        );
+            });
+            this.upldPhotosPreviewEl.appendChild(item.element);
+        });
     }
 
     updateLocationDisplay(addressName = '') {
