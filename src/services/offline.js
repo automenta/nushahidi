@@ -1,35 +1,48 @@
 import {appStore} from '../store.js';
 import {showToast} from '../utils.js';
 import {dbSvc} from './db.js';
+import {nostrSvc} from './nostr.js';
 
 export const offSvc = {
     async procQ() {
-        // This function is now primarily triggered by the service worker's sync event.
-        // The actual fetching and re-queuing logic is handled by Workbox's BackgroundSyncPlugin.
-        // This function can be used for any additional client-side processing needed after a sync.
-        const offlineQueueCount = (await dbSvc.getOfflineQ()).length;
-        appStore.set(s => ({offlineQueueCount}));
-        if (offlineQueueCount > 0) {
-            showToast("Offline queue processing initiated by service worker.", 'info');
+        const queueItems = await dbSvc.getOfflineQ();
+        appStore.set(s => ({offlineQueueCount: queueItems.length}));
+
+        if (queueItems.length > 0) {
+            showToast("Attempting to publish queued events...", 'info');
+            for (const item of queueItems) {
+                try {
+                    // Pass fromOfflineQueue=true to prevent re-adding to queue if direct publish fails
+                    await nostrSvc.pubEv(item.event, true);
+                    await dbSvc.rmOfflineQ(item.qid);
+                    showToast(`Queued event ${item.qid.substring(0, 8)}... published.`, 'success', 2000);
+                } catch (e) {
+                    console.error(`Failed to publish queued event ${item.qid.substring(0, 8)}...:`, e);
+                    showToast(`Failed to publish queued event ${item.qid.substring(0, 8)}...: ${e.message}`, 'error', 3000);
+                    // Keep in queue for next retry
+                }
+            }
+            // Re-evaluate queue count after processing
+            const updatedQueueCount = (await dbSvc.getOfflineQ()).length;
+            appStore.set(s => ({offlineQueueCount: updatedQueueCount}));
+            if (updatedQueueCount === 0) {
+                showToast("All offline events published!", 'success');
+            } else {
+                showToast(`${updatedQueueCount} events remaining in offline queue.`, 'info');
+            }
+        } else {
+            showToast("Offline queue is empty.", 'info');
         }
     },
 
     setupSyncLs() {
-        // The 'online' event listener is still useful for immediate UI feedback,
-        // but the core queue processing is now handled by the SW.
+        // The 'online' event listener is still useful for immediate UI feedback.
         window.addEventListener('online', () => this.procQ());
 
-        if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-            navigator.serviceWorker.ready.then(registration => {
-                if ('sync' in registration) {
-                    // This listener ensures that the client-side procQ is called when the SW syncs.
-                    // The SW itself handles the actual network requests and re-queuing.
-                    registration.addEventListener('sync', event => {
-                        if (event.tag === 'nostrPublishQueue') event.waitUntil(this.procQ());
-                    });
-                }
-            });
-        }
+        // Remove the service worker sync listener as the client will now handle publishing directly.
+        // The service worker's BackgroundSyncPlugin for /api/publishNostrEvent is also removed.
+        // The client-side procQ will be triggered by 'online' event or manually.
+
         // Initial check for queue status
         this.procQ();
     },

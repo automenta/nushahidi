@@ -82,23 +82,40 @@ const buildReportFilter = (appState, mapGeohashes) => {
     return filter;
 };
 
-const publishEventOnline = async signedEvent => {
-    // Rely on Workbox Background Sync for offline queuing and retries.
-    // This function simply attempts the fetch request.
-    try {
-        const response = await fetch('/api/publishNostrEvent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(signedEvent)
-        });
-        if (!response.ok) {
-            console.error("Publish Error (SW Proxy):", response.statusText);
-            throw new Error(response.statusText);
-        }
-    } catch (e) {
-        console.error("Publish Error:", e);
-        throw e;
+const _publishEventToRelays = async signedEvent => {
+    const writeRelays = appStore.get().relays.filter(r => r.write && _connectedRelays.has(r.url)).map(r => r.url);
+    if (!writeRelays.length) {
+        console.warn("No connected write relays available to publish event.");
+        return false; // Indicate failure
     }
+
+    let publishedSuccessfully = false;
+    const publishPromises = writeRelays.map(url => {
+        return new Promise(resolve => {
+            const pub = _pool.publish(url, signedEvent);
+            let success = false;
+            pub.on('ok', () => {
+                console.log(`Event ${signedEvent.id.substring(0, 8)}... published to ${url}`);
+                success = true;
+                publishedSuccessfully = true;
+                resolve(true);
+            });
+            pub.on('failed', reason => {
+                console.error(`Failed to publish event ${signedEvent.id.substring(0, 8)}... to ${url}: ${reason}`);
+                resolve(false);
+            });
+            // Add a timeout for relays that don't respond
+            setTimeout(() => {
+                if (!success) {
+                    console.warn(`Timeout publishing event ${signedEvent.id.substring(0, 8)}... to ${url}`);
+                    resolve(false);
+                }
+            }, 5000); // 5 second timeout
+        });
+    });
+
+    await Promise.all(publishPromises);
+    return publishedSuccessfully;
 };
 
 export const nostrSvc = {
@@ -180,10 +197,17 @@ export const nostrSvc = {
         await this.subToReps();
     },
 
-    async pubEv(eventData) {
+    async pubEv(eventData, fromOfflineQueue = false) {
         const signedEvent = await idSvc.signEv(eventData);
         if (signedEvent.kind === C.NOSTR_KIND_REPORT) await addReportToStoreAndDb(signedEvent);
-        await publishEventOnline(signedEvent); // This will be handled by Workbox for offline queuing
+
+        const published = await _publishEventToRelays(signedEvent);
+        if (!published && !fromOfflineQueue) {
+            // Only add to offline queue if it wasn't already from there
+            await dbSvc.addOfflineQ({ qid: signedEvent.id, event: signedEvent, ts: Date.now() });
+            appStore.set(s => ({ offlineQueueCount: s.offlineQueueCount + 1 }));
+            showToast("Event queued for offline publishing.", 'info');
+        }
         return signedEvent;
     },
 
@@ -195,10 +219,16 @@ export const nostrSvc = {
             content: 'Event deleted'
         };
         const signedEvent = await idSvc.signEv(eventTemplate);
-        await publishEventOnline(signedEvent); // This will be handled by Workbox for offline queuing
+        const published = await _publishEventToRelays(signedEvent);
+        if (!published) {
+            await dbSvc.addOfflineQ({ qid: signedEvent.id, event: signedEvent, ts: Date.now() });
+            appStore.set(s => ({ offlineQueueCount: s.offlineQueueCount + 1 }));
+            showToast("Deletion event queued for offline publishing.", 'info');
+        } else {
+            showToast("Report deletion event published.", 'success');
+        }
         await dbSvc.rmRep(eventId);
         appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventId) }));
-        showToast("Report deletion event published.", 'success');
     },
 
     async fetchProf(pubkey) {
@@ -248,8 +278,14 @@ export const nostrSvc = {
             content: ''
         };
         const signedEvent = await idSvc.signEv(eventTemplate);
-        await publishEventOnline(signedEvent);
-        showToast("NIP-02 contact list published!", 'success');
+        const published = await _publishEventToRelays(signedEvent);
+        if (!published) {
+            await dbSvc.addOfflineQ({ qid: signedEvent.id, event: signedEvent, ts: Date.now() });
+            appStore.set(s => ({ offlineQueueCount: s.offlineQueueCount + 1 }));
+            showToast("NIP-02 contact list queued for offline publishing.", 'info');
+        } else {
+            showToast("NIP-02 contact list published!", 'success');
+        }
     },
 
     async fetchInteractions(eventId, reportPk) {

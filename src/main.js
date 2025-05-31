@@ -19,12 +19,6 @@ async function setupServiceWorker() {
                     };
                 })
                 .catch(error => console.error("SW Registration Failed:", error));
-
-            navigator.serviceWorker.addEventListener('message', event => {
-                if (event.data && event.data.type === 'OFFLINE_QUEUE_UPDATE') {
-                    appStore.set({ offlineQueueCount: event.data.count });
-                }
-            });
         });
     }
 }
