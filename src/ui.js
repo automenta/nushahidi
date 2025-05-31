@@ -172,7 +172,7 @@ function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     fieldsConfig.forEach(field => {
         const fieldId = field.id || (field.name ? `field-${field.name}` : null);
 
-        if (field.label && field.type !== 'button' && field.type !== 'custom-html' && field.type !== 'paragraph' && field.type !== 'hr' && field.type !== 'checkbox') {
+        if (field.label && field.type !== 'button' && field.type !== 'custom-html' && field.type !== 'paragraph' && field.type !== 'hr' && field.type !== 'checkbox' && field.type !== 'h4') {
             form.appendChild(cE('label', { for: fieldId, textContent: field.label }));
         }
 
@@ -278,6 +278,9 @@ function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
             case 'hr':
                 inputElement = cE('hr');
                 break;
+            case 'h4': // Added for headings within forms
+                inputElement = cE('h4', { textContent: field.content[0] });
+                break;
             case 'radio-group': // For active focus tag
                 inputElement = cE('div', { id: fieldId, class: field.class || '' });
                 field.options.forEach(opt => {
@@ -324,20 +327,34 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
                 }
             });
         }
-        // Add reaction buttons and comment form
-        html += `<div class="reaction-buttons" style="margin-top:0.5rem;">
-            <button data-report-id="${sH(reportId)}" data-report-pk="${sH(reportPk)}" data-reaction="+">👍 Like</button>
-            <button data-report-id="${sH(reportId)}" data-report-pk="${sH(reportPk)}" data-reaction="-">👎 Dislike</button>
-        </div>`;
-        html += `<form id="comment-form" data-report-id="${sH(reportId)}" data-report-pk="${sH(reportPk)}" style="margin-top:0.5rem;">
-            <textarea name="comment" placeholder="Add a public comment..." rows="2" required></textarea>
-            <button type="submit">Post Comment</button>
-        </form>`;
-        container.innerHTML = html;
+        // Add reaction buttons
+        const reactionButtonsDiv = cE('div', { class: 'reaction-buttons', style: 'margin-top:0.5rem;' });
+        reactionButtonsDiv.appendChild(cE('button', { 'data-report-id': sH(reportId), 'data-report-pk': sH(reportPk), 'data-reaction': '+', textContent: '👍 Like' }));
+        reactionButtonsDiv.appendChild(cE('button', { 'data-report-id': sH(reportId), 'data-report-pk': sH(reportPk), 'data-reaction': '-', textContent: '👎 Dislike' }));
+
+        // Define comment form fields
+        const commentFormFields = [
+            { type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true },
+            { type: 'button', buttonType: 'submit', label: 'Post Comment' }
+        ];
+
+        // Render comment form using renderForm
+        const commentForm = renderForm(commentFormFields, {}, {
+            id: 'comment-form',
+            onSubmit: handleCommentSubmit,
+            'data-report-id': sH(reportId),
+            'data-report-pk': sH(reportPk),
+            style: 'margin-top:0.5rem;'
+        });
+
+        container.innerHTML = html; // Set the static HTML content first
+        container.appendChild(reactionButtonsDiv); // Append reaction buttons
+        container.appendChild(commentForm); // Append the dynamically rendered form
 
         // Add event listeners for new buttons/forms
         $$('.reaction-buttons button', container).forEach(btn => btn.onclick = handleReactionSubmit);
-        $('#comment-form', container)?.addEventListener('submit', handleCommentSubmit);
+        // The commentForm already has its onSubmit listener attached via renderForm
+        // $('#comment-form', container)?.addEventListener('submit', handleCommentSubmit); // This line is no longer needed
 
         // Update local report with fetched interactions (if needed for caching)
         appStore.set(s => {
