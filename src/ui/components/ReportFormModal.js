@@ -18,7 +18,7 @@ export class ReportFormModal extends Modal {
         this.pFLocCoordsEl = null;
         this.upldPhotosPreviewEl = null;
 
-        const contentRenderer = (contentRoot, modalRoot) => {
+        const contentRenderer = () => {
             this.modalContentContainer = createEl('div');
             const {form, fields} = renderForm(this.getReportFormFields(appStore.get().settings.cats, {}), {}, {class: 'nstr-rep-form'});
             this.form = form;

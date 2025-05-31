@@ -7,11 +7,10 @@ import {renderForm} from '../forms.js';
 import {applyAllFilters} from './FilterControls.js';
 import {nip19} from 'nostr-tools';
 import {withLoading, withToast} from '../../decorators.js';
-import {ReportFormModal} from './ReportFormModal.js';
 
 export class ReportDetailsModal extends Modal {
     constructor(report, reportFormModal) {
-        const contentRenderer = (contentRoot, modalRoot) => {
+        const contentRenderer = () => {
             this.modalContentContainer = createEl('div', {class: 'report-detail-container'});
             this.renderContent(report, this.modalContentContainer);
             return this.modalContentContainer;

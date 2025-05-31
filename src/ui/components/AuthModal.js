@@ -14,7 +14,7 @@ export class AuthModal extends Modal {
         let importSkBtn;
         let cancelAuthModalBtn;
 
-        const contentRenderer = (contentRoot, modalRoot) => {
+        const contentRenderer = () => {
             const authFormFields = [
                 {type: 'paragraph', content: [createEl('strong', {textContent: 'Recommended: '}), 'Use NIP-07 (Alby, etc.)']},
                 {type: 'button', ref: 'connectNip07Btn', label: 'Connect NIP-07'},
