@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import 'ali.leaflet.markercluster';
-import 'leaflet-draw';
+import 'leaflet-draw'; // Imported as a module
 import { appStore } from '../store.js';
 import { C, $, showToast, generateUUID, getGhPrefixes } from '../utils.js';
 import { showConfirmModal } from '../ui/modals.js';
