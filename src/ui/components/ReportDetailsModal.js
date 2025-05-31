@@ -26,7 +26,7 @@ export class ReportDetailsModal extends Modal {
 
                 this.setupReportDetailEventListeners(report, isAuthor, canFollow, modalContentContainer);
                 this.initializeMiniMap(report, modalContentContainer);
-                this.loadAndDisplayInteractions(report.id, report.pk, modalContentContainer.querySelector(`#interactions-for-${report.id}`));
+                this.loadAndDisplayInteractions(report.id, report.pk, modalContentContainer.querySelector('.interactions'));
             });
             return modalContentContainer;
         };
@@ -87,7 +87,7 @@ export class ReportDetailsModal extends Modal {
             <div class="report-author-info">
                 ${authorPicture}
                 <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(rep.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a> ${authorNip05}</p>
-                ${canFollow ? `<button id="follow-toggle-btn" class="small-button ${isFollowed ? 'unfollow-button' : 'follow-button'}" data-pubkey="${sanitizeHTML(rep.pk)}">${isFollowed ? 'Unfollow' : 'Follow'}</button>` : ''}
+                ${canFollow ? `<button class="small-button ${isFollowed ? 'unfollow-button' : 'follow-button'}" data-pubkey="${sanitizeHTML(rep.pk)}">${isFollowed ? 'Unfollow' : 'Follow'}</button>` : ''}
                 ${authorAbout}
             </div>
         `;
@@ -95,9 +95,9 @@ export class ReportDetailsModal extends Modal {
 
     renderReportDetailHtml(rep, profile, isAuthor, isFollowed, canFollow) {
         return `
-            <button id="back-to-list-btn" class="small-button">&lt; List</button>
-            ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right;">Edit Report</button>` : ''}
-            ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
+            <button class="small-button back-to-list-btn">&lt; List</button>
+            ${isAuthor ? `<button class="small-button edit-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right;">Edit Report</button>` : ''}
+            ${isAuthor ? `<button class="small-button delete-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
             <h2 id="detail-title">${sanitizeHTML(rep.title || 'Report')}</h2>
             ${this.renderAuthorInfo(rep, profile, isFollowed, canFollow)}
             <p><strong>Date:</strong> ${new Date(rep.at * 1000).toLocaleString()}</p>
@@ -105,20 +105,20 @@ export class ReportDetailsModal extends Modal {
             <p><strong>Description:</strong></p><div class="markdown-content" tabindex="0">${marked.parse(sanitizeHTML(rep.ct || ''))}</div>
             ${this.renderReportImages(rep.imgs) ? `<h3>Images:</h3>${this.renderReportImages(rep.imgs)}` : ''}
             <p><strong>Location:</strong> ${rep.lat?.toFixed(5)}, ${rep.lon?.toFixed(5)} (Geohash: ${sanitizeHTML(rep.gh || 'N/A')})</p>
-            <div id="mini-map-det" style="height:150px;margin-top:.7rem;border:1px solid #ccc"></div>
-            <div class="interactions" id="interactions-for-${rep.id}">Loading interactions...</div>
+            <div class="mini-map-det" style="height:150px;margin-top:.7rem;border:1px solid #ccc"></div>
+            <div class="interactions">Loading interactions...</div>
         `;
     }
 
     setupReportDetailEventListeners(rep, isAuthor, canFollow, detailContainer) {
-        detailContainer.querySelector('#back-to-list-btn').onclick = () => { this.hide(); appStore.set(s => ({ ui: { ...s.ui, showReportList: true } })) };
+        detailContainer.querySelector('.back-to-list-btn').onclick = () => { this.hide(); appStore.set(s => ({ ui: { ...s.ui, showReportList: true } })) };
 
         if (isAuthor) {
-            detailContainer.querySelector('#edit-report-btn').onclick = () => {
+            detailContainer.querySelector('.edit-button').onclick = () => {
                 const reportFormModal = new ReportFormModal(rep);
                 reportFormModal.show('rep-title');
             };
-            detailContainer.querySelector('#delete-report-btn').onclick = () => {
+            detailContainer.querySelector('.delete-button').onclick = () => {
                 showConfirmModal(
                     "Delete Report",
                     `Are you sure you want to delete the report "${sanitizeHTML(rep.title || rep.id.substring(0, 8) + '...')}"? This action publishes a deletion event to relays.`,
@@ -133,7 +133,7 @@ export class ReportDetailsModal extends Modal {
             };
         }
 
-        if (canFollow) detailContainer.querySelector('#follow-toggle-btn').onclick = this.handleFollowToggle;
+        if (canFollow) detailContainer.querySelector('.follow-button')?.addEventListener('click', this.handleFollowToggle);
     }
 
     handleFollowToggle = async event => {
@@ -181,11 +181,10 @@ export class ReportDetailsModal extends Modal {
 
         const commentFormFields = [
             { type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true },
-            { type: 'button', id: 'post-comment-btn', buttonType: 'submit', label: 'Post Comment' }
+            { type: 'button', buttonType: 'submit', label: 'Post Comment' }
         ];
 
         const commentForm = renderForm(commentFormFields, {}, {
-            id: 'comment-form',
             onSubmit: this.handleCommentSubmit,
             'data-report-id': sanitizeHTML(reportId),
             'data-report-pk': sanitizeHTML(reportPk),
@@ -221,7 +220,7 @@ export class ReportDetailsModal extends Modal {
 
     initializeMiniMap(rep, modalContent) {
         if (rep.lat && rep.lon && typeof L !== 'undefined') {
-            const miniMapEl = modalContent.querySelector('#mini-map-det');
+            const miniMapEl = modalContent.querySelector('.mini-map-det');
             if (miniMapEl) {
                 const miniMap = L.map(miniMapEl).setView([rep.lat, rep.lon], 13);
                 L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);

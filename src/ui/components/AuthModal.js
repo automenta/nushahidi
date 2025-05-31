@@ -8,6 +8,13 @@ import {withLoading, withToast} from '../../decorators.js';
 export class AuthModal extends Modal {
     constructor() {
         let form;
+        let connNip07Btn;
+        let authPassInput;
+        let createProfBtn;
+        let authSkInput;
+        let importSkBtn;
+        let cancelAuthModalBtn;
+
         const contentRenderer = () => {
             const authFormFields = [
                 { type: 'paragraph', content: [createEl('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)'] },
@@ -25,12 +32,12 @@ export class AuthModal extends Modal {
 
             form = renderForm(authFormFields, {}, {id: 'auth-form'});
 
-            const connNip07Btn = form.querySelector('#conn-nip07-btn');
-            const authPassInput = form.querySelector('#auth-pass');
-            const createProfBtn = form.querySelector('#create-prof-btn');
-            const authSkInput = form.querySelector('#auth-sk');
-            const importSkBtn = form.querySelector('#import-sk-btn');
-            const cancelAuthModalBtn = form.querySelector('#cancel-auth-modal-btn');
+            connNip07Btn = form.querySelector('#conn-nip07-btn');
+            authPassInput = form.querySelector('#auth-pass');
+            createProfBtn = form.querySelector('#create-prof-btn');
+            authSkInput = form.querySelector('#auth-sk');
+            importSkBtn = form.querySelector('#import-sk-btn');
+            cancelAuthModalBtn = form.querySelector('#cancel-auth-modal-btn');
 
             connNip07Btn.onclick = this.handleConnectNip07;
             createProfBtn.onclick = withToast(() => this.handleCreateProfile(authPassInput.value), null, "Error creating profile");

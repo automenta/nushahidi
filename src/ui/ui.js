@@ -1,5 +1,6 @@
-import {appStore} from '../store.js';
-import {C, createEl} from '../utils.js';
+import {appStore} from './store.js';
+import {idSvc} from './services.js';
+import {C, createEl} from './utils.js';
 import {showModal} from './modals.js';
 import {FilterControls, applyAllFilters} from './components/FilterControls.js';
 import {ReportList} from './components/ReportList.js';
@@ -42,10 +43,18 @@ export function initUI() {
     const settingsModal = new SettingsModal();
     const onboardingModal = OnboardingModalComponent();
 
-    const appHeader = AppHeader(authModal, reportFormModal, settingsModal);
+    const appHeader = AppHeader({
+        onCreateReport: () => reportFormModal.show('rep-title'),
+        onAuthToggle: () => {
+            appStore.get().user ?
+                showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
+                authModal.show('#conn-nip07-btn');
+        },
+        onShowSettings: () => settingsModal.show()
+    });
     const filterControls = FilterControls();
     const reportList = ReportList();
-    const connectionStatus = ConnectionStatus(settingsModal);
+    const connectionStatus = ConnectionStatus({ onShowSettings: () => settingsModal.show() });
     const globalLoadingSpinner = GlobalLoadingSpinner();
 
     root.append(

@@ -3,7 +3,8 @@ import {idSvc} from '../../services.js';
 import {createEl, formatNpubShort} from '../../utils.js';
 import {showConfirmModal} from '../modals.js';
 
-export function AppHeader(authModal, reportFormModal, settingsModal) {
+export function AppHeader(props) {
+    const { onCreateReport, onAuthToggle, onShowSettings } = props;
     let headerEl;
     let createReportBtn;
     let authButton;
@@ -28,13 +29,13 @@ export function AppHeader(authModal, reportFormModal, settingsModal) {
             settingsButton = createEl('button', { textContent: 'Settings' });
             userDisplay = createEl('span', { class: 'user-display' });
 
-            createReportBtn.onclick = () => reportFormModal.show('rep-title');
-            settingsButton.onclick = () => settingsModal.show();
+            createReportBtn.onclick = onCreateReport;
+            settingsButton.onclick = onShowSettings;
 
             authButton.onclick = () => {
                 state.user ?
                     showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
-                    authModal.show('#conn-nip07-btn');
+                    onAuthToggle();
             };
 
             headerEl.append(

@@ -3,7 +3,8 @@ import {createEl} from '../../utils.js';
 import {dbSvc} from '../../services.js';
 import {showModal} from '../modals.js';
 
-export function ConnectionStatus(settingsModal) {
+export function ConnectionStatus(props) {
+    const { onShowSettings } = props;
     let statusEl;
     let onlineStatusSpan;
     let syncStatusSpan;
@@ -19,7 +20,7 @@ export function ConnectionStatus(settingsModal) {
         if (!online) {
             syncStatusSpan.textContent = `Sync Status: Offline (${pendingEvents} pending)`;
             offlineQueueCountSpan.textContent = pendingEvents > 0 ? ` (${pendingEvents})` : '';
-            offlineQueueCountSpan.onclick = () => settingsModal && showModal(settingsModal);
+            offlineQueueCountSpan.onclick = () => pendingEvents > 0 && onShowSettings?.();
             offlineQueueCountSpan.style.cursor = pendingEvents > 0 ? 'pointer' : 'default';
         } else {
             syncStatusSpan.textContent = `Sync Status: Online (${reports.length} reports)`;

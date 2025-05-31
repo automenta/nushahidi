@@ -35,11 +35,11 @@ export class ReportFormModal extends Modal {
             { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
             { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
             { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
-            { label: 'Location:', type: 'custom-html', id: 'map-pick-area', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
-            { label: 'Pick Location', type: 'button', id: 'pick-loc-map-btn', buttonType: 'button' },
-            { label: 'Use GPS', type: 'button', id: 'use-gps-loc-btn', buttonType: 'button' },
+            { label: 'Location:', type: 'custom-html', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
+            { type: 'button', id: 'pick-loc-map-btn', label: 'Pick Location', buttonType: 'button' },
+            { type: 'button', id: 'use-gps-loc-btn', label: 'Use GPS', buttonType: 'button' },
             { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
-            { label: 'Geocode Address', type: 'button', id: 'geocode-address-btn', buttonType: 'button' },
+            { type: 'button', id: 'geocode-address-btn', label: 'Geocode Address', buttonType: 'button' },
             {
                 label: 'Categories:',
                 type: 'checkbox-group',
@@ -66,8 +66,8 @@ export class ReportFormModal extends Modal {
             { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' },
             { type: 'custom-html', id: 'upld-photos-preview' },
             { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
-            { label: initialData.isEdit ? 'Update Report' : 'Submit', type: 'button', id: 'submit-report-btn', buttonType: 'submit' },
-            { label: 'Cancel', type: 'button', id: 'cancel-report-btn', buttonType: 'button', class: 'secondary', onclick: () => this.hide() }
+            { type: 'button', id: 'submit-report-btn', label: initialData.isEdit ? 'Update Report' : 'Submit', buttonType: 'submit' },
+            { type: 'button', id: 'cancel-report-btn', class: 'secondary', label: 'Cancel', onclick: () => this.hide() }
         ];
 
         const renderImagePreview = (imagesMetadata) => {
@@ -82,8 +82,8 @@ export class ReportFormModal extends Modal {
                 label: 'x',
                 className: 'remove-image-btn',
                 onClick: (item, index) => {
-                    formState.uIMeta.splice(index, 1);
-                    renderImagePreview(formState.uIMeta);
+                    imagesMetadata.splice(index, 1);
+                    updatePreview(imagesMetadata);
                 }
             }];
 

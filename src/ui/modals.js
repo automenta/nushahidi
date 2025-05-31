@@ -11,15 +11,12 @@ export class Modal {
     }
 
     createModalElement() {
-        const existingModal = document.getElementById(this.modalId);
-        if (existingModal) existingModal.remove();
-
         const modalElement = createEl('div', { id: this.modalId, class: 'modal', inert: '' });
         const modalContent = createEl('div', { class: 'modal-content' });
 
         modalElement.append(
             createEl('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => this.hide() }),
-            createEl('h2', { id: `${this.modalId}-heading`, textContent: sanitizeHTML(this.title) }),
+            createEl('h2', { textContent: sanitizeHTML(this.title) }),
             modalContent
         );
 
@@ -66,7 +63,7 @@ export const hideModal = modalInstance => {
 };
 
 export const showConfirmModal = (title, message, onConfirm, onCancel) => {
-    const confirmModal = new Modal('confirm-modal', title, (contentRoot) => {
+    const confirmModal = new Modal('confirm-modal', title, () => {
         const cancelBtn = createEl('button', { class: 'cancel-button', textContent: 'Cancel' });
         const confirmBtn = createEl('button', { class: 'confirm-button', textContent: 'Confirm' });
 
@@ -78,7 +75,7 @@ export const showConfirmModal = (title, message, onConfirm, onCancel) => {
             createEl('div', { class: 'confirm-modal-buttons' }, [cancelBtn, confirmBtn])
         ];
     });
-    confirmModal.show(confirmModal.root.querySelector(`#${confirmModal.modalId}-heading`));
+    confirmModal.show(confirmModal.root.querySelector('h2'));
 };
 
 export const showPassphraseModal = (title, message) => {
@@ -87,7 +84,7 @@ export const showPassphraseModal = (title, message) => {
         let decryptBtn;
         let cancelBtn;
 
-        const passphraseModal = new Modal('passphrase-modal', title, (contentRoot) => {
+        const passphraseModal = new Modal('passphrase-modal', title, () => {
             passphraseInput = createEl('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
             decryptBtn = createEl('button', { class: 'confirm-button', textContent: 'Decrypt' });
             cancelBtn = createEl('button', { class: 'cancel-button', textContent: 'Cancel' });

@@ -24,17 +24,15 @@ export const MapTilesSection = () => {
                     options: C.TILE_SERVERS_PREDEFINED.map(p => ({ value: p.name, label: p.name }))
                 },
                 { label: 'Custom Tile URL Template:', type: 'url', id: 'tile-url-in', name: 'tileUrl', value: appState.settings.tileUrl },
-                { label: 'Save Tiles', type: 'button', id: 'save-tile-btn', buttonType: 'button' }
+                { type: 'button', id: 'save-tile-btn', label: 'Save Map Tiles', buttonType: 'button' }
             ];
 
             form = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
             sectionEl.appendChild(form);
 
-            saveTileBtn = createEl('button', { type: 'button', id: 'save-tile-btn', textContent: 'Save Map Tiles' });
-            sectionEl.appendChild(saveTileBtn);
-
             tilePresetSel = form.querySelector('#tile-preset-sel');
             tileUrlIn = form.querySelector('#tile-url-in');
+            saveTileBtn = form.querySelector('#save-tile-btn');
 
             tilePresetSel.onchange = () => {
                 const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === tilePresetSel.value);
