@@ -1,7 +1,7 @@
 import { appStore } from './store.js';
 import { confSvc, idSvc, nostrSvc, mapSvc, dbSvc, offSvc } from './services.js';
 import { initUI } from './ui.js';
-import { $, C } from './utils.js';
+import { $ } from './utils.js';
 
 async function main() {
     appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start global loading
@@ -45,7 +45,7 @@ async function main() {
     await dbSvc.pruneDb(); // Prune IndexedDB on startup
 
     appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End global loading
-    console.log("NostrMapper Initialized (vFinal Compact). Focus Tag:", appStore.get().currentFocusTag);
+    console.log("NostrMapper Initialized.");
 }
 
 document.addEventListener('DOMContentLoaded', main);

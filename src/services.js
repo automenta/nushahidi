@@ -26,8 +26,8 @@ const getDbStore = async (storeName, mode = 'readonly') => {
                 if (!db.objectStoreNames.contains(C.STORE_PROFILES)) db.createObjectStore(C.STORE_PROFILES, { keyPath: 'pk' });
                 if (!db.objectStoreNames.contains(C.STORE_SETTINGS)) db.createObjectStore(C.STORE_SETTINGS, { keyPath: 'id' });
                 if (!db.objectStoreNames.contains(C.STORE_OFFLINE_QUEUE)) db.createObjectStore(C.STORE_OFFLINE_QUEUE, { autoIncrement: true, keyPath: 'qid' });
-                if (!db.objectStoreNames.contains(C.STORE_DRAWN_SHAPES)) db.createObjectStore(C.STORE_DRAWN_SHAPES, { keyPath: 'id' }); // New store for drawn shapes
-                if (!db.objectStoreNames.contains(C.STORE_FOLLOWED_PUBKEYS)) db.createObjectStore(C.STORE_FOLLOWED_PUBKEYS, { keyPath: 'pk' }); // New store for followed pubkeys
+                if (!db.objectStoreNames.contains(C.STORE_DRAWN_SHAPES)) db.createObjectStore(C.STORE_DRAWN_SHAPES, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(C.STORE_FOLLOWED_PUBKEYS)) db.createObjectStore(C.STORE_FOLLOWED_PUBKEYS, { keyPath: 'pk' });
             };
         });
     }
@@ -38,7 +38,7 @@ export const dbSvc = { /* dbSvc: dbService */
     getRep: async id => (await getDbStore(C.STORE_REPORTS)).get(id),
     getAllReps: async () => (await getDbStore(C.STORE_REPORTS)).getAll(),
     addRep: async r => (await getDbStore(C.STORE_REPORTS, 'readwrite')).put(r),
-    rmRep: async id => (await getDbStore(C.STORE_REPORTS, 'readwrite')).delete(id), // Added for deletion
+    rmRep: async id => (await getDbStore(C.STORE_REPORTS, 'readwrite')).delete(id),
     clearReps: async () => (await getDbStore(C.STORE_REPORTS, 'readwrite')).clear(),
     getProf: async pk => (await getDbStore(C.STORE_PROFILES)).get(pk),
     addProf: async p => (await getDbStore(C.STORE_PROFILES, 'readwrite')).put(p),
@@ -47,12 +47,10 @@ export const dbSvc = { /* dbSvc: dbService */
     addOfflineQ: async e => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).add(e),
     getOfflineQ: async () => (await getDbStore(C.STORE_OFFLINE_QUEUE)).getAll(),
     rmOfflineQ: async qid => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).delete(qid),
-    // New: Methods for drawn shapes
     addDrawnShape: async shape => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).put(shape),
     getAllDrawnShapes: async () => (await getDbStore(C.STORE_DRAWN_SHAPES)).getAll(),
     rmDrawnShape: async id => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).delete(id),
     clearDrawnShapes: async () => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).clear(),
-    // New: Methods for followed pubkeys
     getFollowedPubkeys: async () => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS)).getAll(),
     addFollowedPubkey: async (pk) => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).put({ pk, followedAt: Date.now() }),
     rmFollowedPubkey: async (pk) => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).delete(pk),
@@ -101,59 +99,75 @@ export const confSvc = { /* confSvc: configService */
      */
     async load() {
         let settings = await dbSvc.loadSetts();
-        let followedPubkeys = await dbSvc.getFollowedPubkeys(); // New: Load followed pubkeys
+        let followedPubkeys = await dbSvc.getFollowedPubkeys();
 
-        // Initialize with defaults if no settings found
-        if (!settings) {
-            settings = {
-                rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),
-                tileUrl: C.TILE_SERVER_DEFAULT,
-                tilePreset: 'OpenStreetMap',
-                focusTags: [{ tag: C.FOCUS_TAG_DEFAULT, active: true }],
-                cats: ['Incident', 'Observation', 'Aid'],
-                mute: [],
-                id: null,
-                imgH: C.IMG_UPLOAD_NOSTR_BUILD,
-                nip96H: '',
-                nip96T: ''
-            };
-        }
-
-        // Ensure backward compatibility and proper initialization for relays
-        settings.rls = settings.rls || C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null }));
-        settings.rls.forEach(r => {
-            if (r.status === undefined) r.status = '?';
-            if (r.nip11 === undefined) r.nip11 = null;
+        // Helper to initialize settings with defaults if not found
+        const _initializeSettingsDefaults = () => ({
+            rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),
+            tileUrl: C.TILE_SERVER_DEFAULT,
+            tilePreset: 'OpenStreetMap',
+            focusTags: [{ tag: C.FOCUS_TAG_DEFAULT, active: true }],
+            cats: ['Incident', 'Observation', 'Aid'],
+            mute: [],
+            id: null,
+            imgH: C.IMG_UPLOAD_NOSTR_BUILD,
+            nip96H: '',
+            nip96T: ''
         });
 
-        // Handle focus tag migration from string to array of objects
-        if (typeof settings.focus === 'string') {
-            settings.focusTags = [{ tag: settings.focus, active: true }];
-            delete settings.focus; // Remove old property
-        } else if (!settings.focusTags || settings.focusTags.length === 0) {
-            settings.focusTags = [{ tag: C.FOCUS_TAG_DEFAULT, active: true }];
+        // Helper to handle relay settings migration/initialization
+        const _migrateRelaySettings = (currentSettings) => {
+            currentSettings.rls = currentSettings.rls || C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null }));
+            currentSettings.rls.forEach(r => {
+                if (r.status === undefined) r.status = '?';
+                if (r.nip11 === undefined) r.nip11 = null;
+            });
+            return currentSettings.rls;
+        };
+
+        // Helper to handle focus tag migration
+        const _migrateFocusTags = (currentSettings) => {
+            if (typeof currentSettings.focus === 'string') {
+                const tags = [{ tag: currentSettings.focus, active: true }];
+                delete currentSettings.focus; // Remove old property
+                return tags;
+            } else if (!currentSettings.focusTags || currentSettings.focusTags.length === 0) {
+                return [{ tag: C.FOCUS_TAG_DEFAULT, active: true }];
+            }
+            return currentSettings.focusTags;
+        };
+
+        // Helper to handle tile server migration
+        const _migrateTileSettings = (currentSettings) => {
+            const tileUrl = currentSettings.tileUrl || currentSettings.tile || C.TILE_SERVER_DEFAULT;
+            const tilePreset = currentSettings.tilePreset || (currentSettings.tile === C.TILE_SERVER_DEFAULT ? 'OpenStreetMap' : 'Custom');
+            delete currentSettings.tile; // Remove old property
+            return { tileUrl, tilePreset };
+        };
+
+        if (!settings) {
+            settings = _initializeSettingsDefaults();
         }
-        const currentFocusTag = settings.focusTags.find(t => t.active)?.tag || C.FOCUS_TAG_DEFAULT;
 
-        // Handle tile server migration
-        settings.tileUrl = settings.tileUrl || settings.tile || C.TILE_SERVER_DEFAULT;
-        settings.tilePreset = settings.tilePreset || (settings.tile === C.TILE_SERVER_DEFAULT ? 'OpenStreetMap' : 'Custom');
-        delete settings.tile; // Remove old property
+        const updatedRelays = _migrateRelaySettings(settings);
+        const updatedFocusTags = _migrateFocusTags(settings);
+        const { tileUrl, tilePreset } = _migrateTileSettings(settings);
+        const currentFocusTag = updatedFocusTags.find(t => t.active)?.tag || C.FOCUS_TAG_DEFAULT;
 
-        // New: Handle followed pubkeys migration/initialization
+        // Ensure followedPubkeys is an array
         if (!followedPubkeys) {
             followedPubkeys = [];
         }
 
         appStore.set({
-            relays: settings.rls,
-            focusTags: settings.focusTags,
+            relays: updatedRelays,
+            focusTags: updatedFocusTags,
             currentFocusTag: currentFocusTag,
-            followedPubkeys: followedPubkeys, // New: Set followed pubkeys
+            followedPubkeys: followedPubkeys,
             settings: {
                 ...appStore.get().settings, // Keep existing settings not explicitly loaded
-                tileUrl: settings.tileUrl,
-                tilePreset: settings.tilePreset,
+                tileUrl: tileUrl,
+                tilePreset: tilePreset,
                 cats: settings.cats,
                 mute: settings.mute,
                 imgHost: settings.imgH,
@@ -174,7 +188,7 @@ export const confSvc = { /* confSvc: configService */
         const updatedSettings = { ...currentSettings, ...partialSettings };
         await dbSvc.saveSetts(updatedSettings);
 
-        // New: Handle followedPubkeys separately as they are in their own store
+        // Handle followedPubkeys separately as they are in their own store
         if (partialSettings.followedPubkeys !== undefined) {
             const currentFollowed = await dbSvc.getFollowedPubkeys();
             const newFollowed = partialSettings.followedPubkeys;
@@ -197,7 +211,7 @@ export const confSvc = { /* confSvc: configService */
             relays: updatedSettings.rls || s.relays,
             focusTags: updatedSettings.focusTags || s.focusTags,
             currentFocusTag: updatedSettings.currentFocusTag || s.currentFocusTag,
-            followedPubkeys: partialSettings.followedPubkeys !== undefined ? partialSettings.followedPubkeys : s.followedPubkeys, // New: Update followedPubkeys in appStore
+            followedPubkeys: partialSettings.followedPubkeys !== undefined ? partialSettings.followedPubkeys : s.followedPubkeys,
             settings: {
                 ...s.settings,
                 tileUrl: updatedSettings.tileUrl || s.settings.tileUrl,
@@ -226,7 +240,6 @@ export const confSvc = { /* confSvc: configService */
     getTileServer: () => appStore.get().settings.tileUrl,
     getCurrentFocusTag: () => appStore.get().currentFocusTag,
     setImgHost: (host, isNip96 = false, token = '') => confSvc.save(isNip96 ? { nip96H: host, nip96T: token, imgH: '' } : { imgH: host, nip96H: '', nip96T: '' }),
-    // New: Followed pubkey management
     addFollowed: pk => { const f = appStore.get().followedPubkeys; if (!f.some(fp => fp.pk === pk)) confSvc.save({ followedPubkeys: [...f, { pk, followedAt: Date.now() }] }) },
     rmFollowed: pk => confSvc.save({ followedPubkeys: appStore.get().followedPubkeys.filter(fp => fp.pk !== pk) }),
     setFollowedPubkeys: f => confSvc.save({ followedPubkeys: f }),
@@ -420,7 +433,13 @@ const updRlyStore = (url, status, nip11Doc = null) => {
  */
 const addReportToStoreAndDb = async (signedEvent) => {
     const report = parseReport(signedEvent);
-    await dbSvc.addRep(report);
+    await dbSvc.addRep(report); // Add/update report in DB
+
+    // Preserve existing interactions if any, then update appStore
+    // This ensures interactions fetched previously are not lost if a new event for the same report comes in
+    const existingReportInDb = await dbSvc.getRep(report.id);
+    report.interactions = existingReportInDb?.interactions || [];
+
     appStore.set(s => {
         const index = s.reports.findIndex(rp => rp.id === report.id);
         const updatedReports = (index > -1) ?
@@ -503,14 +522,16 @@ export const nostrSvc = { /* nostrSvc: nostrService */
 
         const focusTag = appStore.get().currentFocusTag;
         const mapGeohashes = appStore.get().mapGhs;
-        const followedPubkeys = appStore.get().followedPubkeys.map(f => f.pk); // New: Get followed pubkeys
+        const followedPubkeys = appStore.get().followedPubkeys.map(f => f.pk);
 
         const baseFilter = { kinds: [C.NOSTR_KIND_REPORT] };
+
+        // Apply focus tag filter if not default
         if (focusTag && focusTag !== C.FOCUS_TAG_DEFAULT) {
             baseFilter['#t'] = [focusTag.substring(1)]; // Remove '#' prefix for tag filter
         }
 
-        // New: If "followed only" filter is active, add authors to the filter
+        // If "followed only" filter is active, add authors to the filter
         if (appStore.get().ui.followedOnlyFilter && followedPubkeys.length > 0) {
             baseFilter.authors = followedPubkeys;
         }
@@ -526,10 +547,12 @@ export const nostrSvc = { /* nostrSvc: nostrService */
 
             // Apply geohash filter if map bounds are available
             if (mapGeohashes?.length > 0) {
+                // Check for NIP-52 support for multiple geohashes
                 if (relayConfig.nip11?.supported_nips?.includes(52)) {
                     currentFilter['#g'] = mapGeohashes; // Use all geohash prefixes if NIP-52 supported
                 } else {
                     // Fallback for non-NIP-52 relays: use the broadest geohash prefix (precision 4)
+                    // This assumes mapGeohashes is sorted by precision, with the broadest first.
                     currentFilter['#g'] = [mapGeohashes[0]];
                 }
             }
@@ -543,19 +566,7 @@ export const nostrSvc = { /* nostrSvc: nostrService */
                     // Skip muted authors
                     if (appStore.get().settings.mute.includes(report.pk)) return;
 
-                    await dbSvc.addRep(report); // Add/update report in DB
-
-                    // Preserve existing interactions if any, then update appStore
-                    const existingInteractions = (await dbSvc.getRep(report.id))?.interactions || [];
-                    report.interactions = existingInteractions;
-
-                    appStore.set(s => {
-                        const index = s.reports.findIndex(rp => rp.id === report.id);
-                        const updatedReports = (index > -1) ?
-                            [...s.reports.slice(0, index), report, ...s.reports.slice(index + 1)] :
-                            [...s.reports, report];
-                        return { reports: updatedReports.sort((a, b) => b.at - a.at) };
-                    });
+                    await addReportToStoreAndDb(event); // Use the helper to add/update report
                 });
 
                 sub.on('eose', () => {
@@ -673,7 +684,7 @@ export const nostrSvc = { /* nostrSvc: nostrService */
     async fetchProf(pubkey) {
         let profile = await dbSvc.getProf(pubkey);
         // Return cached profile if less than 24 hours old
-        if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile;
+        if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile; // 864e5 ms = 24 hours
 
         const filter = { kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 };
         const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1);
