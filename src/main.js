@@ -1,12 +1,12 @@
 import {appStore} from './store.js';
 import {confSvc, dbSvc, idSvc, mapSvc, nostrSvc, offSvc} from './services.js';
 import {initUI} from './ui.js';
-import {showToast} from './utils.js';
+import {$} from './utils.js'; // Added $ import
 
 async function setupServiceWorker() {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('/sw.js', { type: 'module' }) // Added { type: 'module' }
                 .then(registration => {
                     registration.onupdatefound = () => {
                         const installingWorker = registration.installing;
@@ -46,7 +46,7 @@ async function initializeApplication() {
         await dbSvc.pruneDb();
     } catch (e) {
         console.error("Application initialization failed:", e);
-        showToast(`App failed to load: ${e.message}`, 'error', 0);
+        // showToast(`App failed to load: ${e.message}`, 'error', 0); // Removed for now, as it might cause issues if toast container isn't ready
     } finally {
         appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     }

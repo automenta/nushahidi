@@ -13,7 +13,10 @@ const settingsContentRenderer = modalRoot => {
             renderConfigurableListSetting(settingsSectionsWrapper, section);
         } else if (section.type === 'section') {
             const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
-            sectionEl.appendChild(section.renderer(settingsSectionsWrapper));
+            const renderedContent = section.renderer(settingsSectionsWrapper); // Capture the returned value
+            if (renderedContent) { // Check if it's a valid Node before appending
+                sectionEl.appendChild(renderedContent);
+            }
             settingsSectionsWrapper.appendChild(sectionEl);
             settingsSectionsWrapper.appendChild(createEl('hr'));
         } else if (section.type === 'offline-queue') {

@@ -23,11 +23,46 @@ const getDbStore = async (storeName, mode = 'readonly') => {
 };
 
 const createDbStoreCrud = (storeName) => ({
-    get: async id => (await getDbStore(storeName)).get(id),
-    getAll: async () => (await getDbStore(storeName)).getAll(),
-    add: async item => (await getDbStore(storeName, 'readwrite')).put(item),
-    rm: async id => (await getDbStore(storeName, 'readwrite')).delete(id),
-    clear: async () => (await getDbStore(storeName, 'readwrite')).clear(),
+    get: async id => {
+        const store = await getDbStore(storeName);
+        return new Promise((resolve, reject) => {
+            const request = store.get(id);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = e => reject(e.target.error);
+        });
+    },
+    getAll: async () => {
+        const store = await getDbStore(storeName);
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = e => reject(e.target.error);
+        });
+    },
+    add: async item => {
+        const store = await getDbStore(storeName, 'readwrite');
+        return new Promise((resolve, reject) => {
+            const request = store.put(item);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = e => reject(e.target.error);
+        });
+    },
+    rm: async id => {
+        const store = await getDbStore(storeName, 'readwrite');
+        return new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = e => reject(e.target.error);
+        });
+    },
+    clear: async () => {
+        const store = await getDbStore(storeName, 'readwrite');
+        return new Promise((resolve, reject) => {
+            const request = store.clear();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = e => reject(e.target.error);
+        });
+    },
 });
 
 export const dbSvc = {

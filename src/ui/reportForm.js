@@ -20,7 +20,7 @@ const REPORT_FORM_FIELDS = (categories, initialFormData, updateImagePreview, upd
         id: 'cats-cont-form',
         name: 'category',
         class: 'cats-cont-form',
-        options: categories.map(cat => ({ value: cat, label: cat }))
+        options: (categories || []).map(cat => ({ value: cat, label: cat })) // Added || []
     },
     { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
     {
