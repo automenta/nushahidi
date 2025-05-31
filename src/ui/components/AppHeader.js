@@ -1,5 +1,6 @@
 import {appStore} from '../../store.js';
 import {createEl, formatNpubShort} from '../../utils.js';
+import {ConnectionStatus} from './ConnectionStatus.js';
 
 export class AppHeader {
     constructor(props) {
@@ -12,9 +13,7 @@ export class AppHeader {
         this.authButton = createEl('button');
         this.settingsButton = createEl('button', { textContent: 'Settings' });
         this.userDisplay = createEl('span', { class: 'user-display' });
-        this.connectionStatusEl = createEl('span');
-        this.syncStatusEl = createEl('span');
-        this.offlineQueueCountEl = createEl('span');
+        this.connectionStatusComponent = new ConnectionStatus(this.onShowSettings);
 
         this.createReportBtn.onclick = this.onCreateReport;
         this.settingsButton.onclick = this.onShowSettings;
@@ -26,7 +25,7 @@ export class AppHeader {
             this.authButton,
             this.settingsButton,
             this.userDisplay,
-            createEl('div', { class: 'connection-status' }, [this.connectionStatusEl, this.syncStatusEl, this.offlineQueueCountEl])
+            this.connectionStatusComponent.element
         );
 
         this.render(appStore.get());
@@ -34,12 +33,6 @@ export class AppHeader {
         this.unsubscribe = appStore.on(async (newState, oldState) => {
             if (newState.user?.pk !== oldState?.user?.pk) {
                 this.updateAuthDisplay(newState.user?.pk);
-            }
-            if (newState.online !== oldState?.online) {
-                this.updateConnectionDisplay(newState.online);
-            }
-            if (newState.online !== oldState?.online || newState.offlineQueueCount !== oldState?.offlineQueueCount) {
-                this.updateSyncDisplay(newState.online, newState.offlineQueueCount);
             }
         });
     }
@@ -54,29 +47,8 @@ export class AppHeader {
         }
     }
 
-    updateConnectionDisplay(online) {
-        this.connectionStatusEl.textContent = online ? 'Online' : 'Offline';
-        this.connectionStatusEl.className = online ? 'status-online' : 'status-offline';
-    }
-
-    updateSyncDisplay(online, pendingEvents) {
-        if (!online) {
-            this.syncStatusEl.textContent = `Sync Status: Offline (${pendingEvents} pending)`;
-            this.offlineQueueCountEl.textContent = pendingEvents > 0 ? ` (${pendingEvents})` : '';
-            this.offlineQueueCountEl.onclick = () => pendingEvents > 0 && this.onShowSettings?.();
-            this.offlineQueueCountEl.style.cursor = pendingEvents > 0 ? 'pointer' : 'default';
-        } else {
-            this.syncStatusEl.textContent = `Sync Status: Online`;
-            this.offlineQueueCountEl.textContent = '';
-            this.offlineQueueCountEl.onclick = null;
-            this.offlineQueueCountEl.style.cursor = 'default';
-        }
-    }
-
     render(state) {
         this.updateAuthDisplay(state.user?.pk);
-        this.updateConnectionDisplay(state.online);
-        this.updateSyncDisplay(state.online, state.offlineQueueCount);
         return this.headerEl;
     }
 

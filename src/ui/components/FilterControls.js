@@ -165,10 +165,10 @@ export class FilterControls {
         newForm.querySelector('#clear-drawn-shapes-btn').onclick = mapSvc.clearAllDrawnShapes;
 
         const mapDrawControlsContainer = newForm.querySelector('#map-draw-controls');
-        mapDrawControlsContainer.innerHTML = ''; // Clear previous controls if re-rendering
+        mapDrawControlsContainer.innerHTML = '';
         mapDrawControlsContainer.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 
-        this.filterFormElement.innerHTML = ''; // Clear previous content
+        this.filterFormElement.innerHTML = '';
         this.filterFormElement.appendChild(newForm);
 
         return this.filterFormElement;

@@ -21,6 +21,7 @@ export class App {
         this.reportFormModal = new ReportFormModal();
         this.settingsModal = new SettingsModal();
         this.onboardingModal = new OnboardingModal();
+        this.reportDetailsModal = null;
 
         this.appHeader = new AppHeader({
             onCreateReport: () => this.reportFormModal.show('rep-title'),
@@ -64,11 +65,15 @@ export class App {
             if (shouldReapplyFilters) applyAllFilters();
 
             if (newState.ui.reportIdToView !== oldState?.ui?.reportIdToView) {
+                if (this.reportDetailsModal) {
+                    this.reportDetailsModal.hide();
+                    this.reportDetailsModal = null;
+                }
                 if (newState.ui.reportIdToView) {
                     const report = newState.reports.find(r => r.id === newState.ui.reportIdToView);
                     if (report) {
-                        const reportDetailsModal = new ReportDetailsModal(report);
-                        reportDetailsModal.show('detail-title');
+                        this.reportDetailsModal = new ReportDetailsModal(report, this.reportFormModal);
+                        this.reportDetailsModal.show('detail-title');
                     }
                 }
             }

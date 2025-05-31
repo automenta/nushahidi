@@ -10,7 +10,7 @@ import {withLoading, withToast} from '../../decorators.js';
 import {ReportFormModal} from './ReportFormModal.js';
 
 export class ReportDetailsModal extends Modal {
-    constructor(report) {
+    constructor(report, reportFormModal) {
         let modalContentContainer;
         const contentRenderer = () => {
             modalContentContainer = createEl('div');
@@ -19,6 +19,7 @@ export class ReportDetailsModal extends Modal {
         };
         super('report-detail-container', report.title || 'Report Details', contentRenderer);
         this.report = report;
+        this.reportFormModal = reportFormModal;
         this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.ui.reportIdToView === this.report.id && newState.reports !== oldState?.reports) {
                 const updatedReport = newState.reports.find(r => r.id === this.report.id);
@@ -126,8 +127,7 @@ export class ReportDetailsModal extends Modal {
 
         if (isAuthor) {
             detailContainer.querySelector('.edit-button').onclick = () => {
-                const reportFormModal = new ReportFormModal(rep);
-                reportFormModal.show('rep-title');
+                this.reportFormModal.show('rep-title', rep);
             };
             detailContainer.querySelector('.delete-button').onclick = () => {
                 showConfirmModal(

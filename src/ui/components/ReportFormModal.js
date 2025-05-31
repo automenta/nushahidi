@@ -6,35 +6,21 @@ import {Modal} from '../modals.js';
 import {withLoading, withToast} from '../../decorators.js';
 
 export class ReportFormModal extends Modal {
-    constructor(reportToEdit = null) {
-        const categories = appStore.get().settings.cats;
+    constructor() {
+        this.reportToEdit = null;
         this.formState = {
-            pFLoc: reportToEdit?.lat && reportToEdit?.lon ? { lat: reportToEdit.lat, lng: reportToEdit.lon } : null,
-            uIMeta: reportToEdit?.imgs?.length ? [...reportToEdit.imgs] : []
-        };
-
-        const initialFormData = {
-            title: reportToEdit?.title,
-            summary: reportToEdit?.sum,
-            description: reportToEdit?.ct,
-            category: reportToEdit?.cat,
-            freeTags: reportToEdit?.fTags?.join(', '),
-            eventType: reportToEdit?.evType,
-            status: reportToEdit?.stat,
-            isEdit: !!reportToEdit,
-            uIMeta: this.formState.uIMeta,
-            location: this.formState.pFLoc ? `${this.formState.pFLoc.lat.toFixed(5)},${this.formState.pFLoc.lng.toFixed(5)}` : 'None'
+            pFLoc: null,
+            uIMeta: []
         };
 
         this.modalContentContainer = null;
         this.form = null;
         this.pFLocCoordsEl = null;
         this.upldPhotosPreviewEl = null;
-        this.reportToEdit = reportToEdit;
 
         const contentRenderer = () => {
             this.modalContentContainer = createEl('div');
-            this.form = renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
+            this.form = renderForm(this.getReportFormFields(appStore.get().settings.cats, {}), {}, { id: 'nstr-rep-form' });
             this.modalContentContainer.appendChild(this.form);
 
             this.pFLocCoordsEl = this.form.querySelector('#pFLoc-coords');
@@ -50,7 +36,44 @@ export class ReportFormModal extends Modal {
             return this.modalContentContainer;
         };
 
-        super('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', contentRenderer);
+        super('report-form-modal', 'New Report', contentRenderer);
+    }
+
+    show(focusElOrSelector, reportToEdit = null) {
+        this.reportToEdit = reportToEdit;
+        const categories = appStore.get().settings.cats;
+
+        this.formState.pFLoc = reportToEdit?.lat && reportToEdit?.lon ? { lat: reportToEdit.lat, lng: reportToEdit.lon } : null;
+        this.formState.uIMeta = reportToEdit?.imgs?.length ? [...reportToEdit.imgs] : [];
+
+        const initialFormData = {
+            title: reportToEdit?.title,
+            summary: reportToEdit?.sum,
+            description: reportToEdit?.ct,
+            category: reportToEdit?.cat,
+            freeTags: reportToEdit?.fTags?.join(', '),
+            eventType: reportToEdit?.evType,
+            status: reportToEdit?.stat,
+            isEdit: !!reportToEdit,
+            uIMeta: this.formState.uIMeta,
+            location: this.formState.pFLoc ? `${this.formState.pFLoc.lat.toFixed(5)},${this.formState.pFLoc.lng.toFixed(5)}` : 'None'
+        };
+
+        this.root.querySelector('h2').textContent = reportToEdit ? 'Edit Report' : 'New Report';
+        this.form.innerHTML = '';
+        renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' }).childNodes.forEach(node => this.form.appendChild(node));
+
+        this.pFLocCoordsEl = this.form.querySelector('#pFLoc-coords');
+        this.upldPhotosPreviewEl = this.form.querySelector('#upld-photos-preview');
+
+        this.form.querySelector('#rep-photos').onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this), this.form);
+        this.setupReportFormLocationHandlers(this.form, this.formState, this.updateLocationDisplay.bind(this));
+        this.setupReportFormSubmission(this.form, this.reportToEdit, this.formState, this.formState.uIMeta);
+
+        this.renderImagePreview(this.formState.uIMeta);
+        this.updateLocationDisplay();
+
+        super.show(focusElOrSelector);
     }
 
     getReportFormFields(cats, initialData) {
@@ -139,7 +162,7 @@ export class ReportFormModal extends Modal {
             mapSvc.enPickLoc(latlng => {
                 formState.pFLoc = latlng;
                 updateLocationDisplay();
-                this.show('rep-title');
+                this.show('rep-title', this.reportToEdit);
             });
         };
 
