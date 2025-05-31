@@ -9,25 +9,22 @@ export class ImageHostSection {
         this.sectionEl = createEl('section');
         this.sectionEl.appendChild(createEl('h3', {textContent: 'Image Host'}));
         this.form = null;
-        this.imgHostSel = null;
-        this.nip96Fields = null;
-        this.nip96UrlIn = null;
-        this.nip96TokenIn = null;
-        this.saveBtn = null;
+        this.formFields = {}; // Store references to form fields for granular updates
 
-        this.render(appStore.get());
+        this.createFormElements(appStore.get()); // Initial creation of form elements
+        this.sectionEl.appendChild(this.form);
 
         this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.settings.imgH !== oldState?.settings?.imgH ||
                 newState.settings.nip96H !== oldState?.settings?.nip96H ||
                 newState.settings.nip96T !== oldState?.settings?.nip96T) {
-                this.render(newState);
+                this.updateFormElements(newState); // Granular update
             }
         });
     }
 
-    render(appState) {
-        const imageHostFormFields = [
+    createFormElements(appState) {
+        const imageHostFormFieldsConfig = [
             {
                 label: 'Provider:',
                 type: 'select',
@@ -53,31 +50,19 @@ export class ImageHostSection {
             {type: 'button', ref: 'saveImgHostBtn', textContent: 'Save Image Host'}
         ];
 
-        const {form, fields} = renderForm(imageHostFormFields, {}, {class: 'image-host-form'});
+        const {form, fields} = renderForm(imageHostFormFieldsConfig, {}, {class: 'image-host-form'});
+        this.form = form;
+        this.formFields = fields;
 
-        if (!this.form) {
-            this.form = form;
-            this.sectionEl.appendChild(this.form);
-        } else {
-            this.form.replaceWith(form);
-            this.form = form;
-        }
-
-        this.imgHostSel = fields.imgHostProviderSelect;
-        this.nip96Fields = fields.nip96FieldsContainer;
-        this.nip96UrlIn = fields.nip96Url;
-        this.nip96TokenIn = fields.nip96Token;
-        this.saveBtn = fields.saveImgHostBtn;
-
-        this.imgHostSel.onchange = () => {
-            this.nip96Fields.style.display = this.imgHostSel.value === 'nip96' ? '' : 'none';
+        this.formFields.imgHostProviderSelect.onchange = () => {
+            this.formFields.nip96FieldsContainer.style.display = this.formFields.imgHostProviderSelect.value === 'nip96' ? '' : 'none';
         };
 
-        this.saveBtn.onclick = withToast(async () => {
-            const selectedHost = this.imgHostSel.value;
+        this.formFields.saveImgHostBtn.onclick = withToast(async () => {
+            const selectedHost = this.formFields.imgHostProviderSelect.value;
             if (selectedHost === 'nip96') {
-                const nip96Url = this.nip96UrlIn.value.trim();
-                const nip96Token = this.nip96TokenIn.value.trim();
+                const nip96Url = this.formFields.nip96Url.value.trim();
+                const nip96Token = this.formFields.nip96Token.value.trim();
                 if (!isValidUrl(nip96Url)) throw new Error("Invalid NIP-96 server URL.");
                 await confSvc.setImgHost(nip96Url, true, nip96Token);
             } else {
@@ -85,12 +70,14 @@ export class ImageHostSection {
             }
         }, "Image host settings saved.", "Error saving image host settings");
 
-        this.imgHostSel.value = appState.settings.nip96H ? 'nip96' : (appState.settings.imgH || C.IMG_UPLOAD_NOSTR_BUILD);
-        this.nip96Fields.style.display = appState.settings.nip96H ? '' : 'none';
-        this.nip96UrlIn.value = appState.settings.nip96H;
-        this.nip96TokenIn.value = appState.settings.nip96T;
+        this.updateFormElements(appState); // Set initial values and display based on appState
+    }
 
-        return this.sectionEl;
+    updateFormElements(appState) {
+        this.formFields.imgHostProviderSelect.value = appState.settings.nip96H ? 'nip96' : (appState.settings.imgH || C.IMG_UPLOAD_NOSTR_BUILD);
+        this.formFields.nip96FieldsContainer.style.display = appState.settings.nip96H ? '' : 'none';
+        this.formFields.nip96Url.value = appState.settings.nip96H;
+        this.formFields.nip96Token.value = appState.settings.nip96T;
     }
 
     get element() {

@@ -83,6 +83,8 @@ const buildReportFilter = (appState, mapGeohashes) => {
 };
 
 const publishEventOnline = async signedEvent => {
+    // Rely on Workbox Background Sync for offline queuing and retries.
+    // This function simply attempts the fetch request.
     try {
         const response = await fetch('/api/publishNostrEvent', {
             method: 'POST',
@@ -181,7 +183,7 @@ export const nostrSvc = {
     async pubEv(eventData) {
         const signedEvent = await idSvc.signEv(eventData);
         if (signedEvent.kind === C.NOSTR_KIND_REPORT) await addReportToStoreAndDb(signedEvent);
-        await publishEventOnline(signedEvent);
+        await publishEventOnline(signedEvent); // This will be handled by Workbox for offline queuing
         return signedEvent;
     },
 
@@ -193,7 +195,7 @@ export const nostrSvc = {
             content: 'Event deleted'
         };
         const signedEvent = await idSvc.signEv(eventTemplate);
-        await publishEventOnline(signedEvent);
+        await publishEventOnline(signedEvent); // This will be handled by Workbox for offline queuing
         await dbSvc.rmRep(eventId);
         appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventId) }));
         showToast("Report deletion event published.", 'success');

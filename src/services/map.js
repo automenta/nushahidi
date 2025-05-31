@@ -105,8 +105,11 @@ export const mapSvc = {
         appStore.set({ drawnShapes: [] });
     }, "All drawn shapes cleared.", "Error clearing drawn shapes"),
 
-    getDrawControl: () => _drawControl,
-    getMapInstance: () => _map, // Expose map instance for specific integrations like adding controls
+    addDrawControlsToElement: (element) => {
+        // This method provides the Leaflet Draw control's DOM element
+        // for integration into other UI components without exposing the control object itself.
+        return _drawControl.onAdd(_map);
+    },
 
     updTile(url) { _mapTileLyr?.setUrl(url); },
 

@@ -43,55 +43,26 @@ const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => !fo
 export class FilterControls {
     constructor() {
         this.filterFormElement = createEl('div', {class: 'filter-controls-container'});
-        this.mapDrawControlsDiv = null;
+        this.formFields = {}; // Store references to form fields for granular updates
 
-        this.render(appStore.get());
+        this.createFormElements(appStore.get()); // Initial creation of form elements
+        this.filterFormElement.appendChild(this.form);
 
         this.unsubscribe = appStore.on((newState, oldState) => {
             const categoriesChanged = newState.settings?.cats !== oldState?.settings?.cats;
             const focusTagChanged = newState.currentFocusTag !== oldState?.currentFocusTag;
-            const filtersReset = JSON.stringify(newState.ui.filters) !== JSON.stringify(oldState?.ui?.filters) &&
-                                 (newState.ui.filters.q === '' && newState.ui.filters.cat === '' && newState.ui.filters.auth === '' && newState.ui.filters.tStart === null && newState.ui.filters.tEnd === null);
+            const filtersChanged = JSON.stringify(newState.ui.filters) !== JSON.stringify(oldState?.ui?.filters);
+            const spatialFilterChanged = newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled;
+            const followedOnlyChanged = newState.ui.followedOnlyFilter !== oldState?.ui?.followedOnlyFilter;
 
-            if (categoriesChanged || focusTagChanged || filtersReset) {
-                this.render(newState);
+            if (categoriesChanged || focusTagChanged || filtersChanged || spatialFilterChanged || followedOnlyChanged) {
+                this.updateFormElements(newState); // Granular update
             }
         });
     }
 
-    updateFilterState(key, value) {
-        appStore.set(s => ({ui: {...s.ui, filters: {...s.ui.filters, [key]: value}}}));
-    }
-
-    setupFilterInput(fields, refKey, stateKey, handler = applyAllFilters, debounceInput = false) {
-        const inputElement = fields[refKey];
-        if (!inputElement) return;
-        inputElement.oninput = e => {
-            this.updateFilterState(stateKey, e.target.value.trim());
-            debounceInput ? debouncedApplyAllFilters() : handler();
-        };
-    }
-
-    setupFilterSelect(fields, refKey, stateKey, handler = applyAllFilters) {
-        const selectElement = fields[refKey];
-        if (!selectElement) return;
-        selectElement.onchange = e => {
-            this.updateFilterState(stateKey, e.target.value);
-            handler();
-        };
-    }
-
-    setupFilterTimeInput(fields, refKey, stateKey) {
-        const inputElement = fields[refKey];
-        if (!inputElement) return;
-        inputElement.onchange = e => {
-            this.updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
-            applyAllFilters();
-        };
-    }
-
-    render(appState) {
-        const filterFormFields = [
+    createFormElements(appState) {
+        const filterFormFieldsConfig = [
             {type: 'h4', content: ['Filter Reports']},
             {label: 'Search reports...', type: 'search', ref: 'searchQueryInput', name: 'searchQuery', placeholder: 'Search reports text'},
             {label: 'Focus Tag:', type: 'text', ref: 'focusTagInput', name: 'focusTag', readOnly: true},
@@ -126,16 +97,18 @@ export class FilterControls {
             followedOnlyFilter: appState.ui.followedOnlyFilter
         };
 
-        const {form: newForm, fields} = renderForm(filterFormFields, initialFilterData, {class: 'filter-form'});
+        const {form, fields} = renderForm(filterFormFieldsConfig, initialFilterData, {class: 'filter-form'});
+        this.form = form;
+        this.formFields = fields;
 
-        this.setupFilterInput(fields, 'searchQueryInput', 'q', applyAllFilters, true);
-        this.setupFilterSelect(fields, 'filterCategorySelect', 'cat');
-        this.setupFilterInput(fields, 'filterAuthorInput', 'auth', applyAllFilters, true);
-        this.setupFilterTimeInput(fields, 'filterTimeStartInput', 'tStart');
-        this.setupFilterTimeInput(fields, 'filterTimeEndInput', 'tEnd');
+        this.setupFilterInput(this.formFields, 'searchQueryInput', 'q', applyAllFilters, true);
+        this.setupFilterSelect(this.formFields, 'filterCategorySelect', 'cat');
+        this.setupFilterInput(this.formFields, 'filterAuthorInput', 'auth', applyAllFilters, true);
+        this.setupFilterTimeInput(this.formFields, 'filterTimeStartInput', 'tStart');
+        this.setupFilterTimeInput(this.formFields, 'filterTimeEndInput', 'tEnd');
 
-        fields.applyFiltersBtn.onclick = applyAllFilters;
-        fields.resetFiltersBtn.onclick = () => {
+        this.formFields.applyFiltersBtn.onclick = applyAllFilters;
+        this.formFields.resetFiltersBtn.onclick = () => {
             appStore.set(s => ({
                 ui: {
                     ...s.ui,
@@ -147,31 +120,75 @@ export class FilterControls {
             }));
         };
 
-        const spatialFilterToggle = fields.spatialFilterToggle;
-        spatialFilterToggle.checked = appState.ui.spatialFilterEnabled;
-        spatialFilterToggle.onchange = e => {
+        this.formFields.spatialFilterToggle.onchange = e => {
             appStore.set(s => ({ui: {...s.ui, spatialFilterEnabled: e.target.checked}}));
             applyAllFilters();
         };
 
-        const followedOnlyToggle = fields.followedOnlyToggle;
-        followedOnlyToggle.checked = appState.ui.followedOnlyFilter;
-        followedOnlyToggle.onchange = e => {
+        this.formFields.followedOnlyToggle.onchange = e => {
             appStore.set(s => ({ui: {...s.ui, followedOnlyFilter: e.target.checked}}));
             nostrSvc.refreshSubs();
             applyAllFilters();
         };
 
-        fields.clearDrawnShapesBtn.onclick = mapSvc.clearAllDrawnShapes;
+        this.formFields.clearDrawnShapesBtn.onclick = mapSvc.clearAllDrawnShapes;
 
-        const mapDrawControlsContainer = fields.mapDrawControlsContainer;
-        mapDrawControlsContainer.innerHTML = '';
-        mapDrawControlsContainer.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
+        // Append map draw controls
+        this.formFields.mapDrawControlsContainer.appendChild(mapSvc.addDrawControlsToElement(this.formFields.mapDrawControlsContainer));
+    }
 
-        this.filterFormElement.innerHTML = '';
-        this.filterFormElement.appendChild(newForm);
+    updateFormElements(appState) {
+        // Update input values
+        this.formFields.searchQueryInput.value = appState.ui.filters.q;
+        this.formFields.focusTagInput.value = appState.currentFocusTag;
+        this.formFields.filterAuthorInput.value = appState.ui.filters.auth;
 
-        return this.filterFormElement;
+        // Update category select options and value
+        const currentCategory = this.formFields.filterCategorySelect.value;
+        this.formFields.filterCategorySelect.innerHTML = ''; // Clear existing options
+        [{value: '', label: 'All'}, ...(appState.settings?.cats || []).map(cat => ({value: cat, label: cat}))].forEach(opt => {
+            this.formFields.filterCategorySelect.appendChild(createEl('option', {value: opt.value, textContent: opt.label}));
+        });
+        this.formFields.filterCategorySelect.value = appState.ui.filters.cat || currentCategory; // Restore selected value or default
+
+        // Update time inputs
+        this.formFields.filterTimeStartInput.value = appState.ui.filters.tStart ? new Date(appState.ui.filters.tStart * 1000).toISOString().slice(0, 16) : '';
+        this.formFields.filterTimeEndInput.value = appState.ui.filters.tEnd ? new Date(appState.ui.filters.tEnd * 1000).toISOString().slice(0, 16) : '';
+
+        // Update checkboxes
+        this.formFields.spatialFilterToggle.checked = appState.ui.spatialFilterEnabled;
+        this.formFields.followedOnlyToggle.checked = appState.ui.followedOnlyFilter;
+    }
+
+    updateFilterState(key, value) {
+        appStore.set(s => ({ui: {...s.ui, filters: {...s.ui.filters, [key]: value}}}));
+    }
+
+    setupFilterInput(fields, refKey, stateKey, handler = applyAllFilters, debounceInput = false) {
+        const inputElement = fields[refKey];
+        if (!inputElement) return;
+        inputElement.oninput = e => {
+            this.updateFilterState(stateKey, e.target.value.trim());
+            debounceInput ? debouncedApplyAllFilters() : handler();
+        };
+    }
+
+    setupFilterSelect(fields, refKey, stateKey, handler = applyAllFilters) {
+        const selectElement = fields[refKey];
+        if (!selectElement) return;
+        selectElement.onchange = e => {
+            this.updateFilterState(stateKey, e.target.value);
+            handler();
+        };
+    }
+
+    setupFilterTimeInput(fields, refKey, stateKey) {
+        const inputElement = fields[refKey];
+        if (!inputElement) return;
+        inputElement.onchange = e => {
+            this.updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
+            applyAllFilters();
+        };
     }
 
     get element() {
