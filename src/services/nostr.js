@@ -202,8 +202,12 @@ const fetchContactsLogic = async () => {
 
 export const nostrSvc = {
     async connRlys() {
-        if (!_pool) {
+        // Ensure _pool is initialized and has the expected methods.
+        // If _pool is null, or if its 'on' method is not a function (indicating corruption or wrong type),
+        // then re-initialize it.
+        if (!_pool || typeof _pool.on !== 'function') {
             _pool = new SimplePool();
+            // Attach listeners only once when the pool is created
             _pool.on('relay:connect', (url) => {
                 updRlyStore(url, 'connected');
                 showToast(`Connected to ${url}`, 'success', 2000);
@@ -266,9 +270,8 @@ export const nostrSvc = {
             return;
         }
 
-        if (!_pool) {
-            await this.connRlys(); // Ensure pool is connected before subscribing
-        }
+        // Ensure _pool is connected and valid before subscribing
+        await this.connRlys();
 
         const currentFilter = buildReportFilter(appState, mapGeohashes);
 
@@ -296,10 +299,11 @@ export const nostrSvc = {
     },
 
     async refreshSubs() {
-        if (!_pool || _pool.relays.length === 0) {
-            await this.connRlys(); // Await the connection
-        }
-        await this.subToReps(); // Await the subscription
+        // This function now primarily orchestrates, ensuring connRlys is awaited
+        // and then subToReps is called. The internal checks in connRlys and subToReps
+        // handle the _pool initialization.
+        await this.connRlys();
+        await this.subToReps();
     },
 
     async pubEv(eventData) {
