@@ -34,8 +34,8 @@ async function initializeApplication() {
 
         initUI();
 
-        const cachedReports = await dbSvc.getAllReps() || [];
-        appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
+        const cachedReports = await dbSvc.getAllReps();
+        appStore.set({ reports: (Array.isArray(cachedReports) ? cachedReports : []).sort((a, b) => b.at - a.at) });
 
         await nostrSvc.refreshSubs();
         offSvc.setupSyncLs();
