@@ -36,7 +36,7 @@ export const dbSvc={ /* dbSvc: dbService */
     }
 
     // Prune profiles (delete older than X days)
-    const allProfiles = await this.getDbStore(C.STORE_PROFILES).getAll();
+    const allProfiles = await getDbStore(C.STORE_PROFILES).getAll(); // Corrected: use getDbStore directly
     const profileStore = await getDbStore(C.STORE_PROFILES, 'readwrite');
     let profilesDeleted = 0;
     for (const prof of allProfiles) {
@@ -144,7 +144,28 @@ let _locSk=null; /* locSk: local SecretKey */
 export const idSvc={ /* idSvc: identityService */
   async init(){const i=await confSvc.getId();if(i)appStore.set({user:{pk:i.pk,authM:i.authM}})},
   async nip07(){if(!window.nostr?.getPublicKey)return showToast("NIP-07 extension not found. Please install Alby or nos2x.", 'warning'),null;try{const p=await window.nostr.getPublicKey();if(p){const i={pk:p,authM:'nip07'};await confSvc.saveId(i);appStore.set({user:i});showToast("NIP-07 connected successfully!", 'success');return p}}catch(e){showToast(`NIP-07 connection error: ${e.message}`, 'error')}return null},
-  async newProf(pass){if(!pass||pass.length<8)return showToast("Passphrase too short (min 8 chars).", 'warning'),null;const sk=genSk(),pk=getPk(sk);try{const eSk=await encrypt(sk,pass),i={pk,authM:'local',eSk};await confSvc.saveId(i);appStore.set({user:{pk,authM:'local'}});_locSk=sk;showToast(`Profile created! Pubkey: ${nip19.npubEncode(pk)}.`, 'success');prompt("CRITICAL: Backup this private key (nsec1...):", nip19.nsecEncode(sk));return{pk,sk}}catch(e){showToast(`Profile creation error: ${e.message}`, 'error');return null}},
+  async newProf(pass){
+    if(!pass||pass.length<8)return showToast("Passphrase too short (min 8 chars).", 'warning'),null;
+    const sk=genSk(),pk=getPk(sk);
+    try{
+      const eSk=await encrypt(sk,pass),i={pk,authM:'local',eSk};
+      await confSvc.saveId(i);
+      appStore.set({user:{pk,authM:'local'}});
+      _locSk=sk;
+      showToast(`Profile created! Pubkey: ${nip19.npubEncode(pk)}.`, 'success');
+      // Replaced prompt with toast + copy button
+      showToast(
+        `CRITICAL: Backup your private key (nsec)!`,
+        'warning',
+        0, // Make it persistent until dismissed
+        nip19.nsecEncode(sk)
+      );
+      return{pk,sk}
+    }catch(e){
+      showToast(`Profile creation error: ${e.message}`, 'error');
+      return null
+    }
+  },
   async impSk(skIn,pass){if(!pass||pass.length<8)return showToast("Passphrase too short (min 8 chars).", 'warning'),null;let skHex;try{skHex=nsecToHex(skIn);if(!isNostrId(skHex))throw new Error("Invalid Nostr private key format.")}catch(e){return showToast(e.message, 'error'),null}const pk=getPk(skHex);try{const eSk=await encrypt(skHex,pass),i={pk,authM:'import',eSk};await confSvc.saveId(i);appStore.set({user:{pk,authM:'import'}});_locSk=skHex;showToast("Private key imported successfully.", 'success');return{pk,sk:skHex}}catch(e){showToast(`Key import error: ${e.message}`, 'error');return null}},
   async getSk(promptP=true){const u=appStore.get().user;if(!u||u.authM==='nip07')return null;if(_locSk)return _locSk;const i=await confSvc.getId();if(!i?.eSk)return null;if(!promptP)return null;const ps=prompt("Enter passphrase to decrypt private key:");if(!ps)return null;try{const dSk=await decrypt(i.eSk,ps);_locSk=dSk;return dSk}catch(e){showToast("Decryption failed. Incorrect passphrase?", 'error');return null}},
   async chgPass(oP,nP){const i=await confSvc.getId();if(!i?.eSk||(i.authM!=='local'&&i.authM!=='import'))throw new Error("No local key to change passphrase for.");let dSk;try{dSk=await decrypt(i.eSk,oP)}catch(e){throw new Error("Old passphrase incorrect.")}if(!dSk)throw new Error("Decryption failed.");const nESk=await encrypt(dSk,nP);await confSvc.saveId({...i,eSk:nESk});_locSk=dSk;showToast("Passphrase changed successfully.", 'success')},

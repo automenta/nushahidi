@@ -12,6 +12,43 @@ const updAuthDisp=pk=>{const b=gE('#auth-button'),s=gE('#user-pubkey');if(pk){b.
 const updConnDisp=isOnline=>{const e=gE('#connection-status');if(e){e.textContent=isOnline?'Online':'Offline';e.style.color=isOnline?'lightgreen':'lightcoral'}};
 const updSyncDisp=async()=>{const e=gE('#sync-status');if(!e)return;try{const q=await dbSvc.getOfflineQ();if(q.length>0){e.textContent=`Syncing (${q.length})...`;e.style.color='orange'}else{e.textContent=appStore.get().online?'Synced':'Offline';e.style.color='lightgreen'}}catch{e.textContent='Sync status err';e.style.color='red'}};
 
+// --- Generic Confirmation Modal ---
+let _confirmModalRoot;
+function showConfirmModal(title, message, onConfirm, onCancel) {
+    if (!_confirmModalRoot) {
+        _confirmModalRoot = cE('div', { class: 'modal-content' });
+        gE('#confirm-modal').appendChild(_confirmModalRoot);
+    }
+    _confirmModalRoot.innerHTML = ''; // Clear previous content
+
+    const closeBtn = cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => { hideModal('confirm-modal'); if (onCancel) onCancel(); } });
+    const heading = cE('h2', { id: 'confirm-modal-heading', textContent: title });
+    const msgPara = cE('p', { innerHTML: message });
+    const buttonContainer = cE('div', { class: 'confirm-modal-buttons' });
+
+    const confirmBtn = cE('button', {
+        class: 'confirm-button',
+        textContent: 'Confirm',
+        onclick: () => { hideModal('confirm-modal'); onConfirm(); }
+    });
+    const cancelBtn = cE('button', {
+        class: 'cancel-button',
+        textContent: 'Cancel',
+        onclick: () => { hideModal('confirm-modal'); if (onCancel) onCancel(); }
+    });
+
+    buttonContainer.appendChild(cancelBtn);
+    buttonContainer.appendChild(confirmBtn);
+
+    _confirmModalRoot.appendChild(closeBtn);
+    _confirmModalRoot.appendChild(heading);
+    _confirmModalRoot.appendChild(msgPara);
+    _confirmModalRoot.appendChild(buttonContainer);
+
+    showModal('confirm-modal', 'confirm-modal-heading');
+}
+
+
 // --- Report Detail Interactions ---
 async function loadAndDisplayInteractions(reportId, reportPk, container) {
     container.innerHTML = '<h4>Interactions</h4><div class="spinner"></div>';
@@ -219,27 +256,45 @@ gE('#conn-nip07-btn',r).onclick=async()=>{
 };
 gE('#create-prof-btn',r).onclick=async()=>{
     const p=gE('#auth-pass',r).value;
-    if(confirm("Backup nsec after creation!")){
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-        try {
-            const res=await idSvc.newProf(p);
-            if(res)hideModal('auth-modal');
-        } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-        }
+    if (!p || p.length < 8) {
+        showToast("Passphrase too short (min 8 chars).", 'warning');
+        return;
     }
+    showConfirmModal(
+        "Backup Private Key?",
+        "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
+        async () => {
+            appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
+            try {
+                const res=await idSvc.newProf(p);
+                if(res)hideModal('auth-modal');
+            } finally {
+                appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+            }
+        },
+        () => showToast("New profile creation cancelled.", 'info')
+    );
 };
 gE('#import-sk-btn',r).onclick=async()=>{
     const sk=gE('#auth-sk',r).value,p=gE('#auth-pass',r).value;
-    if(confirm("Importing is risky. Ensure you understand the security implications.")){
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-        try {
-            const res=await idSvc.impSk(sk,p);
-            if(res)hideModal('auth-modal');
-        } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-        }
+    if (!sk || !p || p.length < 8) {
+        showToast("Private key and passphrase (min 8 chars) are required.", 'warning');
+        return;
     }
+    showConfirmModal(
+        "Import Private Key?",
+        "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
+        async () => {
+            appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
+            try {
+                const res=await idSvc.impSk(sk,p);
+                if(res)hideModal('auth-modal');
+            } finally {
+                appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+            }
+        },
+        () => showToast("Private key import cancelled.", 'info')
+    );
 };return r}
 
 // SettingsPanel
@@ -333,7 +388,19 @@ function SettPanComp(){
     gE('#add-rly-btn',r).onclick=()=>{const u=gE('#new-rly-url',r).value.trim();if(u){appStore.set(s=>({relays:[...s.relays,{url:u,read:!0,write:!0,status:'?',nip11:null,supportsNip52:false}]}));gE('#new-rly-url',r).value='';rendRlys()}};
     gE('#save-rlys-btn',r).onclick=()=>{confSvc.setRlys(appStore.get().relays);nostrSvc.discAllRlys();nostrSvc.connRlys();showToast("Relays saved and reconnected.", 'success')};
 
-    if(gE('#exp-sk-btn',r))gE('#exp-sk-btn',r).onclick=async()=>{const sk=await idSvc.getSk();if(sk)prompt("BACKUP NSEC:",nip19.nsecEncode(sk))};
+    if(gE('#exp-sk-btn',r))gE('#exp-sk-btn',r).onclick=async()=>{
+        const sk=await idSvc.getSk();
+        if(sk) {
+            showToast(
+                `Your private key (nsec) has been copied to clipboard.`,
+                'warning',
+                5000, // Show for 5 seconds
+                nip19.nsecEncode(sk) // Pass the value to be copied
+            );
+        } else {
+            showToast("Could not retrieve private key. Passphrase might be needed.", 'error');
+        }
+    };
     if(gE('#chg-pass-btn',r))gE('#chg-pass-btn',r).onclick=async()=>{
         const o=gE('#chg-pass-old',r).value,n=gE('#chg-pass-new',r).value;
         appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
@@ -456,7 +523,18 @@ function SettPanComp(){
     };
 
 
-    gE('#clr-reps-btn',r).onclick=async()=>{if(confirm("Clear ALL cached reports? This cannot be undone."))await dbSvc.clearReps(),appStore.set({reports:[]}),showToast("All cached reports cleared.", 'success')};
+    gE('#clr-reps-btn',r).onclick=async()=>{
+        showConfirmModal(
+            "Clear All Cached Reports?",
+            "Are you sure you want to clear ALL cached reports from your device? This action cannot be undone.",
+            async () => {
+                await dbSvc.clearReps();
+                appStore.set({reports:[]});
+                showToast("All cached reports cleared.", 'success');
+            },
+            () => showToast("Clearing reports cancelled.", 'info')
+        );
+    };
     gE('#exp-setts-btn',r).onclick=async()=>{
         appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
         try {
@@ -556,7 +634,20 @@ const debAppAllFilt=debounce(appAllFilt,350);
 // --- Init UI ---
 export function initUI(){
 gE('#create-report-btn').onclick=()=>{gE('#report-form-modal').innerHTML='';gE('#report-form-modal').appendChild(RepFormComp());showModal('report-form-modal','rep-title')};
-gE('#auth-button').onclick=()=>{if(appStore.get().user){if(confirm("Logout?"))idSvc.logout()}else{gE('#auth-modal').innerHTML='';gE('#auth-modal').appendChild(AuthModalComp());showModal('auth-modal','conn-nip07-btn')}};
+gE('#auth-button').onclick=()=>{
+    if(appStore.get().user){
+        showConfirmModal(
+            "Logout Confirmation",
+            "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.",
+            () => idSvc.logout(),
+            () => showToast("Logout cancelled.", 'info')
+        );
+    }else{
+        gE('#auth-modal').innerHTML='';
+        gE('#auth-modal').appendChild(AuthModalComp());
+        showModal('auth-modal','conn-nip07-btn');
+    }
+};
 gE('#settings-btn').onclick=()=>{gE('#settings-modal').innerHTML='';gE('#settings-modal').appendChild(SettPanComp());showModal('settings-modal')};
 
 // Initialize focus tag filter display
