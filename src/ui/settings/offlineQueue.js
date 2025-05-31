@@ -27,7 +27,7 @@ export const offlineQueueItemRenderer = item => {
 export class OfflineQueueSection {
     constructor(config) {
         this.config = config;
-        this.sectionEl = createEl('div', { class: 'offline-queue-section' }); // Changed from listId to a class for consistency
+        this.sectionEl = createEl('div', { class: 'offline-queue-section' });
 
         this.renderQueue();
 
@@ -60,10 +60,9 @@ export class OfflineQueueSection {
                 }, null, "Error deleting event")),
             }
         ];
-        // Clear and re-render the content of the sectionEl
         this.sectionEl.innerHTML = '';
         this.sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
-        const listContainer = createEl('div', { id: this.config.listId }); // Use listId for the actual list container
+        const listContainer = createEl('div', { id: this.config.listId });
         this.sectionEl.appendChild(listContainer);
         renderList(listContainer, queueItems, offlineQueueItemRenderer, actionsConfig, 'offline-q-entry');
     }

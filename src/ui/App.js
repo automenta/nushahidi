@@ -1,5 +1,5 @@
 import { appStore } from '../store.js';
-import { idSvc, mapSvc } from '../services.js'; // Import mapSvc
+import { idSvc, mapSvc } from '../services.js';
 import { C, createEl } from '../utils.js';
 import { showConfirmModal } from './modals.js';
 import { FilterControls, applyAllFilters } from './components/FilterControls.js';
@@ -17,25 +17,21 @@ export class App {
         this.root = rootElement;
         this.root.innerHTML = '';
 
-        // Create main layout elements
         this.headerEl = createEl('header');
         this.mainEl = createEl('main');
         this.sidebarEl = createEl('div', { id: 'sidebar' });
         this.mapContainerEl = createEl('div', { id: 'map-container', 'aria-label': 'Interactive Map' });
         this.footerEl = createEl('footer', {}, createEl('p', { textContent: '© NostrMapper Community' }));
 
-        // Append main layout elements to root
         this.root.append(this.headerEl, this.mainEl, this.footerEl);
         this.mainEl.append(this.mapContainerEl, this.sidebarEl);
 
-        // Instantiate modals (they append themselves to document.body)
         this.authModal = new AuthModal();
         this.reportFormModal = new ReportFormModal();
         this.settingsModal = new SettingsModal();
         this.onboardingModal = new OnboardingModal();
-        this.reportDetailsModal = null; // Managed dynamically
+        this.reportDetailsModal = null;
 
-        // Instantiate main UI components and append their elements
         this.appHeader = new AppHeader({
             onCreateReport: () => this.reportFormModal.show('rep-title'),
             onAuthToggle: () => {
@@ -47,7 +43,6 @@ export class App {
         });
         this.headerEl.appendChild(this.appHeader.element);
 
-        // Sidebar controls (New Report, Settings)
         const sidebarControls = createEl('div', { class: 'sidebar-controls' }, [
             createEl('button', { textContent: 'New Report', onclick: () => this.reportFormModal.show('rep-title') }),
             createEl('button', { textContent: 'Settings', onclick: () => this.settingsModal.show() })
@@ -61,13 +56,12 @@ export class App {
         this.sidebarEl.appendChild(this.reportList.element);
 
         this.globalLoadingSpinner = new GlobalLoadingSpinner();
-        this.root.appendChild(this.globalLoadingSpinner.element); // Spinner is global, appended to root
+        this.root.appendChild(this.globalLoadingSpinner.element);
 
         this.setupEventListeners();
         applyAllFilters();
         appStore.set(s => ({ ui: { ...s.ui, showReportList: true } }));
 
-        // Initialize map after App has created its container
         mapSvc.init(this.mapContainerEl)
             .then(success => {
                 if (!success) this.mapContainerEl.innerHTML = '<p style="color:red">Map init failed.</p>';

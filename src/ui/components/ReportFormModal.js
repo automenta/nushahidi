@@ -63,8 +63,8 @@ export class ReportFormModal extends Modal {
         this.root.querySelector('h2').textContent = reportToEdit ? 'Edit Report' : 'New Report';
         
         const { form: newForm, fields } = renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, { class: 'nstr-rep-form' });
-        this.form.innerHTML = ''; // Clear old content
-        newForm.childNodes.forEach(node => this.form.appendChild(node)); // Append new content
+        this.form.innerHTML = '';
+        newForm.childNodes.forEach(node => this.form.appendChild(node));
 
         this.pFLocCoordsEl = fields['pFLoc-coords'];
         this.upldPhotosPreviewEl = fields['upld-photos-preview'];

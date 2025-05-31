@@ -93,7 +93,7 @@ const removeActionConfig = (title, message, onClickHandler) => ({
     confirm: { title, message }
 });
 
-const setupFollowedListUniqueListeners = (fields) => { // Now accepts fields map
+const setupFollowedListUniqueListeners = (fields) => {
     const importContactsBtn = fields['import-contacts-btn'];
     const publishContactsBtn = fields['publish-contacts-btn'];
 

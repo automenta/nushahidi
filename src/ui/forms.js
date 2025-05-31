@@ -3,7 +3,7 @@ import {showConfirmModal} from './modals.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     const form = createEl('form', { ...formOptions });
-    const fields = {}; // Object to store references to created input elements
+    const fields = {};
 
     if (formOptions.onSubmit) form.onsubmit = formOptions.onSubmit;
 
@@ -110,7 +110,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
         form.appendChild(inputElement);
         if (fieldId) {
             fields[fieldId] = inputElement;
-        } else if (field.name) { // Fallback to name if no ID, but be careful with non-unique names
+        } else if (field.name) {
             fields[field.name] = inputElement;
         }
     }

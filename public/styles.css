@@ -93,10 +93,10 @@ textarea {
 }
 
 .connection-status span {
-    margin-left: 0; /* Reset margin from old .status-indicators span */
+    margin-left: 0;
 }
 
-.connection-status .status-button { /* This selector might not be needed anymore if ConnectionStatus creates its own elements */
+.connection-status .status-button {
     background: none;
     border: none;
     color: var(--light-text);
@@ -241,18 +241,18 @@ main {
     margin-top: .2rem;
 }
 
-.report-detail-container { /* Changed from #report-detail-container */
+.report-detail-modal .modal-content {
     padding: 1rem;
     background-color: #fff;
     border-radius: 4px;
 }
 
-.report-detail-container h2 { /* Changed from #report-detail-container */
+.report-detail-modal .detail-title {
     margin-top: 0;
     color: var(--primary-color);
 }
 
-.report-detail-container .markdown-content img { /* Changed from #report-detail-container */
+.report-detail-modal .markdown-content img {
     max-width: 100%;
     height: auto;
     margin-top: .5rem;
@@ -260,7 +260,7 @@ main {
     border: 1px solid var(--border-color);
 }
 
-.report-detail-container .markdown-content pre { /* Changed from #report-detail-container */
+.report-detail-modal .markdown-content pre {
     background-color: #f0f0f0;
     padding: .7rem;
     border-radius: 4px;
@@ -269,13 +269,13 @@ main {
     margin: .5rem 0;
 }
 
-.report-detail-container .small-button { /* Changed from #report-detail-container */
+.report-detail-modal .small-button {
     font-size: .85em;
     padding: .3em .6em;
     margin-bottom: .5em;
 }
 
-.report-detail-container .edit-button { /* Changed from #report-detail-container */
+.report-detail-modal .edit-button {
     background-color: var(--secondary-color);
     color: var(--light-text);
     border: none;
@@ -284,11 +284,11 @@ main {
     transition: background-color .2s;
 }
 
-.report-detail-container .edit-button:hover { /* Changed from #report-detail-container */
+.report-detail-modal .edit-button:hover {
     background-color: #45a049;
 }
 
-.report-detail-container .delete-button { /* Changed from #report-detail-container */
+.report-detail-modal .delete-button {
     background-color: var(--danger-color);
     color: var(--light-text);
     border: none;
@@ -297,40 +297,40 @@ main {
     transition: background-color .2s;
 }
 
-.report-detail-container .delete-button:hover { /* Changed from #report-detail-container */
+.report-detail-modal .delete-button:hover {
     background-color: #c9302c;
 }
 
 
-.report-detail-container .interactions { /* Changed from #report-detail-container */
+.report-detail-modal .interactions {
     margin-top: 1rem;
     border-top: 1px solid #eee;
     padding-top: .8rem;
 }
 
-.report-detail-container .interactions h4 { /* Changed from #report-detail-container */
+.report-detail-modal .interactions h4 {
     margin-top: 0;
     margin-bottom: .5rem;
 }
 
-.report-detail-container .interaction-item { /* Changed from #report-detail-container */
+.report-detail-modal .interaction-item {
     font-size: .9em;
     margin-bottom: .4rem;
     padding-bottom: .4rem;
     border-bottom: 1px dotted #eee;
 }
 
-.report-detail-container .interaction-item:last-child { /* Changed from #report-detail-container */
+.report-detail-modal .interaction-item:last-child {
     border-bottom: none;
 }
 
-.report-detail-container .reaction-buttons button { /* Changed from #report-detail-container */
+.report-detail-modal .reaction-buttons button {
     margin-right: .3rem;
     padding: .2rem .4rem;
     font-size: .8em;
 }
 
-.report-detail-container .comment-form textarea { /* Changed from #report-detail-container #comment-form */
+.report-detail-modal .comment-form textarea {
     width: 100%;
     min-height: 60px;
     margin-bottom: .3rem;
@@ -467,7 +467,7 @@ footer {
     font-size: .9em;
 }
 
-.map-picker-area { /* Changed from #map-picker-area */
+.map-picker-area {
     height: 120px;
     background-color: #e9ecef;
     margin-bottom: .4rem;
@@ -481,14 +481,14 @@ footer {
     border-radius: 4px;
 }
 
-.cats-cont-form label { /* Changed from #cats-cont-form */
+.cats-cont-form label {
     display: inline-block;
     margin-right: .8rem;
     font-weight: 400;
     font-size: .9em;
 }
 
-.uploaded-photos-preview p { /* Changed from #upld-photos-preview */
+.upld-photos-preview p {
     font-size: .8em;
     margin: .15rem 0;
     word-break: break-all;
@@ -533,13 +533,13 @@ footer {
 }
 
 
-.settings-sections section { /* Changed from #settings-sections */
+.settings-sections section {
     margin-bottom: 1.2rem;
     padding-bottom: .8rem;
     border-bottom: 1px solid #eee;
 }
 
-.settings-sections section:last-child { /* Changed from #settings-sections */
+.settings-sections section:last-child {
     border-bottom: none;
 }
 
@@ -612,7 +612,7 @@ footer {
     }
 }
 
-.global-spinner { /* Changed from #global-loading-spinner */
+.global-spinner {
     position: fixed;
     top: 0;
     left: 0;
@@ -666,24 +666,24 @@ footer {
     background-color: #45a049;
 }
 
-.filter-controls-container hr { /* Changed from #filter-controls */
+.filter-controls-container hr {
     border: none;
     border-top: 1px solid #e0e0e0;
     margin: 1rem 0;
 }
 
-.filter-controls-container .map-draw-controls { /* Changed from #filter-controls #map-draw-controls */
+.filter-controls-container .map-draw-controls {
     margin-bottom: 0.5rem;
 }
 
-.filter-controls-container .map-draw-controls .leaflet-draw-toolbar { /* Changed from #filter-controls #map-draw-controls */
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
     margin-bottom: 0.5rem;
 }
 
-.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a { /* Changed from #filter-controls #map-draw-controls */
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a {
     display: inline-block;
     width: 24px;
     height: 24px;
@@ -694,11 +694,11 @@ footer {
     transition: background-color 0.2s;
 }
 
-.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a:hover { /* Changed from #filter-controls #map-draw-controls */
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a:hover {
     background-color: #2a5bb7;
 }
 
-.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions { /* Changed from #filter-controls #map-draw-controls */
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions {
     background-color: transparent;
     border: none;
     width: auto;
@@ -708,31 +708,31 @@ footer {
     color: var(--primary-color);
 }
 
-.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions:hover { /* Changed from #filter-controls #map-draw-controls */
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions:hover {
     text-decoration: underline;
 }
 
-.filter-controls-container #spatial-filter-toggle { /* Changed from #filter-controls */
+.filter-controls-container #spatial-filter-toggle {
     width: auto;
     margin-right: 0.5rem;
 }
 
-.filter-controls-container .clear-drawn-shapes-btn { /* Changed from #filter-controls #clear-drawn-shapes-btn */
+.filter-controls-container .clear-drawn-shapes-btn {
     background-color: var(--danger-color);
     margin-top: 0.5rem;
 }
 
-.onboarding-modal .modal-content { /* Changed from #onboarding-info */
+.onboarding-modal .modal-content {
     max-width: 500px;
     text-align: center;
 }
 
-.onboarding-modal .modal-content ul { /* Changed from #onboarding-info */
+.onboarding-modal .modal-content ul {
     text-align: left;
     margin-left: 20px;
 }
 
-.onboarding-modal .modal-content button { /* Changed from #onboarding-info */
+.onboarding-modal .modal-content button {
     margin-top: 1.5rem;
     background-color: var(--primary-color);
     color: var(--light-text);
@@ -743,6 +743,6 @@ footer {
     font-size: 0.95em;
 }
 
-.onboarding-modal .modal-content button:hover { /* Changed from #onboarding-info */
+.onboarding-modal .modal-content button:hover {
     opacity: 0.85;
 }

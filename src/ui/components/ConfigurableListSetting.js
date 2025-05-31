@@ -2,9 +2,6 @@ import {appStore} from '../../store.js';
 import {createEl} from '../../utils.js';
 import {renderForm, renderList} from '../forms.js';
 import {withLoading, withToast} from '../../decorators.js';
-import {showConfirmModal} from '../modals.js';
-import {showToast} from '../../utils.js';
-import {nostrSvc, confSvc} from '../../services.js';
 
 export class ConfigurableListSetting {
     constructor(config) {
@@ -44,7 +41,7 @@ export class ConfigurableListSetting {
         }
 
         if (config.uniqueListenersSetup && this.form) {
-            config.uniqueListenersSetup(formFieldsMap); // Pass the fields map
+            config.uniqueListenersSetup(formFieldsMap);
         }
 
         this.unsubscribe = appStore.on((newState, oldState) => {

@@ -12,14 +12,14 @@ import {ReportFormModal} from './ReportFormModal.js';
 export class ReportDetailsModal extends Modal {
     constructor(report, reportFormModal) {
         const contentRenderer = (contentRoot, modalRoot) => {
-            this.modalContentContainer = createEl('div');
+            this.modalContentContainer = createEl('div', { class: 'report-detail-container' });
             this.renderContent(report, this.modalContentContainer);
             return this.modalContentContainer;
         };
         super('report-detail-modal', report.title || 'Report Details', contentRenderer);
         this.report = report;
         this.reportFormModal = reportFormModal;
-        this.modalContentContainer = null; // Will be set by contentRenderer
+        this.modalContentContainer = null;
 
         this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.ui.reportIdToView === this.report.id && newState.reports !== oldState?.reports) {
@@ -199,6 +199,7 @@ export class ReportDetailsModal extends Modal {
             onSubmit: this.handleCommentSubmit,
             'data-report-id': sanitizeHTML(reportId),
             'data-report-pk': sanitizeHTML(reportPk),
+            class: 'comment-form',
             style: 'margin-top:0.5rem;'
         });
 

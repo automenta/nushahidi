@@ -67,7 +67,7 @@ export class ImageHostSection {
         this.nip96Fields = fields['nip96-fields'];
         this.nip96UrlIn = fields['nip96-url-in'];
         this.nip96TokenIn = fields['nip96-token-in'];
-        this.saveBtn = this.saveBtn || this.sectionEl.querySelector('#save-img-host-btn'); // Re-get if it was replaced
+        this.saveBtn = this.saveBtn || this.sectionEl.querySelector('#save-img-host-btn');
 
         this.imgHostSel.onchange = () => {
             this.nip96Fields.style.display = this.imgHostSel.value === 'nip96' ? '' : 'none';
