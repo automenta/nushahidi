@@ -1,5 +1,5 @@
 import { nip11 } from 'nostr-tools';
-import { relayInit } from 'nostr-tools/relay';
+import relayInit from 'nostr-tools/relay'; // Changed to default import
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
