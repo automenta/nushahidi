@@ -10,7 +10,7 @@ export class ReportList {
         this.render(appStore.get());
 
         this.unsubscribe = appStore.on(newState => {
-            if (newState.filteredReports !== appStore.get().filteredReports || newState.ui.showReportList !== appStore.get().ui.showReportList) {
+            if (newState.filteredReports !== newState.filteredReports || newState.ui.showReportList !== newState.ui.showReportList) {
                 this.render(newState);
             }
         });
@@ -50,10 +50,6 @@ export class ReportList {
     render(state) {
         this.updateList(state.filteredReports || []);
         this.listContainer.style.display = state.ui.showReportList ? 'block' : 'none';
-        return this.listContainer;
-    }
-
-    get element() {
         return this.listContainer;
     }
 }

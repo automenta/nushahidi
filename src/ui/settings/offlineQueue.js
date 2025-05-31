@@ -73,8 +73,4 @@ export class OfflineQueueSection {
         this.sectionEl.appendChild(listContainer);
         renderList(listContainer, queueItems, offlineQueueItemRenderer, actionsConfig, 'offline-q-entry');
     }
-
-    get element() {
-        return this.sectionEl;
-    }
 }

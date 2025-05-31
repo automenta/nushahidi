@@ -1,5 +1,5 @@
 import {appStore} from '../../store.js';
-import {createEl, C} from '../../utils.js';
+import {C, createEl} from '../../utils.js';
 import {Modal} from '../modals.js';
 
 export class OnboardingModal extends Modal {
@@ -7,7 +7,6 @@ export class OnboardingModal extends Modal {
         const contentRenderer = (contentRoot, modalRoot) => {
             const gotItBtn = createEl('button', {textContent: 'Got It!'});
             gotItBtn.addEventListener('click', () => this.hideOnboarding());
-            modalRoot.querySelector('.close-btn')?.addEventListener('click', () => this.hideOnboarding());
             return [
                 createEl('h2', {textContent: 'Welcome to NostrMapper!'}),
                 createEl('p', {textContent: 'NostrMapper is a decentralized mapping application built on Nostr. Report incidents, observations, and aid requests directly to the Nostr network.'}),

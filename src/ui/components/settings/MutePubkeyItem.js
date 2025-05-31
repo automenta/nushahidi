@@ -9,8 +9,4 @@ export class MutePubkeyItem {
     render() {
         return createEl('span', {textContent: formatNpubShort(this.pubkey)});
     }
-
-    get element() {
-        return this.element;
-    }
 }

@@ -9,8 +9,4 @@ export class CategoryItem {
     render() {
         return createEl('span', {textContent: sanitizeHTML(this.category)});
     }
-
-    get element() {
-        return this.element;
-    }
 }

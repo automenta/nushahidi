@@ -83,8 +83,4 @@ export class KeyManagementSection {
         }
         return this.sectionEl;
     }
-
-    get element() {
-        return this.sectionEl;
-    }
 }

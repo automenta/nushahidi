@@ -45,8 +45,8 @@ export class ConfigurableListSetting {
         }
 
         this.unsubscribe = appStore.on((newState, oldState) => {
-            const currentItems = this.config.getItems();
-            const oldItems = this.config.getItems.call(null, oldState);
+            const currentItems = this.config.getItems(newState);
+            const oldItems = this.config.getItems(oldState);
             if (JSON.stringify(currentItems) !== JSON.stringify(oldItems)) {
                 this.listRenderer();
             }
@@ -54,7 +54,7 @@ export class ConfigurableListSetting {
     }
 
     listRenderer() {
-        const items = this.config.getItems();
+        const items = this.config.getItems(appStore.get());
         renderList(this.listContainer, items || [], this.config.itemRenderer, this.config.actionsConfig, this.config.itemWrapperClass);
     }
 

@@ -91,8 +91,4 @@ export class ImageHostSection {
 
         return this.sectionEl;
     }
-
-    get element() {
-        return this.sectionEl;
-    }
 }

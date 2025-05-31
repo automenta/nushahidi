@@ -93,8 +93,4 @@ export class DataManagementSection {
         };
         return this.sectionEl;
     }
-
-    get element() {
-        return this.sectionEl;
-    }
 }

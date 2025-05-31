@@ -69,8 +69,4 @@ export class MapTilesSection {
 
         return this.sectionEl;
     }
-
-    get element() {
-        return this.sectionEl;
-    }
 }

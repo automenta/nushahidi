@@ -16,7 +16,7 @@ export class FocusTagItem {
     };
 
     render() {
-        const radioId = `focus-tag-radio-${sanitizeHTML(this.focusTag.tag.replace(/[^a-zA-Z0-9]/g, ''))}`;
+        const radioId = `focus-tag-radio-${this.focusTag.tag.replace(/[^a-zA-Z0-9]/g, '')}`;
         return createEl('div', {}, [
             createEl('span', {textContent: `${sanitizeHTML(this.focusTag.tag)}${this.focusTag.active ? ' (Active)' : ''}`}),
             createEl('label', {for: radioId}, [
@@ -31,9 +31,5 @@ export class FocusTagItem {
                 ` Set Active`
             ])
         ]);
-    }
-
-    get element() {
-        return this.element;
     }
 }

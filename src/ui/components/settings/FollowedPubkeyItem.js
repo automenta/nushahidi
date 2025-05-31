@@ -9,8 +9,4 @@ export class FollowedPubkeyItem {
     render() {
         return createEl('span', {textContent: formatNpubShort(this.followedPubkey.pk)});
     }
-
-    get element() {
-        return this.element;
-    }
 }

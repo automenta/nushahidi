@@ -10,8 +10,4 @@ export class SidebarControls {
             createEl('button', {textContent: 'Settings', onclick: this.onShowSettings})
         ]);
     }
-
-    get element() {
-        return this.element;
-    }
 }
