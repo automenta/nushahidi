@@ -630,8 +630,46 @@ function SettPanComp() {
     // Create the wrapper for sections, which the CSS expects
     const settingsSectionsWrapper = cE('div', { id: 'settings-sections' });
 
-    // Helper to render a list of items with a remove button
-    const _renderList = (containerId, items, formatFn, removeFn, itemClass) => {
+    /**
+     * Helper to create a list item with a remove button and confirmation.
+     * @param {object} item - The item object.
+     * @param {function} formatFn - Function to format the item's display text.
+     * @param {function} removeActionFn - Function to execute when item is confirmed for removal.
+     * @param {string} itemClass - CSS class for the item entry.
+     * @param {string} confirmTitle - Title for the confirmation modal.
+     * @param {string} confirmMessage - Message for the confirmation modal.
+     * @returns {HTMLElement} The created list item div.
+     */
+    const _createRemovableListItem = (item, formatFn, removeActionFn, itemClass, confirmTitle, confirmMessage) => {
+        const entry = cE('div', { class: itemClass }, [
+            cE('span', { textContent: formatFn(item) }),
+            cE('button', {
+                class: `remove-${itemClass.split('-')[0]}-btn`,
+                textContent: 'Remove',
+                onclick: () => {
+                    showConfirmModal(
+                        confirmTitle,
+                        confirmMessage,
+                        () => removeActionFn(item),
+                        () => showToast("Removal cancelled.", 'info')
+                    );
+                }
+            })
+        ]);
+        return entry;
+    };
+
+    /**
+     * Helper to render a list of items into a container.
+     * @param {string} containerId - The ID of the container element.
+     * @param {Array<object>} items - Array of items to render.
+     * @param {function} formatFn - Function to format the item's display text.
+     * @param {function} removeActionFn - Function to execute when item is confirmed for removal.
+     * @param {string} itemClass - CSS class for the item entry.
+     * @param {string} confirmTitle - Title for the confirmation modal.
+     * @param {string} confirmMessage - Message for the confirmation modal.
+     */
+    const _renderList = (containerId, items, formatFn, removeActionFn, itemClass, confirmTitle, confirmMessage) => {
         const container = gE(containerId, modalContent);
         container.innerHTML = '';
         if (items.length === 0) {
@@ -639,47 +677,32 @@ function SettPanComp() {
             return;
         }
         items.forEach(item => {
-            const entry = cE('div', { class: itemClass }, [
-                cE('span', { textContent: formatFn(item) }),
-                cE('button', {
-                    class: `remove-${itemClass.split('-')[0]}-btn`,
-                    textContent: 'Remove',
-                    onclick: () => {
-                        showConfirmModal(
-                            `Remove ${itemClass.split('-')[0]}`,
-                            `Are you sure you want to remove ${formatFn(item)}?`,
-                            () => removeFn(item),
-                            () => showToast("Removal cancelled.", 'info')
-                        );
-                    }
-                })
-            ]);
+            const entry = _createRemovableListItem(item, formatFn, removeActionFn, itemClass, confirmTitle, confirmMessage);
             container.appendChild(entry);
         });
     };
 
     // Render functions for specific lists
     const renderRelays = () => {
-        _renderList('#rly-list', appStore.get().relays, r => `${sH(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sH(r.status)}`, r => {
+        const removeRelayAction = r => {
             const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
             confSvc.setRlys(updatedRelays);
             nostrSvc.discAllRlys(); // Disconnect all and reconnect with new list
             nostrSvc.connRlys();
-        }, 'relay-entry');
+        };
+        _renderList('#rly-list', appStore.get().relays, r => `${sH(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sH(r.status)}`, removeRelayAction, 'relay-entry', 'Remove Relay', 'Are you sure you want to remove this relay?');
     };
 
     const renderCategories = () => {
-        _renderList('#cat-list', appStore.get().settings.cats, c => sH(c), c => {
+        const removeCategoryAction = c => {
             const updatedCats = appStore.get().settings.cats.filter(cat => cat !== c);
             confSvc.setCats(updatedCats);
-        }, 'category-entry');
+        };
+        _renderList('#cat-list', appStore.get().settings.cats, c => sH(c), removeCategoryAction, 'category-entry', 'Remove Category', 'Are you sure you want to remove this category?');
     };
 
     const renderFocusTags = () => {
-        _renderList('#focus-tag-list', appStore.get().focusTags, t => {
-            const activeIndicator = t.active ? ' (Active)' : '';
-            return `${sH(t.tag)}${activeIndicator}`;
-        }, t => {
+        const removeFocusTagAction = t => {
             const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
             confSvc.setFocusTags(updatedTags);
             if (t.active && updatedTags.length > 0) {
@@ -691,7 +714,11 @@ function SettPanComp() {
                 confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
                 confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
             }
-        }, 'focus-tag-entry');
+        };
+        _renderList('#focus-tag-list', appStore.get().focusTags, t => {
+            const activeIndicator = t.active ? ' (Active)' : '';
+            return `${sH(t.tag)}${activeIndicator}`;
+        }, removeFocusTagAction, 'focus-tag-entry', 'Remove Focus Tag', 'Are you sure you want to remove this focus tag?');
 
         // Add radio buttons for setting active focus tag
         const focusTagListDiv = gE('#focus-tag-list', modalContent);
@@ -708,17 +735,23 @@ function SettPanComp() {
                     nostrSvc.refreshSubs(); // Refresh subscriptions with new focus tag
                 }
             });
-            const label = cE('label', {}, [radio, ` Set Active`]);
-            gE(`.focus-tag-entry span[textContent="${sH(ft.tag)}${ft.active ? ' (Active)' : ''}"]`, focusTagListDiv)?.parentNode.appendChild(label);
+            // Find the parent div of the span for this focus tag and append the radio button
+            const spanElement = gE(`.focus-tag-entry span[textContent^="${sH(ft.tag)}"]`, focusTagListDiv);
+            if (spanElement && spanElement.parentNode) {
+                const label = cE('label', {}, [radio, ` Set Active`]);
+                spanElement.parentNode.appendChild(label);
+            }
         });
     };
 
     const renderMuteList = () => {
-        _renderList('#mute-list', appStore.get().settings.mute, pk => formatNpubShort(pk), pk => confSvc.rmMute(pk), 'mute-entry');
+        const removeMuteAction = pk => confSvc.rmMute(pk);
+        _renderList('#mute-list', appStore.get().settings.mute, pk => formatNpubShort(pk), removeMuteAction, 'mute-entry', 'Remove Muted Pubkey', 'Are you sure you want to unmute this pubkey?');
     };
 
     const renderFollowedList = () => {
-        _renderList('#followed-list', appStore.get().followedPubkeys, f => formatNpubShort(f.pk), f => confSvc.rmFollowed(f.pk), 'followed-entry');
+        const removeFollowedAction = f => confSvc.rmFollowed(f.pk);
+        _renderList('#followed-list', appStore.get().followedPubkeys, f => formatNpubShort(f.pk), removeFollowedAction, 'followed-entry', 'Unfollow User', 'Are you sure you want to unfollow this user?');
     };
 
     // Append sections to the settingsSectionsWrapper
