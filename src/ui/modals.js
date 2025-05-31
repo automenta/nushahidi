@@ -27,13 +27,18 @@ export class Modal {
         return modalElement;
     }
 
-    show(focusElOrSelector) {
+    show(focusSelectorOrElement = null) {
         this.root.style.display = 'block';
         this.root.removeAttribute('inert');
 
         let focusEl = null;
-        if (focusElOrSelector instanceof Element) focusEl = focusElOrSelector;
-        else if (typeof focusElOrSelector === 'string') focusEl = this.root.querySelector(`#${focusElOrSelector}`);
+        if (focusSelectorOrElement instanceof Element) {
+            focusEl = focusSelectorOrElement;
+        } else if (typeof focusSelectorOrElement === 'string') {
+            focusEl = this.root.querySelector(focusSelectorOrElement);
+        } else {
+            focusEl = this.root.querySelector('h2') || this.root.querySelector('button, input, select, textarea');
+        }
         focusEl?.focus();
 
         appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: this.root } }));
@@ -63,7 +68,7 @@ export const showConfirmModal = (title, message, onConfirm, onCancel) => {
             ];
         };
         confirmModal = new Modal('confirm-modal', title, contentRenderer);
-        confirmModal.show(confirmModal.root.querySelector('h2'));
+        confirmModal.show('h2');
     });
 };
 
@@ -90,6 +95,6 @@ export const showPassphraseModal = (title, message) => {
             ];
         };
         passphraseModal = new Modal('passphrase-modal', title, contentRenderer);
-        passphraseModal.show('passphrase-input');
+        passphraseModal.show('#passphrase-input');
     });
 };

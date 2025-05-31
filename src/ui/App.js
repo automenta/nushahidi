@@ -2,7 +2,7 @@ import { appStore } from '../store.js';
 import { idSvc, mapSvc } from '../services.js';
 import { C, createEl } from '../utils.js';
 import { showConfirmModal } from './modals.js';
-import { FilterControls, applyAllFilters } from './components/FilterControls.js';
+import { applyAllFilters } from './components/FilterControls.js';
 import { ReportList } from './components/ReportList.js';
 import { GlobalLoadingSpinner } from './components/GlobalLoadingSpinner.js';
 import { AppHeader } from './components/AppHeader.js';
@@ -11,6 +11,7 @@ import { AuthModal } from './components/AuthModal.js';
 import { ReportFormModal } from './components/ReportFormModal.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { OnboardingModal } from './components/OnboardingModal.js';
+import { SidebarControls } from './components/SidebarControls.js';
 
 export class App {
     constructor(rootElement) {
@@ -20,7 +21,7 @@ export class App {
         const headerEl = createEl('header', { class: 'app-header' });
         const mainEl = createEl('main');
         const sidebarEl = createEl('div', { id: 'sidebar' });
-        const mapContainerEl = createEl('div', { id: 'map-container', 'aria-label': 'Interactive Map' });
+        const mapContainerEl = createEl('div', { 'aria-label': 'Interactive Map' });
         const footerEl = createEl('footer', {}, createEl('p', { textContent: '© NostrMapper Community' }));
 
         this.root.append(headerEl, mainEl, footerEl);
@@ -33,21 +34,21 @@ export class App {
         this.reportDetailsModal = null;
 
         this.appHeader = new AppHeader({
-            onCreateReport: () => this.reportFormModal.show('rep-title'),
+            onCreateReport: () => this.reportFormModal.show('#rep-title'),
             onAuthToggle: () => {
                 appStore.get().user ?
                     showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
-                    this.authModal.show('conn-nip07-btn');
+                    this.authModal.show('#conn-nip07-btn');
             },
-            onShowSettings: () => this.settingsModal.show()
+            onShowSettings: () => this.settingsModal.show('h2')
         });
         headerEl.appendChild(this.appHeader.element);
 
-        const sidebarControls = createEl('div', { class: 'sidebar-controls' }, [
-            createEl('button', { textContent: 'New Report', onclick: () => this.reportFormModal.show('rep-title') }),
-            createEl('button', { textContent: 'Settings', onclick: () => this.settingsModal.show() })
-        ]);
-        sidebarEl.appendChild(sidebarControls);
+        this.sidebarControls = new SidebarControls({
+            onCreateReport: () => this.reportFormModal.show('#rep-title'),
+            onShowSettings: () => this.settingsModal.show('h2')
+        });
+        sidebarEl.appendChild(this.sidebarControls.element);
 
         this.filterControls = new FilterControls();
         sidebarEl.appendChild(this.filterControls.element);
@@ -71,7 +72,7 @@ export class App {
                 mapContainerEl.innerHTML = `<p style="color:red">Map init failed: ${e.message}</p>`;
             });
 
-        if (!localStorage.getItem(C.ONBOARDING_KEY)) this.onboardingModal.show();
+        if (!localStorage.getItem(C.ONBOARDING_KEY)) this.onboardingModal.show('h2');
     }
 
     setupEventListeners() {
@@ -97,7 +98,7 @@ export class App {
                     const report = newState.reports.find(r => r.id === newState.ui.reportIdToView);
                     if (report) {
                         this.reportDetailsModal = new ReportDetailsModal(report, this.reportFormModal);
-                        this.reportDetailsModal.show('detail-title');
+                        this.reportDetailsModal.show('.detail-title');
                     }
                 }
             }

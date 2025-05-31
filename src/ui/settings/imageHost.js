@@ -48,7 +48,8 @@ export class ImageHostSection {
                     createEl('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
                     createEl('input', { type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96T })
                 ]
-            }
+            },
+            { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' }
         ];
 
         const { form, fields } = renderForm(imageHostFormFields, {}, { id: 'image-host-form' });
@@ -56,8 +57,6 @@ export class ImageHostSection {
         if (!this.form) {
             this.form = form;
             this.sectionEl.appendChild(this.form);
-            this.saveBtn = createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' });
-            this.sectionEl.appendChild(this.saveBtn);
         } else {
             this.form.replaceWith(form);
             this.form = form;
@@ -67,7 +66,7 @@ export class ImageHostSection {
         this.nip96Fields = fields['nip96-fields'];
         this.nip96UrlIn = fields['nip96-url-in'];
         this.nip96TokenIn = fields['nip96-token-in'];
-        this.saveBtn = this.saveBtn || this.sectionEl.querySelector('#save-img-host-btn');
+        this.saveBtn = fields['save-img-host-btn'];
 
         this.imgHostSel.onchange = () => {
             this.nip96Fields.style.display = this.imgHostSel.value === 'nip96' ? '' : 'none';

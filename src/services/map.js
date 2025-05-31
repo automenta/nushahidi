@@ -61,8 +61,8 @@ function setupMapEventListeners() {
 }
 
 export const mapSvc = {
-    async init(id = 'map-container') {
-        _map = L.map(id).setView([20, 0], 3);
+    async init(mapElement) {
+        _map = L.map(mapElement).setView([20, 0], 3);
         _mapTileLyr = L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM & NM', maxZoom: 19 }).addTo(_map);
 
         _mapRepsLyr = L.markerClusterGroup().addTo(_map);
