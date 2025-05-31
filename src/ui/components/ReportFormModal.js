@@ -8,7 +8,7 @@ import {withLoading, withToast} from '../../decorators.js';
 export class ReportFormModal extends Modal {
     constructor(reportToEdit = null) {
         const categories = appStore.get().settings.cats;
-        const formState = {
+        this.formState = {
             pFLoc: reportToEdit?.lat && reportToEdit?.lon ? { lat: reportToEdit.lat, lng: reportToEdit.lon } : null,
             uIMeta: reportToEdit?.imgs?.length ? [...reportToEdit.imgs] : []
         };
@@ -22,16 +22,39 @@ export class ReportFormModal extends Modal {
             eventType: reportToEdit?.evType,
             status: reportToEdit?.stat,
             isEdit: !!reportToEdit,
-            uIMeta: formState.uIMeta,
-            location: formState.pFLoc ? `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}` : 'None'
+            uIMeta: this.formState.uIMeta,
+            location: this.formState.pFLoc ? `${this.formState.pFLoc.lat.toFixed(5)},${this.formState.pFLoc.lng.toFixed(5)}` : 'None'
         };
 
-        let modalContentContainer;
-        let form;
-        let pFLocCoordsEl;
-        let upldPhotosPreviewEl;
+        this.modalContentContainer = null;
+        this.form = null;
+        this.pFLocCoordsEl = null;
+        this.upldPhotosPreviewEl = null;
+        this.reportToEdit = reportToEdit;
 
-        const getReportFormFields = (cats, initialData) => [
+        const contentRenderer = () => {
+            this.modalContentContainer = createEl('div');
+            this.form = renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
+            this.modalContentContainer.appendChild(this.form);
+
+            this.pFLocCoordsEl = this.form.querySelector('#pFLoc-coords');
+            this.upldPhotosPreviewEl = this.form.querySelector('#upld-photos-preview');
+
+            this.form.querySelector('#rep-photos').onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this), this.form);
+            this.setupReportFormLocationHandlers(this.form, this.formState, this.updateLocationDisplay.bind(this));
+            this.setupReportFormSubmission(this.form, this.reportToEdit, this.formState, this.formState.uIMeta);
+
+            this.renderImagePreview(this.formState.uIMeta);
+            this.updateLocationDisplay();
+
+            return this.modalContentContainer;
+        };
+
+        super('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', contentRenderer);
+    }
+
+    getReportFormFields(cats, initialData) {
+        return [
             { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
             { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
             { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
@@ -69,90 +92,40 @@ export class ReportFormModal extends Modal {
             { type: 'button', id: 'submit-report-btn', label: initialData.isEdit ? 'Update Report' : 'Submit', buttonType: 'submit' },
             { type: 'button', id: 'cancel-report-btn', class: 'secondary', label: 'Cancel', onclick: () => this.hide() }
         ];
-
-        const renderImagePreview = (imagesMetadata) => {
-            upldPhotosPreviewEl.innerHTML = '';
-            if (!imagesMetadata.length) {
-                upldPhotosPreviewEl.textContent = 'No images selected.';
-                return;
-            }
-
-            const imageItemRenderer = img => createEl('span', { textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1)) });
-            const imageActionsConfig = [{
-                label: 'x',
-                className: 'remove-image-btn',
-                onClick: (item, index) => {
-                    imagesMetadata.splice(index, 1);
-                    updatePreview(imagesMetadata);
-                }
-            }];
-
-            renderList(
-                upldPhotosPreviewEl,
-                imagesMetadata,
-                imageItemRenderer,
-                imageActionsConfig,
-                'uploaded-image-item'
-            );
-        };
-
-        const updateLocationDisplay = (addressName = '') => {
-            if (pFLocCoordsEl) {
-                pFLocCoordsEl.textContent = formState.pFLoc ?
-                    `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}` :
-                    'None';
-            }
-        };
-
-        const contentRenderer = () => {
-            modalContentContainer = createEl('div');
-            form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
-            modalContentContainer.appendChild(form);
-
-            pFLocCoordsEl = form.querySelector('#pFLoc-coords');
-            upldPhotosPreviewEl = form.querySelector('#upld-photos-preview');
-
-            form.querySelector('#rep-photos').onchange = this.setupReportFormImageUploadHandler(formState.uIMeta, renderImagePreview, form);
-            this.setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
-            this.setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
-
-            renderImagePreview(formState.uIMeta);
-            updateLocationDisplay();
-
-            return modalContentContainer;
-        };
-
-        super('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', contentRenderer);
     }
 
-    buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag) {
-        const data = Object.fromEntries(formData.entries());
-        const tags = [['g', geohashEncode(formState.pFLoc.lat, formState.pFLoc.lng)]];
-
-        if (data.title) tags.push(['title', data.title]);
-        if (data.summary) tags.push(['summary', data.summary]);
-        if (currentFocusTag && currentFocusTag !== 'NostrMapper_Global') tags.push(['t', currentFocusTag.substring(1)]);
-
-        formData.getAll('category').forEach(cat => {
-            tags.push(['L', 'report-category']);
-            tags.push(['l', cat, 'report-category']);
-        });
-
-        if (data.freeTags) {
-            data.freeTags.split(',').forEach(tag => {
-                const trimmedTag = tag.trim();
-                if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
-            });
+    renderImagePreview(imagesMetadata) {
+        this.upldPhotosPreviewEl.innerHTML = '';
+        if (!imagesMetadata.length) {
+            this.upldPhotosPreviewEl.textContent = 'No images selected.';
+            return;
         }
 
-        if (data.eventType) tags.push(['event_type', data.eventType]);
-        if (data.status) tags.push(['status', data.status]);
+        const imageItemRenderer = img => createEl('span', { textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1)) });
+        const imageActionsConfig = [{
+            label: 'x',
+            className: 'remove-image-btn',
+            onClick: (item, index) => {
+                imagesMetadata.splice(index, 1);
+                this.renderImagePreview(imagesMetadata);
+            }
+        }];
 
-        imagesMetadata.forEach(img => tags.push(['image', img.url, img.type, img.dim, `ox${img.hHex}`]));
+        renderList(
+            this.upldPhotosPreviewEl,
+            imagesMetadata,
+            imageItemRenderer,
+            imageActionsConfig,
+            'uploaded-image-item'
+        );
+    }
 
-        tags.push(['d', reportToEdit?.d || generateUUID()]);
-
-        return tags;
+    updateLocationDisplay(addressName = '') {
+        if (this.pFLocCoordsEl) {
+            this.pFLocCoordsEl.textContent = this.formState.pFLoc ?
+                `${this.formState.pFLoc.lat.toFixed(5)},${this.formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}` :
+                'None';
+        }
     }
 
     setupReportFormLocationHandlers(formElement, formState, updateLocationDisplay) {
@@ -234,8 +207,8 @@ export class ReportFormModal extends Modal {
 
             await nostrSvc.pubEv({ kind: C.NOSTR_KIND_REPORT, content: data.description, tags });
             e.target.reset();
-            formElement.querySelector('#pFLoc-coords').textContent = 'None';
-            formElement.querySelector('#upld-photos-preview').innerHTML = '';
+            this.pFLocCoordsEl.textContent = 'None';
+            this.upldPhotosPreviewEl.innerHTML = '';
             formState.pFLoc = null;
             imagesMetadata.length = 0;
             this.hide();

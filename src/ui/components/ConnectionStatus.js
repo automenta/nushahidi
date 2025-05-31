@@ -1,6 +1,1 @@
-import {appStore} from '../../store.js';
-import {dbSvc} from '../../services.js';
-
-export function ConnectionStatus() {
-    return null;
-}
+// This file is no longer needed as its functionality has been integrated into AppHeader.js

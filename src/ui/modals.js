@@ -33,7 +33,7 @@ export class Modal {
 
         let focusEl = null;
         if (focusElOrSelector instanceof Element) focusEl = focusElOrSelector;
-        else if (typeof focusElOrSelector === 'string') focusEl = this.root.querySelector(focusElOrSelector);
+        else if (typeof focusElOrSelector === 'string') focusEl = this.root.querySelector(`#${focusElOrSelector}`);
         focusEl?.focus();
 
         appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: this.root } }));
@@ -89,6 +89,6 @@ export const showPassphraseModal = (title, message) => {
             ];
         };
         passphraseModal = new Modal('passphrase-modal', title, contentRenderer);
-        passphraseModal.show(passphraseInput);
+        passphraseModal.show('passphrase-input');
     });
 };

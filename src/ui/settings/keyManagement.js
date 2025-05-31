@@ -6,17 +6,26 @@ import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showPassphraseModal} from '../modals.js';
 
-export function KeyManagementSection() {
-    let sectionEl;
-    let form;
-    let exportSkBtn;
-    let oldPassInput;
-    let newPassInput;
-    let changePassBtn;
+export class KeyManagementSection {
+    constructor() {
+        this.sectionEl = createEl('section');
+        this.form = null;
+        this.exportSkBtn = null;
+        this.oldPassInput = null;
+        this.newPassInput = null;
+        this.changePassBtn = null;
 
-    const render = (appState) => {
-        if (!sectionEl) {
-            sectionEl = createEl('section');
+        this.render(appStore.get());
+
+        appStore.on((newState, oldState) => {
+            if (newState.user?.authM !== oldState?.user?.authM) {
+                this.render(newState);
+            }
+        });
+    }
+
+    render(appState) {
+        if (!this.form) {
             const keyManagementFormFields = [
                 { type: 'button', id: 'exp-sk-btn', label: 'Export Private Key' },
                 { label: 'Old Passphrase:', type: 'password', id: 'chg-pass-old', name: 'oldPassphrase' },
@@ -24,15 +33,15 @@ export function KeyManagementSection() {
                 { type: 'button', id: 'chg-pass-btn', label: 'Change Passphrase' }
             ];
 
-            form = renderForm(keyManagementFormFields, {}, { id: 'key-management-form' });
-            sectionEl.appendChild(form);
+            this.form = renderForm(keyManagementFormFields, {}, { id: 'key-management-form' });
+            this.sectionEl.appendChild(this.form);
 
-            exportSkBtn = form.querySelector('#exp-sk-btn');
-            oldPassInput = form.querySelector('#chg-pass-old');
-            newPassInput = form.querySelector('#chg-pass-new');
-            changePassBtn = form.querySelector('#chg-pass-btn');
+            this.exportSkBtn = this.form.querySelector('#exp-sk-btn');
+            this.oldPassInput = this.form.querySelector('#chg-pass-old');
+            this.newPassInput = this.form.querySelector('#chg-pass-new');
+            this.changePassBtn = this.form.querySelector('#chg-pass-btn');
 
-            exportSkBtn.onclick = withLoading(withToast(async () => {
+            this.exportSkBtn.onclick = withLoading(withToast(async () => {
                 const user = appStore.get().user;
                 if (!user) throw new Error("No Nostr identity connected.");
                 if (user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
@@ -52,29 +61,25 @@ export function KeyManagementSection() {
                 );
             }, null, "Export failed"));
 
-            changePassBtn.onclick = withLoading(withToast(async () => {
-                const oldPass = oldPassInput.value;
-                const newPass = newPassInput.value;
+            this.changePassBtn.onclick = withLoading(withToast(async () => {
+                const oldPass = this.oldPassInput.value;
+                const newPass = this.newPassInput.value;
                 if (!oldPass || !newPass || newPass.length < 8) throw new Error("Both passphrases are required, new must be min 8 chars.");
                 await idSvc.chgPass(oldPass, newPass);
-                oldPassInput.value = '';
-                newPassInput.value = '';
+                this.oldPassInput.value = '';
+                this.newPassInput.value = '';
             }, null, "Passphrase change failed"));
         }
 
         if (!appState.user || !['local', 'import'].includes(appState.user.authM)) {
-            sectionEl.style.display = 'none';
+            this.sectionEl.style.display = 'none';
         } else {
-            sectionEl.style.display = '';
+            this.sectionEl.style.display = '';
         }
-        return sectionEl;
-    };
+        return this.sectionEl;
+    }
 
-    appStore.on((newState, oldState) => {
-        if (newState.user?.authM !== oldState?.user?.authM) {
-            render(newState);
-        }
-    });
-
-    return render(appStore.get());
+    get element() {
+        return this.sectionEl;
+    }
 }

@@ -5,30 +5,33 @@ import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showConfirmModal} from '../modals.js';
 
-export function DataManagementSection() {
-    let sectionEl;
-    let form;
-    let clearReportsBtn;
-    let exportSettingsBtn;
-    let importSettingsFile;
+export class DataManagementSection {
+    constructor() {
+        this.sectionEl = createEl('section');
+        this.form = null;
+        this.clearReportsBtn = null;
+        this.exportSettingsBtn = null;
+        this.importSettingsFile = null;
 
-    const render = () => {
-        if (!sectionEl) {
-            sectionEl = createEl('section');
+        this.render();
+    }
+
+    render() {
+        if (!this.form) {
             const dataManagementFormFields = [
                 { type: 'button', id: 'clr-reps-btn', label: 'Clear Cached Reports' },
                 { type: 'button', id: 'exp-setts-btn', label: 'Export Settings' },
                 { label: 'Import Settings:', type: 'file', id: 'imp-setts-file', name: 'importSettingsFile', accept: '.json' }
             ];
 
-            form = renderForm(dataManagementFormFields, {}, { id: 'data-management-form' });
-            sectionEl.appendChild(form);
+            this.form = renderForm(dataManagementFormFields, {}, { id: 'data-management-form' });
+            this.sectionEl.appendChild(this.form);
 
-            clearReportsBtn = form.querySelector('#clr-reps-btn');
-            exportSettingsBtn = form.querySelector('#exp-setts-btn');
-            importSettingsFile = form.querySelector('#imp-setts-file');
+            this.clearReportsBtn = this.form.querySelector('#clr-reps-btn');
+            this.exportSettingsBtn = this.form.querySelector('#exp-setts-btn');
+            this.importSettingsFile = this.form.querySelector('#imp-setts-file');
 
-            clearReportsBtn.onclick = () => {
+            this.clearReportsBtn.onclick = () => {
                 showConfirmModal(
                     "Clear Cached Reports",
                     "Are you sure you want to clear all cached reports from your local database? This will not delete them from relays.",
@@ -40,17 +43,18 @@ export function DataManagementSection() {
                 );
             };
 
-            exportSettingsBtn.onclick = withLoading(withToast(async () => {
+            this.exportSettingsBtn.onclick = withLoading(withToast(async () => {
                 const exportData = { settings: await dbSvc.loadSetts(), followedPubkeys: await dbSvc.getFollowedPubkeys() };
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
                 const downloadAnchorNode = document.createElement('a');
                 downloadAnchorNode.setAttribute("href", dataStr);
                 downloadAnchorNode.setAttribute("download", "nostrmapper_settings.json");
                 document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
                 downloadAnchorNode.remove();
             }, "Settings exported.", "Error exporting settings"));
 
-            importSettingsFile.onchange = async e => {
+            this.importSettingsFile.onchange = async e => {
                 const file = e.target.files[0];
                 if (!file) return;
 
@@ -80,7 +84,10 @@ export function DataManagementSection() {
                 reader.readAsText(file);
             };
         }
-        return sectionEl;
-    };
-    return render();
+        return this.sectionEl;
+    }
+
+    get element() {
+        return this.sectionEl;
+    }
 }

@@ -24,10 +24,21 @@ export const offlineQueueItemRenderer = item => {
     return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
 };
 
-export function OfflineQueueSection(config) {
-    let sectionEl;
+export class OfflineQueueSection {
+    constructor(config) {
+        this.config = config;
+        this.sectionEl = createEl('div', { id: config.listId });
 
-    const renderQueue = async () => {
+        this.renderQueue();
+
+        appStore.on((newState, oldState) => {
+            if (newState.online !== oldState?.online) {
+                this.renderQueue();
+            }
+        });
+    }
+
+    async renderQueue() {
         const queueItems = await dbSvc.getOfflineQ();
         appStore.set(s => ({ offlineQueueCount: queueItems.length }));
         const actionsConfig = [
@@ -37,7 +48,7 @@ export function OfflineQueueSection(config) {
                 onClick: withLoading(withToast(async item => {
                     await nostrSvc.pubEv(item.event);
                     await dbSvc.rmOfflineQ(item.qid);
-                    await renderQueue();
+                    await this.renderQueue();
                 }, null, "Error retrying event")),
             },
             {
@@ -45,26 +56,14 @@ export function OfflineQueueSection(config) {
                 className: 'remove-offline-q-btn',
                 onClick: withLoading(withToast(async item => {
                     await dbSvc.rmOfflineQ(item.qid);
-                    await renderQueue();
+                    await this.renderQueue();
                 }, null, "Error deleting event")),
             }
         ];
-        renderList(sectionEl, queueItems, offlineQueueItemRenderer, actionsConfig, config.itemWrapperClass);
-    };
+        renderList(this.sectionEl, queueItems, offlineQueueItemRenderer, actionsConfig, this.config.itemWrapperClass);
+    }
 
-    const render = () => {
-        if (!sectionEl) {
-            sectionEl = createEl('div', { id: config.listId });
-        }
-        renderQueue();
-        return sectionEl;
-    };
-
-    appStore.on((newState, oldState) => {
-        if (newState.online !== oldState?.online) {
-            renderQueue();
-        }
-    });
-
-    return render();
+    get element() {
+        return this.sectionEl;
+    }
 }

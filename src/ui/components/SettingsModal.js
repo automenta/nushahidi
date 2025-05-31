@@ -7,16 +7,18 @@ export class SettingsModal extends Modal {
         let settingsContent;
         const contentRenderer = () => {
             settingsContent = createEl('div', { id: 'settings-sections' });
-            settingsSections.forEach(section => {
+            settingsSections.forEach(sectionConfig => {
                 const sectionEl = createEl('section');
-                sectionEl.appendChild(createEl('h3', { textContent: section.title }));
+                sectionEl.appendChild(createEl('h3', { textContent: sectionConfig.title }));
 
                 let renderedContent;
-                if (section.type === 'offline-queue') {
+                if (sectionConfig.type === 'offline-queue') {
                     sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
-                    renderedContent = section.renderer(section);
+                    const sectionInstance = new sectionConfig.renderer(sectionConfig);
+                    renderedContent = sectionInstance.element;
                 } else {
-                    renderedContent = section.renderer(section);
+                    const sectionInstance = new sectionConfig.renderer(sectionConfig);
+                    renderedContent = sectionInstance.element;
                 }
 
                 if (Array.isArray(renderedContent)) renderedContent.forEach(el => sectionEl.appendChild(el));

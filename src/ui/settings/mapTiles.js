@@ -4,16 +4,25 @@ import {C, isValidUrl, createEl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export function MapTilesSection() {
-    let sectionEl;
-    let form;
-    let tilePresetSel;
-    let tileUrlIn;
-    let saveTileBtn;
+export class MapTilesSection {
+    constructor() {
+        this.sectionEl = createEl('section');
+        this.form = null;
+        this.tilePresetSel = null;
+        this.tileUrlIn = null;
+        this.saveTileBtn = null;
 
-    const render = (appState) => {
-        if (!sectionEl) {
-            sectionEl = createEl('section');
+        this.render(appStore.get());
+
+        appStore.on((newState, oldState) => {
+            if (newState.settings.tilePreset !== oldState?.settings?.tilePreset || newState.settings.tileUrl !== oldState?.settings?.tileUrl) {
+                this.render(newState);
+            }
+        });
+    }
+
+    render(appState) {
+        if (!this.form) {
             const mapTilesFormFields = [
                 {
                     label: 'Tile Server Preset:',
@@ -27,21 +36,21 @@ export function MapTilesSection() {
                 { type: 'button', id: 'save-tile-btn', label: 'Save Map Tiles', buttonType: 'button' }
             ];
 
-            form = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
-            sectionEl.appendChild(form);
+            this.form = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
+            this.sectionEl.appendChild(this.form);
 
-            tilePresetSel = form.querySelector('#tile-preset-sel');
-            tileUrlIn = form.querySelector('#tile-url-in');
-            saveTileBtn = form.querySelector('#save-tile-btn');
+            this.tilePresetSel = this.form.querySelector('#tile-preset-sel');
+            this.tileUrlIn = this.form.querySelector('#tile-url-in');
+            this.saveTileBtn = this.form.querySelector('#save-tile-btn');
 
-            tilePresetSel.onchange = () => {
-                const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === tilePresetSel.value);
-                tileUrlIn.value = selectedPreset?.url || '';
+            this.tilePresetSel.onchange = () => {
+                const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === this.tilePresetSel.value);
+                this.tileUrlIn.value = selectedPreset?.url || '';
             };
 
-            saveTileBtn.onclick = withToast(async () => {
-                const selectedPresetName = tilePresetSel.value;
-                const customUrl = tileUrlIn.value.trim();
+            this.saveTileBtn.onclick = withToast(async () => {
+                const selectedPresetName = this.tilePresetSel.value;
+                const customUrl = this.tileUrlIn.value.trim();
 
                 if (!isValidUrl(customUrl)) throw new Error("Invalid tile URL.");
 
@@ -50,17 +59,13 @@ export function MapTilesSection() {
             }, "Map tile settings saved.", "Error saving map tile settings");
         }
 
-        tilePresetSel.value = appState.settings.tilePreset;
-        tileUrlIn.value = appState.settings.tileUrl;
+        this.tilePresetSel.value = appState.settings.tilePreset;
+        this.tileUrlIn.value = appState.settings.tileUrl;
 
-        return sectionEl;
-    };
+        return this.sectionEl;
+    }
 
-    appStore.on((newState, oldState) => {
-        if (newState.settings.tilePreset !== oldState?.settings?.tilePreset || newState.settings.tileUrl !== oldState?.settings?.tileUrl) {
-            render(newState);
-        }
-    });
-
-    return render(appStore.get());
+    get element() {
+        return this.sectionEl;
+    }
 }

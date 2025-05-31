@@ -23,7 +23,7 @@ export class App {
         this.settingsModal = new SettingsModal();
         this.onboardingModal = new OnboardingModal();
 
-        this.appHeader = AppHeader({
+        this.appHeader = new AppHeader({
             onCreateReport: () => this.reportFormModal.show('rep-title'),
             onAuthToggle: () => {
                 appStore.get().user ?
@@ -32,15 +32,15 @@ export class App {
             },
             onShowSettings: () => this.settingsModal.show()
         });
-        this.filterControls = FilterControls();
-        this.reportList = ReportList();
-        this.globalLoadingSpinner = GlobalLoadingSpinner();
+        this.filterControls = new FilterControls();
+        this.reportList = new ReportList();
+        this.globalLoadingSpinner = new GlobalLoadingSpinner();
 
         this.root.append(
-            this.appHeader,
-            this.filterControls,
-            this.reportList,
-            this.globalLoadingSpinner
+            this.appHeader.element,
+            this.filterControls.element,
+            this.reportList.element,
+            this.globalLoadingSpinner.element
         );
 
         this.setupEventListeners();

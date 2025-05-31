@@ -24,7 +24,7 @@ export class ReportDetailsModal extends Modal {
                 const updatedReport = newState.reports.find(r => r.id === this.report.id);
                 if (updatedReport) {
                     this.report = updatedReport;
-                    this.renderContent(this.report, modalContentContainer);
+                    this.renderContent(this.report, this.root.querySelector('.modal-content'));
                 }
             }
         });
@@ -58,7 +58,6 @@ export class ReportDetailsModal extends Modal {
             content,
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
-        // The appStore.on listener in constructor will handle re-rendering
     }
 
     handleReactionSubmit = async event => {
@@ -157,7 +156,6 @@ export class ReportDetailsModal extends Modal {
 
         await withLoading(withToast(async () => {
             isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
-            // Re-render the modal to update follow button state
             const updatedReport = appStore.get().reports.find(r => r.id === this.report.id);
             if (updatedReport) {
                 this.report = updatedReport;

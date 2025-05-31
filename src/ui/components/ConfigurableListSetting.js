@@ -2,51 +2,55 @@ import {appStore} from '../../store.js';
 import {createEl} from '../../utils.js';
 import {renderForm, renderList, setupAddRemoveListSection} from '../forms.js';
 
-export function ConfigurableListSetting(config) {
-    const sectionEl = createEl('section', {}, [
-        createEl('h3', { textContent: config.title }),
-        createEl('div', { id: config.listId }),
-    ].filter(Boolean));
+export class ConfigurableListSetting {
+    constructor(config) {
+        this.config = config;
+        this.sectionEl = createEl('section');
+        this.listContainer = createEl('div', { id: config.listId });
+        this.form = null;
 
-    let form;
-    if (config.formFields) {
-        form = renderForm(config.formFields, {}, { id: config.formId });
-        sectionEl.appendChild(form);
-    }
+        this.sectionEl.appendChild(createEl('h3', { textContent: config.title }));
+        this.sectionEl.appendChild(this.listContainer);
 
-    const listContainer = sectionEl.querySelector(`#${config.listId}`);
+        if (config.formFields) {
+            this.form = renderForm(config.formFields, {}, { id: config.formId });
+            this.sectionEl.appendChild(this.form);
+        }
 
-    const listRenderer = () => {
-        const items = config.getItems();
-        renderList(listContainer, items || [], config.itemRenderer, config.actionsConfig, config.itemWrapperClass);
-    };
+        this.listRenderer();
 
-    if (config.addInputId && config.addBtnId && config.addLogic && form) {
-        const addInputEl = form.querySelector(`#${config.addInputId}`);
-        const addBtnEl = form.querySelector(`#${config.addBtnId}`);
-        const saveBtnEl = config.saveBtnId ? form.querySelector(`#${config.saveBtnId}`) : null;
+        if (config.addInputId && config.addBtnId && config.addLogic && this.form) {
+            const addInputEl = this.form.querySelector(`#${config.addInputId}`);
+            const addBtnEl = this.form.querySelector(`#${config.addBtnId}`);
+            const saveBtnEl = config.saveBtnId ? this.form.querySelector(`#${config.saveBtnId}`) : null;
 
-        setupAddRemoveListSection({
-            addInputEl,
-            addBtnEl,
-            addLogic: config.addLogic,
-            listRenderer,
-            saveBtnEl,
-            onSaveCallback: config.onSaveCallback,
-            successMsg: config.addSuccessMsg,
-            errorMsg: config.addErrorMsg
-        });
-    }
+            setupAddRemoveListSection({
+                addInputEl,
+                addBtnEl,
+                addLogic: config.addLogic,
+                listRenderer: this.listRenderer.bind(this),
+                saveBtnEl,
+                onSaveCallback: config.onSaveCallback,
+                successMsg: config.addSuccessMsg,
+                errorMsg: config.addErrorMsg
+            });
+        }
 
-    listRenderer();
-
-    if (config.uniqueListenersSetup && form) {
-        const importContactsBtn = form.querySelector('#import-contacts-btn');
-        const publishContactsBtn = form.querySelector('#publish-contacts-btn');
-        if (importContactsBtn && publishContactsBtn) {
-            config.uniqueListenersSetup(importContactsBtn, publishContactsBtn);
+        if (config.uniqueListenersSetup && this.form) {
+            const importContactsBtn = this.form.querySelector('#import-contacts-btn');
+            const publishContactsBtn = this.form.querySelector('#publish-contacts-btn');
+            if (importContactsBtn && publishContactsBtn) {
+                config.uniqueListenersSetup(importContactsBtn, publishContactsBtn);
+            }
         }
     }
 
-    return sectionEl;
+    listRenderer() {
+        const items = this.config.getItems();
+        renderList(this.listContainer, items || [], this.config.itemRenderer, this.config.actionsConfig, this.config.itemWrapperClass);
+    }
+
+    get element() {
+        return this.sectionEl;
+    }
 }

@@ -1,87 +1,86 @@
 import {appStore} from '../../store.js';
 import {createEl, formatNpubShort} from '../../utils.js';
 
-export function AppHeader(props) {
-    const { onCreateReport, onAuthToggle, onShowSettings } = props;
-    let headerEl;
-    let createReportBtn;
-    let authButton;
-    let settingsButton;
-    let userDisplay;
-    let connectionStatusEl;
-    let syncStatusEl;
-    let offlineQueueCountEl;
+export class AppHeader {
+    constructor(props) {
+        this.onCreateReport = props.onCreateReport;
+        this.onAuthToggle = props.onAuthToggle;
+        this.onShowSettings = props.onShowSettings;
 
-    const updateAuthDisplay = (pubkey) => {
+        this.headerEl = createEl('header', { class: 'app-header' });
+        this.createReportBtn = createEl('button', { textContent: 'Create Report' });
+        this.authButton = createEl('button');
+        this.settingsButton = createEl('button', { textContent: 'Settings' });
+        this.userDisplay = createEl('span', { class: 'user-display' });
+        this.connectionStatusEl = createEl('span');
+        this.syncStatusEl = createEl('span');
+        this.offlineQueueCountEl = createEl('span');
+
+        this.createReportBtn.onclick = this.onCreateReport;
+        this.settingsButton.onclick = this.onShowSettings;
+        this.authButton.onclick = this.onAuthToggle;
+
+        this.headerEl.append(
+            createEl('h1', { textContent: 'NostrMapper' }),
+            this.createReportBtn,
+            this.authButton,
+            this.settingsButton,
+            this.userDisplay,
+            createEl('div', { class: 'connection-status' }, [this.connectionStatusEl, this.syncStatusEl, this.offlineQueueCountEl])
+        );
+
+        this.render(appStore.get());
+
+        appStore.on(async (newState, oldState) => {
+            if (newState.user?.pk !== oldState?.user?.pk) {
+                this.updateAuthDisplay(newState.user?.pk);
+            }
+            if (newState.online !== oldState?.online) {
+                this.updateConnectionDisplay(newState.online);
+            }
+            if (newState.online !== oldState?.online || newState.offlineQueueCount !== oldState?.offlineQueueCount) {
+                this.updateSyncDisplay(newState.online, newState.offlineQueueCount);
+            }
+        });
+    }
+
+    updateAuthDisplay(pubkey) {
         if (pubkey) {
-            userDisplay.textContent = `Connected: ${formatNpubShort(pubkey)}`;
-            authButton.textContent = 'Logout';
+            this.userDisplay.textContent = `Connected: ${formatNpubShort(pubkey)}`;
+            this.authButton.textContent = 'Logout';
         } else {
-            userDisplay.textContent = 'Not Connected';
-            authButton.textContent = 'Connect Identity';
+            this.userDisplay.textContent = 'Not Connected';
+            this.authButton.textContent = 'Connect Identity';
         }
-    };
+    }
 
-    const updateConnectionDisplay = (online) => {
-        connectionStatusEl.textContent = online ? 'Online' : 'Offline';
-        connectionStatusEl.className = online ? 'status-online' : 'status-offline';
-    };
+    updateConnectionDisplay(online) {
+        this.connectionStatusEl.textContent = online ? 'Online' : 'Offline';
+        this.connectionStatusEl.className = online ? 'status-online' : 'status-offline';
+    }
 
-    const updateSyncDisplay = async (online, pendingEvents, onShowSettingsCallback) => {
+    updateSyncDisplay(online, pendingEvents) {
         if (!online) {
-            syncStatusEl.textContent = `Sync Status: Offline (${pendingEvents} pending)`;
-            offlineQueueCountEl.textContent = pendingEvents > 0 ? ` (${pendingEvents})` : '';
-            offlineQueueCountEl.onclick = () => pendingEvents > 0 && onShowSettingsCallback?.();
-            offlineQueueCountEl.style.cursor = pendingEvents > 0 ? 'pointer' : 'default';
+            this.syncStatusEl.textContent = `Sync Status: Offline (${pendingEvents} pending)`;
+            this.offlineQueueCountEl.textContent = pendingEvents > 0 ? ` (${pendingEvents})` : '';
+            this.offlineQueueCountEl.onclick = () => pendingEvents > 0 && this.onShowSettings?.();
+            this.offlineQueueCountEl.style.cursor = pendingEvents > 0 ? 'pointer' : 'default';
         } else {
-            syncStatusEl.textContent = `Sync Status: Online`;
-            offlineQueueCountEl.textContent = '';
-            offlineQueueCountEl.onclick = null;
-            offlineQueueCountEl.style.cursor = 'default';
+            this.syncStatusEl.textContent = `Sync Status: Online`;
+            this.offlineQueueCountEl.textContent = '';
+            this.offlineQueueCountEl.onclick = null;
+            this.offlineQueueCountEl.style.cursor = 'default';
         }
-    };
+    }
 
-    const render = (state) => {
-        if (!headerEl) {
-            headerEl = createEl('header', { class: 'app-header' });
-            createReportBtn = createEl('button', { textContent: 'Create Report' });
-            authButton = createEl('button');
-            settingsButton = createEl('button', { textContent: 'Settings' });
-            userDisplay = createEl('span', { class: 'user-display' });
-            connectionStatusEl = createEl('span');
-            syncStatusEl = createEl('span');
-            offlineQueueCountEl = createEl('span');
+    render(state) {
+        this.updateAuthDisplay(state.user?.pk);
+        this.updateConnectionDisplay(state.online);
+        this.updateSyncDisplay(state.online, state.offlineQueueCount);
+        return this.headerEl;
+    }
 
-            createReportBtn.onclick = onCreateReport;
-            settingsButton.onclick = onShowSettings;
-            authButton.onclick = onAuthToggle;
-
-            headerEl.append(
-                createEl('h1', { textContent: 'NostrMapper' }),
-                createReportBtn,
-                authButton,
-                settingsButton,
-                userDisplay,
-                createEl('div', { class: 'connection-status' }, [connectionStatusEl, syncStatusEl, offlineQueueCountEl])
-            );
-        }
-        updateAuthDisplay(state.user?.pk);
-        updateConnectionDisplay(state.online);
-        updateSyncDisplay(state.online, state.offlineQueueCount, onShowSettings);
-        return headerEl;
-    };
-
-    appStore.on(async (newState, oldState) => {
-        if (newState.user?.pk !== oldState?.user?.pk) {
-            updateAuthDisplay(newState.user?.pk);
-        }
-        if (newState.online !== oldState?.online) {
-            updateConnectionDisplay(newState.online);
-        }
-        if (newState.online !== oldState?.online || newState.offlineQueueCount !== oldState?.offlineQueueCount) {
-            updateSyncDisplay(newState.online, newState.offlineQueueCount, onShowSettings);
-        }
-    });
-
-    return render(appStore.get());
+    get element() {
+        return this.headerEl;
+    }
 }

@@ -29,7 +29,9 @@ async function initializeApplication() {
         await confSvc.load();
         await idSvc.init();
 
-        if (!await mapSvc.init('map-container')) document.getElementById('map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
+        const mapContainer = document.getElementById('map-container');
+        if (!mapContainer) throw new Error("Map container element not found!");
+        if (!await mapSvc.init('map-container')) mapContainer.innerHTML = '<p style="color:red">Map init failed.</p>';
 
         new App();
 

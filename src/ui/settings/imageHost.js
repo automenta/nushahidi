@@ -4,25 +4,36 @@ import {C, isValidUrl, createEl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export function ImageHostSection() {
-    let sectionEl;
-    let form;
-    let imgHostSel;
-    let nip96Fields;
-    let nip96UrlIn;
-    let nip96TokenIn;
-    let saveBtn;
+export class ImageHostSection {
+    constructor() {
+        this.sectionEl = createEl('section');
+        this.form = null;
+        this.imgHostSel = null;
+        this.nip96Fields = null;
+        this.nip96UrlIn = null;
+        this.nip96TokenIn = null;
+        this.saveBtn = null;
 
-    const render = (appState) => {
-        if (!sectionEl) {
-            sectionEl = createEl('section');
+        this.render(appStore.get());
+
+        appStore.on((newState, oldState) => {
+            if (newState.settings.imgH !== oldState?.settings?.imgH ||
+                newState.settings.nip96H !== oldState?.settings?.nip96H ||
+                newState.settings.nip96T !== oldState?.settings?.nip96T) {
+                this.render(newState);
+            }
+        });
+    }
+
+    render(appState) {
+        if (!this.form) {
             const imageHostFormFields = [
                 {
                     label: 'Provider:',
                     type: 'select',
                     id: 'img-host-sel',
                     name: 'imgHostProvider',
-                    value: appState.settings.nip96Host ? 'nip96' : (appState.settings.imgHost || C.IMG_UPLOAD_NOSTR_BUILD),
+                    value: appState.settings.nip96Host ? 'nip96' : (appState.settings.imgH || C.IMG_UPLOAD_NOSTR_BUILD),
                     options: [
                         { value: C.IMG_UPLOAD_NOSTR_BUILD, label: 'nostr.build (Default)' },
                         { value: 'nip96', label: 'NIP-96 Server' }
@@ -41,25 +52,25 @@ export function ImageHostSection() {
                 }
             ];
 
-            form = renderForm(imageHostFormFields, {}, { id: 'image-host-form' });
-            sectionEl.appendChild(form);
-            saveBtn = createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' });
-            sectionEl.appendChild(saveBtn);
+            this.form = renderForm(imageHostFormFields, {}, { id: 'image-host-form' });
+            this.sectionEl.appendChild(this.form);
+            this.saveBtn = createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' });
+            this.sectionEl.appendChild(this.saveBtn);
 
-            imgHostSel = form.querySelector('#img-host-sel');
-            nip96Fields = form.querySelector('#nip96-fields');
-            nip96UrlIn = form.querySelector('#nip96-url-in');
-            nip96TokenIn = form.querySelector('#nip96-token-in');
+            this.imgHostSel = this.form.querySelector('#img-host-sel');
+            this.nip96Fields = this.form.querySelector('#nip96-fields');
+            this.nip96UrlIn = this.form.querySelector('#nip96-url-in');
+            this.nip96TokenIn = this.form.querySelector('#nip96-token-in');
 
-            imgHostSel.onchange = () => {
-                nip96Fields.style.display = imgHostSel.value === 'nip96' ? '' : 'none';
+            this.imgHostSel.onchange = () => {
+                this.nip96Fields.style.display = this.imgHostSel.value === 'nip96' ? '' : 'none';
             };
 
-            saveBtn.onclick = withToast(async () => {
-                const selectedHost = imgHostSel.value;
+            this.saveBtn.onclick = withToast(async () => {
+                const selectedHost = this.imgHostSel.value;
                 if (selectedHost === 'nip96') {
-                    const nip96Url = nip96UrlIn.value.trim();
-                    const nip96Token = nip96TokenIn.value.trim();
+                    const nip96Url = this.nip96UrlIn.value.trim();
+                    const nip96Token = this.nip96TokenIn.value.trim();
                     if (!isValidUrl(nip96Url)) throw new Error("Invalid NIP-96 server URL.");
                     await confSvc.setImgHost(nip96Url, true, nip96Token);
                 } else {
@@ -68,21 +79,15 @@ export function ImageHostSection() {
             }, "Image host settings saved.", "Error saving image host settings");
         }
 
-        imgHostSel.value = appState.settings.nip96Host ? 'nip96' : (appState.settings.imgHost || C.IMG_UPLOAD_NOSTR_BUILD);
-        nip96Fields.style.display = appState.settings.nip96Host ? '' : 'none';
-        nip96UrlIn.value = appState.settings.nip96Host;
-        nip96TokenIn.value = appState.settings.nip96Token;
+        this.imgHostSel.value = appState.settings.nip96H ? 'nip96' : (appState.settings.imgH || C.IMG_UPLOAD_NOSTR_BUILD);
+        this.nip96Fields.style.display = appState.settings.nip96H ? '' : 'none';
+        this.nip96UrlIn.value = appState.settings.nip96H;
+        this.nip96TokenIn.value = appState.settings.nip96T;
 
-        return sectionEl;
-    };
+        return this.sectionEl;
+    }
 
-    appStore.on((newState, oldState) => {
-        if (newState.settings.imgHost !== oldState?.settings?.imgHost ||
-            newState.settings.nip96Host !== oldState?.settings?.nip96Host ||
-            newState.settings.nip96Token !== oldState?.settings?.nip96Token) {
-            render(newState);
-        }
-    });
-
-    return render(appStore.get());
+    get element() {
+        return this.sectionEl;
+    }
 }

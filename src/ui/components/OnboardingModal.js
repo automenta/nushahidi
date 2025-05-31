@@ -4,7 +4,6 @@ import {Modal} from '../modals.js';
 
 export class OnboardingModal extends Modal {
     constructor() {
-        let onboardingModalElement;
         const contentRenderer = (contentRoot, modalRoot) => {
             const gotItBtn = createEl('button', { textContent: 'Got It!' });
             gotItBtn.addEventListener('click', () => this.hideOnboarding());

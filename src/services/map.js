@@ -82,6 +82,7 @@ export const mapSvc = {
         _map.addControl(_drawControl);
         setupMapEventListeners();
         await this.loadDrawnShapes();
+        return true; // Indicate successful initialization
     },
 
     async loadDrawnShapes() {
@@ -115,7 +116,7 @@ export const mapSvc = {
             if (report.lat && report.lon) {
                 const marker = L.marker([report.lat, report.lon]);
                 marker.bindPopup(`<b>${report.title || 'Report'}</b><br>${report.sum || report.ct.substring(0, 100)}`);
-                marker.on('click', () => appStore.set(s => ({ ...s, ui: { ...s.ui, viewingReport: report.id } })));
+                marker.on('click', () => appStore.set(s => ({ ...s, ui: { ...s.ui, reportIdToView: report.id, showReportList: false } })));
                 _mapRepsLyr.addLayer(marker);
             }
         });

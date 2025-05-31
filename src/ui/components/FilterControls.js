@@ -40,39 +40,57 @@ const matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
 const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => !followedOnlyFilter || followedPubkeys.map(f => f.pk).includes(report.pk);
 
 
-export function FilterControls() {
-    let filterFormElement;
+export class FilterControls {
+    constructor() {
+        this.filterFormElement = null;
+        this.mapDrawControlsDiv = null;
 
-    const updateFilterState = (key, value) => appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
+        this.render(appStore.get());
 
-    const setupFilterInput = (formScope, id, stateKey, handler = applyAllFilters, debounceInput = false) => {
+        appStore.on((newState, oldState) => {
+            const categoriesChanged = newState.settings?.cats !== oldState?.settings?.cats;
+            const focusTagChanged = newState.currentFocusTag !== oldState?.currentFocusTag;
+            const filtersReset = JSON.stringify(newState.ui.filters) !== JSON.stringify(oldState?.ui?.filters) &&
+                                 (newState.ui.filters.q === '' && newState.ui.filters.cat === '' && newState.ui.filters.auth === '' && newState.ui.filters.tStart === null && newState.ui.filters.tEnd === null);
+
+            if (categoriesChanged || focusTagChanged || filtersReset) {
+                this.render(newState);
+            }
+        });
+    }
+
+    updateFilterState(key, value) {
+        appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
+    }
+
+    setupFilterInput(formScope, id, stateKey, handler = applyAllFilters, debounceInput = false) {
         const inputElement = formScope.querySelector(`#${id}`);
         if (!inputElement) return;
         inputElement.oninput = e => {
-            updateFilterState(stateKey, e.target.value.trim());
+            this.updateFilterState(stateKey, e.target.value.trim());
             debounceInput ? debouncedApplyAllFilters() : handler();
         };
-    };
+    }
 
-    const setupFilterSelect = (formScope, id, stateKey, handler = applyAllFilters) => {
+    setupFilterSelect(formScope, id, stateKey, handler = applyAllFilters) {
         const selectElement = formScope.querySelector(`#${id}`);
         if (!selectElement) return;
         selectElement.onchange = e => {
-            updateFilterState(stateKey, e.target.value);
+            this.updateFilterState(stateKey, e.target.value);
             handler();
         };
-    };
+    }
 
-    const setupFilterTimeInput = (formScope, id, stateKey) => {
+    setupFilterTimeInput(formScope, id, stateKey) {
         const inputElement = formScope.querySelector(`#${id}`);
         if (!inputElement) return;
         inputElement.onchange = e => {
-            updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
+            this.updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
             applyAllFilters();
         };
-    };
+    }
 
-    const renderFilterForm = (appState) => {
+    render(appState) {
         const filterFormFields = [
             { type: 'h4', content: ['Filter Reports'] },
             { label: 'Search reports...', type: 'search', id: 'search-query-input', name: 'searchQuery', placeholder: 'Search reports text' },
@@ -110,11 +128,11 @@ export function FilterControls() {
 
         const newForm = renderForm(filterFormFields, initialFilterData, { id: 'filter-form' });
 
-        setupFilterInput(newForm, 'search-query-input', 'q', applyAllFilters, true);
-        setupFilterSelect(newForm, 'filter-category', 'cat');
-        setupFilterInput(newForm, 'filter-author', 'auth', applyAllFilters, true);
-        setupFilterTimeInput(newForm, 'filter-time-start', 'tStart');
-        setupFilterTimeInput(newForm, 'filter-time-end', 'tEnd');
+        this.setupFilterInput(newForm, 'search-query-input', 'q', applyAllFilters, true);
+        this.setupFilterSelect(newForm, 'filter-category', 'cat');
+        this.setupFilterInput(newForm, 'filter-author', 'auth', applyAllFilters, true);
+        this.setupFilterTimeInput(newForm, 'filter-time-start', 'tStart');
+        this.setupFilterTimeInput(newForm, 'filter-time-end', 'tEnd');
 
         newForm.querySelector('#apply-filters-btn').onclick = applyAllFilters;
         newForm.querySelector('#reset-filters-btn').onclick = () => {
@@ -146,26 +164,23 @@ export function FilterControls() {
 
         newForm.querySelector('#clear-drawn-shapes-btn').onclick = mapSvc.clearAllDrawnShapes;
 
+        // Re-add map draw controls if the form is re-rendered
         const mapDrawControlsDiv = newForm.querySelector('#map-draw-controls');
-        mapDrawControlsDiv.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
-
-        return newForm;
-    };
-
-    filterFormElement = renderFilterForm(appStore.get());
-
-    appStore.on((newState, oldState) => {
-        const categoriesChanged = newState.settings?.cats !== oldState?.settings?.cats;
-        const focusTagChanged = newState.currentFocusTag !== oldState?.currentFocusTag;
-        const filtersReset = JSON.stringify(newState.ui.filters) !== JSON.stringify(oldState?.ui?.filters) &&
-                             (newState.ui.filters.q === '' && newState.ui.filters.cat === '' && newState.ui.filters.auth === '' && newState.ui.filters.tStart === null && newState.ui.filters.tEnd === null);
-
-        if (categoriesChanged || focusTagChanged || filtersReset) {
-            const newForm = renderFilterForm(newState);
-            filterFormElement.replaceWith(newForm);
-            filterFormElement = newForm;
+        if (this.mapDrawControlsDiv && this.mapDrawControlsDiv.parentNode) {
+            this.mapDrawControlsDiv.parentNode.removeChild(this.mapDrawControlsDiv);
         }
-    });
+        this.mapDrawControlsDiv = mapDrawControlsDiv;
+        this.mapDrawControlsDiv.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 
-    return filterFormElement;
+        if (this.filterFormElement && this.filterFormElement.parentNode) {
+            this.filterFormElement.replaceWith(newForm);
+        }
+        this.filterFormElement = newForm;
+
+        return this.filterFormElement;
+    }
+
+    get element() {
+        return this.filterFormElement;
+    }
 }

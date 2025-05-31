@@ -198,7 +198,7 @@ export const settingsSections = [
         type: 'offline-queue',
         title: 'Offline Queue',
         listId: 'offline-queue-list',
-        itemRenderer: OfflineQueueSection.itemRenderer,
+        itemRenderer: offlineQueueItemRenderer,
         actionsConfig: OfflineQueueSection.actionsConfig,
         itemWrapperClass: 'offline-q-entry',
         renderer: OfflineQueueSection
