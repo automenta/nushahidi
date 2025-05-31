@@ -3,6 +3,7 @@ import { dbSvc } from '../services.js';
 import { $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
 import { showReportDetails } from './reportList.js'; // Needs showReportDetails for handleReportViewing
 import { applyAllFilters } from './filters.js'; // Needs applyAllFilters
+import { showModal } from './modals.js'; // New: Import showModal
 
 export const updAuthDisp = pk => {
     const authButton = $('#auth-button');
@@ -33,13 +34,19 @@ export const updSyncDisp = async () => {
         if (queue.length > 0) {
             syncStatusElement.textContent = `Syncing (${queue.length})...`;
             syncStatusElement.style.color = 'orange';
+            syncStatusElement.disabled = false; // Enable button
+            syncStatusElement.onclick = () => showModal('settings-modal'); // Make it clickable
         } else {
             syncStatusElement.textContent = appStore.get().online ? 'Synced' : 'Offline';
             syncStatusElement.style.color = 'lightgreen';
+            syncStatusElement.disabled = true; // Disable button if no queue
+            syncStatusElement.onclick = null; // Remove click handler
         }
     } catch {
         syncStatusElement.textContent = 'Sync status err';
         syncStatusElement.style.color = 'red';
+        syncStatusElement.disabled = true;
+        syncStatusElement.onclick = null;
     }
 };
 

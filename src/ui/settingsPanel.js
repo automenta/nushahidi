@@ -1,8 +1,8 @@
 import { nip19 } from 'nostr-tools';
 import { appStore } from '../store.js';
-import { mapSvc, idSvc, confSvc, nostrSvc, dbSvc } from '../services.js';
+import { mapSvc, idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
 import { C, $, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast, isValidUrl } from '../utils.js';
-import { createModalWrapper, showConfirmModal, showPassphraseModal, hideModal } from './modals.js';
+import { createModalWrapper, showConfirmModal, showPassphraseModal, hideModal, showModal } from './modals.js';
 import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
 
 // --- Helper Functions for Rendering Lists ---
@@ -101,6 +101,72 @@ const renderFollowedList = (modalContent) => {
     }];
     renderList('followed-list', appStore.get().followedPubkeys, followedItemRenderer, followedActionsConfig, 'followed-entry', modalContent);
 };
+
+// New: Render Offline Queue
+const renderOfflineQueue = async (modalContent) => {
+    const queueItems = await dbSvc.getOfflineQ();
+
+    const getEventType = (kind) => {
+        switch (kind) {
+            case C.NOSTR_KIND_REPORT: return 'Report';
+            case C.NOSTR_KIND_REACTION: return 'Reaction';
+            case C.NOSTR_KIND_NOTE: return 'Comment';
+            case 5: return 'Deletion'; // NIP-09 deletion event
+            case C.NOSTR_KIND_PROFILE: return 'Profile';
+            case C.NOSTR_KIND_CONTACTS: return 'Contacts';
+            default: return `Kind ${kind}`;
+        }
+    };
+
+    const offlineQueueItemRenderer = item => {
+        const eventType = getEventType(item.event.kind);
+        const timestamp = new Date(item.ts).toLocaleString();
+        const contentSnippet = item.event.content.substring(0, 50) + (item.event.content.length > 50 ? '...' : '');
+        const eventIdSnippet = item.event.id.substring(0, 8);
+        return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
+    };
+
+    const offlineQueueActionsConfig = [
+        {
+            label: 'Retry',
+            className: 'retry-offline-q-btn',
+            onClick: async (item) => {
+                appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+                try {
+                    // Attempt to publish the event directly
+                    await nostrSvc.pubEv(item.event);
+                    await dbSvc.rmOfflineQ(item.qid); // Remove from queue if successful
+                    showToast("Event retried and published!", 'success');
+                } catch (e) {
+                    showToast(`Failed to retry event: ${e.message}`, 'error');
+                } finally {
+                    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+                    renderOfflineQueue(modalContent); // Re-render the list
+                }
+            }
+        },
+        {
+            label: 'Delete',
+            className: 'remove-offline-q-btn',
+            onClick: async (item) => {
+                appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+                try {
+                    await dbSvc.rmOfflineQ(item.qid);
+                    showToast("Event removed from queue.", 'info');
+                } catch (e) {
+                    showToast(`Failed to delete event from queue: ${e.message}`, 'error');
+                } finally {
+                    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+                    renderOfflineQueue(modalContent); // Re-render the list
+                }
+            },
+            confirm: { title: 'Delete Queued Event', message: 'Are you sure you want to delete this event from the offline queue? It will NOT be published.' }
+        }
+    ];
+
+    renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig, 'offline-q-entry', modalContent);
+};
+
 
 // --- Add Logic Functions ---
 const addRelayLogic = async (url) => {
@@ -552,6 +618,14 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // New: Offline Queue Section
+        settingsSectionsWrapper.appendChild(createEl('section', {}, [
+            createEl('h3', { textContent: 'Offline Queue' }),
+            createEl('p', { textContent: 'Events waiting to be published when online.' }),
+            createEl('div', { id: 'offline-queue-list' })
+        ]));
+        settingsSectionsWrapper.appendChild(createEl('hr'));
+
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Data Management' }),
             renderForm([
@@ -575,6 +649,7 @@ export function SettPanComp() {
     renderFocusTags(modalContent);
     renderMuteList(modalContent);
     renderFollowedList(modalContent);
+    renderOfflineQueue(modalContent); // New: Render offline queue
 
     // Setup Event Listeners for Settings Panel using the new helper
     setupAddRemoveListSection({

@@ -81,6 +81,23 @@ header h1 {
     background-color: #45a049;
 }
 
+/* New: Styling for status buttons in header */
+.status-indicators .status-button {
+    background: none;
+    border: none;
+    color: var(--light-text);
+    font-size: .85em;
+    padding: 0;
+    margin-left: 1rem;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.status-indicators .status-button:hover {
+    opacity: 0.8;
+}
+
+
 main {
     flex-grow: 1;
     display: flex;
@@ -375,7 +392,7 @@ footer {
 }
 
 .modal-content button[type=submit],
-.modal-content button:not(.secondary):not(.remove-relay-btn):not(.remove-category-btn):not(.remove-mute-btn):not(.confirm-button):not(.cancel-button):not(.remove-image-btn):not(.remove-focus-tag-btn):not(.remove-followed-btn) {
+.modal-content button:not(.secondary):not(.remove-relay-btn):not(.remove-category-btn):not(.remove-mute-btn):not(.confirm-button):not(.cancel-button):not(.remove-image-btn):not(.remove-focus-tag-btn):not(.remove-followed-btn):not(.remove-offline-q-btn):not(.retry-offline-q-btn) {
     background-color: var(--primary-color);
     color: var(--light-text);
     padding: .65rem .9rem;
@@ -518,7 +535,8 @@ footer {
 .category-entry,
 .mute-entry,
 .focus-tag-entry, /* Added */
-.followed-entry /* Added */ {
+.followed-entry, /* Added */
+.offline-q-entry /* New */ {
     display: flex;
     align-items: center;
     gap: .4rem;
@@ -541,8 +559,20 @@ footer {
 .remove-category-btn,
 .remove-mute-btn,
 .remove-focus-tag-btn, /* Added */
-.remove-followed-btn /* Added */ {
+.remove-followed-btn, /* Added */
+.remove-offline-q-btn /* New */ {
     background-color: var(--danger-color);
+    color: var(--light-text);
+    padding: .15rem .4rem;
+    font-size: .75em;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+/* New: Retry button for offline queue */
+.retry-offline-q-btn {
+    background-color: var(--secondary-color);
     color: var(--light-text);
     padding: .15rem .4rem;
     font-size: .75em;
