@@ -1,11 +1,12 @@
 import {$, createEl, formatNpubShort, sanitizeHTML} from '../../utils.js';
 import {ReportDetailsModal} from './ReportDetailsModal.js';
 import {showModal} from '../modals.js';
+import {appStore} from '../../store.js';
 
-export function ReportList(reports) {
-    const listElement = $('#report-list');
-    const listContainer = $('#report-list-container');
-    if (!listElement || !listContainer) return;
+export function ReportList() {
+    const listContainer = createEl('div', { id: 'report-list-container' });
+    const listElement = createEl('div', { id: 'report-list' });
+    listContainer.appendChild(listElement);
 
     const renderReportCard = report => `
         <div class="report-card" data-rep-id="${sanitizeHTML(report.id)}" role="button" tabindex="0" aria-labelledby="card-title-${report.id}">
@@ -14,29 +15,45 @@ export function ReportList(reports) {
             <small>Cats: ${report.cat.map(sanitizeHTML).join(', ') || 'N/A'}</small>
         </div>`;
 
-    listElement.innerHTML = '';
-    if (reports.length > 0) {
-        reports.forEach(report => {
-            const cardWrapper = createEl('div');
-            cardWrapper.innerHTML = renderReportCard(report);
-            const cardElement = cardWrapper.firstElementChild;
-            cardElement.addEventListener('click', () => {
-                const reportDetailsModalElement = ReportDetailsModal(report);
-                showModal(reportDetailsModalElement, 'detail-title');
-                listContainer.style.display = 'none';
-            });
-            cardElement.addEventListener('keydown', e => {
-                if (e.key === 'Enter' || e.key === ' ') {
+    const updateList = reports => {
+        listElement.innerHTML = '';
+        if (reports.length > 0) {
+            reports.forEach(report => {
+                const cardWrapper = createEl('div');
+                cardWrapper.innerHTML = renderReportCard(report);
+                const cardElement = cardWrapper.firstElementChild;
+                cardElement.addEventListener('click', () => {
                     const reportDetailsModalElement = ReportDetailsModal(report);
                     showModal(reportDetailsModalElement, 'detail-title');
-                    listContainer.style.display = 'none';
-                }
+                    appStore.set(s => ({ ui: { ...s.ui, showReportList: false } }));
+                });
+                cardElement.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        const reportDetailsModalElement = ReportDetailsModal(report);
+                        showModal(reportDetailsModalElement, 'detail-title');
+                        appStore.set(s => ({ ui: { ...s.ui, showReportList: false } }));
+                    }
+                });
+                listElement.appendChild(cardElement);
             });
-            listElement.appendChild(cardElement);
-        });
-        listContainer.style.display = 'block';
-    } else {
-        listElement.innerHTML = '<p>No reports match filters.</p>';
-        listContainer.style.display = 'block';
-    }
+        } else {
+            listElement.innerHTML = '<p>No reports match filters.</p>';
+        }
+    };
+
+    appStore.on(newState => {
+        if (newState.filteredReports !== appStore.get().filteredReports) {
+            updateList(newState.filteredReports);
+        }
+        if (newState.ui.showReportList !== appStore.get().ui.showReportList) {
+            listContainer.style.display = newState.ui.showReportList ? 'block' : 'none';
+        }
+    });
+
+    // Initial render
+    updateList(appStore.get().filteredReports || []);
+    listContainer.style.display = appStore.get().ui.showReportList ? 'block' : 'none';
+
+
+    return listContainer;
 }

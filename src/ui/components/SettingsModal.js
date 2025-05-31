@@ -2,7 +2,6 @@ import {createEl} from '../../utils.js';
 import {Modal, hideModal} from '../modals.js';
 import {settingsSections} from '../settingsConfig.js';
 import {ConfigurableListSetting} from './ConfigurableListSetting.js';
-import {renderOfflineQueue} from '../settings/offlineQueue.js';
 
 export function SettingsModal() {
     let settingsModalElement;
@@ -11,7 +10,7 @@ export function SettingsModal() {
         ['list', (wrapper, section) => wrapper.appendChild(ConfigurableListSetting(section, wrapper))],
         ['section', (wrapper, section) => {
             const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
-            const renderedContent = section.renderer(wrapper);
+            const renderedContent = section.renderer(); // Call renderer without wrapper, it returns its own element
             if (Array.isArray(renderedContent)) renderedContent.forEach(el => sectionEl.appendChild(el));
             else if (renderedContent instanceof Node) sectionEl.appendChild(renderedContent);
             wrapper.appendChild(sectionEl);
@@ -20,10 +19,9 @@ export function SettingsModal() {
             const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
             sectionEl.append(
                 createEl('p', { textContent: 'Events waiting to be published when online.' }),
-                createEl('div', { id: section.listId })
+                section.renderer(section) // OfflineQueueSection now returns its own div
             );
             wrapper.appendChild(sectionEl);
-            renderOfflineQueue(wrapper);
         }]
     ]);
 

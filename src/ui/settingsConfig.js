@@ -1,9 +1,9 @@
 import {C, createEl, formatNpubShort, npubToHex} from '../utils.js';
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
-import {renderKeyManagementSection} from './settings/keyManagement.js';
-import {renderMapTilesSection} from './settings/mapTiles.js';
-import {renderImageHostSection} from './settings/imageHost.js';
+import {KeyManagementSection} from './settings/keyManagement.js';
+import {MapTilesSection} from './settings/mapTiles.js';
+import {ImageHostSection} from './settings/imageHost.js';
 import {
     setupFollowedListUniqueListeners,
     renderRelayItem, handleRelayRemove,
@@ -12,8 +12,8 @@ import {
     renderMutePubkeyItem, handleMutePubkeyRemove,
     renderFollowedPubkeyItem, handleFollowedPubkeyRemove
 } from './settingsUtils.js';
-import {renderDataManagementSection} from './settings/dataManagement.js';
-import {offlineQueueActionsConfig, offlineQueueItemRenderer, renderOfflineQueue} from './settings/offlineQueue.js';
+import {DataManagementSection} from './settings/dataManagement.js';
+import {OfflineQueueSection} from './settings/offlineQueue.js';
 import {ConfigurableListSetting} from './components/ConfigurableListSetting.js';
 
 const createAddLogicHandler = (confSvcMethod, itemExistsChecker, itemExistsErrorMsg) => async inputValue => {
@@ -94,7 +94,7 @@ export const settingsSections = [
     {
         type: 'section',
         title: 'Key Management',
-        renderer: renderKeyManagementSection
+        renderer: KeyManagementSection
     },
     {
         type: 'list',
@@ -144,12 +144,12 @@ export const settingsSections = [
     {
         type: 'section',
         title: 'Map Tiles',
-        renderer: renderMapTilesSection
+        renderer: MapTilesSection
     },
     {
         type: 'section',
         title: 'Image Host',
-        renderer: renderImageHostSection
+        renderer: ImageHostSection
     },
     {
         type: 'list',
@@ -203,23 +203,14 @@ export const settingsSections = [
         type: 'offline-queue',
         title: 'Offline Queue',
         listId: 'offline-queue-list',
-        itemRenderer: offlineQueueItemRenderer,
-        actionsConfig: modalContent => offlineQueueActionsConfig(modalContent),
+        itemRenderer: OfflineQueueSection.itemRenderer,
+        actionsConfig: OfflineQueueSection.actionsConfig,
         itemWrapperClass: 'offline-q-entry',
-        customRenderLogic: renderOfflineQueue,
-        renderer: (wrapper, section) => {
-            const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
-            sectionEl.append(
-                createEl('p', { textContent: 'Events waiting to be published when online.' }),
-                createEl('div', { id: section.listId })
-            );
-            wrapper.appendChild(sectionEl);
-            section.customRenderLogic(wrapper);
-        }
+        renderer: OfflineQueueSection // OfflineQueueSection now returns the full component
     },
     {
         type: 'section',
         title: 'Data Management',
-        renderer: renderDataManagementSection
+        renderer: DataManagementSection
     }
 ];

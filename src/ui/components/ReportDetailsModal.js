@@ -85,7 +85,7 @@ export function ReportDetailsModal(report) {
     `;
 
     const setupReportDetailEventListeners = (rep, isAuthor, canFollow, detailContainer) => {
-        $('#back-to-list-btn', detailContainer).onclick = () => { hideModal(reportDetailsModalElement); $('#report-list-container').style.display = 'block' };
+        $('#back-to-list-btn', detailContainer).onclick = () => { hideModal(reportDetailsModalElement); appStore.set(s => ({ ui: { ...s.ui, showReportList: true } })) };
 
         if (isAuthor) {
             $('#edit-report-btn', detailContainer).onclick = () => {
@@ -99,7 +99,7 @@ export function ReportDetailsModal(report) {
                     withLoading(withToast(async () => {
                         await nostrSvc.deleteEv(rep.id);
                         hideModal(reportDetailsModalElement);
-                        $('#report-list-container').style.display = 'block';
+                        appStore.set(s => ({ ui: { ...s.ui, showReportList: true } }));
                         applyAllFilters();
                     }, null, "Failed to delete report")),
                     () => showToast("Report deletion cancelled.", 'info')

@@ -16,8 +16,8 @@ export function getSettingItems(listId) {
     }
 }
 
-export const setupFollowedListUniqueListeners = modalContent => {
-    $('#import-contacts-btn', modalContent).onclick = withLoading(withToast(async () => {
+export const setupFollowedListUniqueListeners = scopeElement => {
+    $(`#import-contacts-btn`, scopeElement).onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) throw new Error("Please connect your Nostr identity to import contacts.");
         const contacts = await nostrSvc.fetchContacts();
         if (!contacts.length) return "No NIP-02 contact list found on relays for your account.";
@@ -30,7 +30,7 @@ export const setupFollowedListUniqueListeners = modalContent => {
         return `Imported ${newFollowed.length} contacts from Nostr.`;
     }, null, "Error importing contacts"));
 
-    $('#publish-contacts-btn', modalContent).onclick = () => {
+    $(`#publish-contacts-btn`, scopeElement).onclick = () => {
         if (!appStore.get().user) {
             showToast("Please connect your Nostr identity to publish contacts.", 'warning');
             return;

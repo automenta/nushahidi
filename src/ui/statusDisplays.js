@@ -1,48 +1,8 @@
 import {appStore} from '../store.js';
-import {dbSvc} from '../services.js';
-import {$, createEl, formatNpubShort, sanitizeHTML} from '../utils.js';
+import {createEl, sanitizeHTML} from '../utils.js';
 import {ReportDetailsModal} from './components/ReportDetailsModal.js';
 import {applyAllFilters} from './components/FilterControls.js';
 import {showModal} from './modals.js';
-
-export const updateAuthDisplay = pk => {
-    const authButton = $('#auth-button');
-    const userPubkeySpan = $('#user-pubkey');
-    authButton.textContent = pk ? 'Logout' : 'Connect Nostr';
-    userPubkeySpan.textContent = pk ? `User: ${formatNpubShort(pk)}` : '';
-    userPubkeySpan.style.display = pk ? 'inline' : 'none';
-};
-
-export const updateConnectionDisplay = isOnline => {
-    const connectionStatusElement = $('#connection-status');
-    if (!connectionStatusElement) return;
-    connectionStatusElement.textContent = isOnline ? 'Online' : 'Offline';
-    connectionStatusElement.style.color = isOnline ? 'lightgreen' : 'lightcoral';
-};
-
-export const updateSyncDisplay = async (settingsModalElement) => {
-    const syncStatusElement = $('#sync-status');
-    if (!syncStatusElement) return;
-    try {
-        const queue = await dbSvc.getOfflineQ();
-        if (queue.length) {
-            syncStatusElement.textContent = `Syncing (${queue.length})...`;
-            syncStatusElement.style.color = 'orange';
-            syncStatusElement.disabled = false;
-            syncStatusElement.onclick = () => showModal(settingsModalElement);
-        } else {
-            syncStatusElement.textContent = appStore.get().online ? 'Synced' : 'Offline';
-            syncStatusElement.style.color = 'lightgreen';
-            syncStatusElement.disabled = true;
-            syncStatusElement.onclick = null;
-        }
-    } catch {
-        syncStatusElement.textContent = 'Sync status err';
-        syncStatusElement.style.color = 'red';
-        syncStatusElement.disabled = true;
-        syncStatusElement.onclick = null;
-    }
-};
 
 export const handleReportAndFilterUpdates = (newState, oldState) => {
     const filterDependencies = [
@@ -58,17 +18,8 @@ export const handleReportAndFilterUpdates = (newState, oldState) => {
     });
 
     if (shouldReapplyFilters) {
-        const focusTagInput = $('#focus-tag-input', $('#filter-controls'));
-        if (focusTagInput) focusTagInput.value = newState.currentFocusTag;
         applyAllFilters();
     }
-};
-
-export const updateFilterCategories = newCategories => {
-    const selectElement = $('#filter-category', $('#filter-controls'));
-    if (!selectElement) return;
-    selectElement.innerHTML = '<option value="">All</option>';
-    (newCategories || []).forEach(c => selectElement.appendChild(createEl('option', { value: c, textContent: sanitizeHTML(c) })));
 };
 
 export const handleReportViewing = (reportId, reports) => {
@@ -79,9 +30,4 @@ export const handleReportViewing = (reportId, reports) => {
             showModal(reportDetailsModalElement, 'detail-title');
         }
     }
-};
-
-export const updateGlobalLoadingSpinner = isLoading => {
-    const globalSpinner = $('#global-loading-spinner');
-    if (globalSpinner) globalSpinner.style.display = isLoading ? 'flex' : 'none';
 };
