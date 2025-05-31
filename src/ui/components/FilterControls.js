@@ -40,7 +40,7 @@ export const applyAllFilters = () => {
 };
 export const debouncedApplyAllFilters = debounce(applyAllFilters, 350);
 
-export function FilterControls() {
+export function FilterControls(containerElement) {
     const filterFormFields = [
         { type: 'h4', content: ['Filter Reports'] },
         { label: 'Search reports...', type: 'search', id: 'search-query-input', name: 'searchQuery', placeholder: 'Search reports text' },
@@ -94,7 +94,6 @@ export function FilterControls() {
         };
     };
 
-    const filterControlsContainer = $('#filter-controls');
     const appState = appStore.get();
 
     const initialFilterData = {
@@ -108,9 +107,9 @@ export function FilterControls() {
         followedOnlyFilter: appState.ui.followedOnlyFilter
     };
 
-    filterControlsContainer.innerHTML = '';
+    containerElement.innerHTML = ''; // Clear existing content
     const filterForm = renderForm(filterFormFields, initialFilterData, { id: 'filter-form' });
-    filterControlsContainer.appendChild(filterForm);
+    containerElement.appendChild(filterForm);
 
     setupFilterInput(filterForm, 'search-query-input', 'q', applyAllFilters, true);
     setupFilterSelect(filterForm, 'filter-category', 'cat');
@@ -163,6 +162,4 @@ export function FilterControls() {
 
     const mapDrawControlsDiv = $('#map-draw-controls', filterForm);
     mapDrawControlsDiv.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
-
-    return filterControlsContainer;
 }

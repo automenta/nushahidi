@@ -44,12 +44,12 @@ export function initUI() {
     const reportFormModalContainer = ensureContainerExists('report-form-modal');
     const settingsModalContainer = ensureContainerExists('settings-modal-container');
     const filterControlsContainer = ensureContainerExists('filter-controls');
-    const reportDetailContainer = ensureContainerExists('report-detail-container');
+    const reportDetailContainer = ensureContainerExists('report-detail-container'); // Ensure this exists for ReportDetailsModal
 
     authModalContainer.appendChild(AuthModal());
     reportFormModalContainer.appendChild(ReportFormModal());
     settingsModalContainer.appendChild(SettingsModal());
-    filterControlsContainer.appendChild(FilterControls());
+    FilterControls(filterControlsContainer); // Call FilterControls directly, passing the container
 
     $('#create-report-btn').onclick = () => showModal('report-form-modal', 'rep-title');
 
