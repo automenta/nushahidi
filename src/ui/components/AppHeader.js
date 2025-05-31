@@ -8,7 +8,7 @@ export class AppHeader {
         this.onAuthToggle = props.onAuthToggle;
         this.onShowSettings = props.onShowSettings;
 
-        this.headerEl = createEl('header', { class: 'app-header' });
+        this.headerEl = createEl('div', { class: 'app-header-content' });
         this.createReportBtn = createEl('button', { textContent: 'Create Report' });
         this.authButton = createEl('button');
         this.settingsButton = createEl('button', { textContent: 'Settings' });

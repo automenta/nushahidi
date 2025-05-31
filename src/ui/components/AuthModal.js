@@ -29,14 +29,14 @@ export class AuthModal extends Modal {
                 { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => this.hide(), style: 'margin-top:1rem' }
             ];
 
-            const form = renderForm(authFormFields, {}, {id: 'auth-form'});
+            const { form, fields } = renderForm(authFormFields, {}, {id: 'auth-form'});
 
-            connNip07Btn = form.querySelector('#conn-nip07-btn');
-            authPassInput = form.querySelector('#auth-pass');
-            createProfBtn = form.querySelector('#create-prof-btn');
-            authSkInput = form.querySelector('#auth-sk');
-            importSkBtn = form.querySelector('#import-sk-btn');
-            cancelAuthModalBtn = form.querySelector('#cancel-auth-modal-btn');
+            connNip07Btn = fields['conn-nip07-btn'];
+            authPassInput = fields['auth-pass'];
+            createProfBtn = fields['create-prof-btn'];
+            authSkInput = fields['auth-sk'];
+            importSkBtn = fields['import-sk-btn'];
+            cancelAuthModalBtn = fields['cancel-auth-modal-btn'];
 
             connNip07Btn.onclick = this.handleConnectNip07;
             createProfBtn.onclick = withToast(() => this.handleCreateProfile(authPassInput.value), null, "Error creating profile");
