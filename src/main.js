@@ -1,7 +1,6 @@
 import {appStore} from './store.js';
 import {confSvc, dbSvc, idSvc, mapSvc, nostrSvc, offSvc} from './services.js';
 import {initUI} from './ui.js';
-import {$} from './utils.js';
 
 async function setupServiceWorker() {
     if ('serviceWorker' in navigator) {
@@ -30,7 +29,7 @@ async function initializeApplication() {
         await confSvc.load();
         await idSvc.init();
 
-        if (!await mapSvc.init('map-container')) $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
+        if (!await mapSvc.init('map-container')) document.getElementById('map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
 
         initUI();
 
