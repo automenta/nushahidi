@@ -1,4 +1,5 @@
-import { SimplePool, generatePrivateKey, getPublicKey, signEvent as signEvNostr } from 'nostr-tools';
+import { SimplePool, signEvent as signEvNostr } from 'nostr-tools';
+import { generatePrivateKey, getPublicKey } from 'nostr-tools/keys';
 import { encrypt, decrypt, nsecToHex, npubToHex, showToast } from '../utils.js';
 import { appStore } from '../store.js';
 import { confSvc } from './config.js';
