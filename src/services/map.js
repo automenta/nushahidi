@@ -49,31 +49,32 @@ function setupMapEventListeners() {
 }
 
 export const mapSvc = {
-    init(id = 'map-container') {
+    async init(id = 'map-container') {
         _map = L.map(id).setView([20, 0], 3);
-        _mapTileLyr = L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM & NM', maxZoom: 19 }).addTo(_map);
+        _mapTileLyr = L.tileLayer(confSvc.getTileServer(), {attribution: '&copy; OSM & NM', maxZoom: 19}).addTo(_map);
 
         _mapRepsLyr = L.markerClusterGroup().addTo(_map);
         _drawnItems = new L.FeatureGroup().addTo(_map);
 
         _drawControl = new L.Control.Draw({
-            edit: { featureGroup: _drawnItems, poly: { allowIntersection: false } },
+            edit: {featureGroup: _drawnItems, poly: {allowIntersection: false}},
             draw: {
-                polygon: { allowIntersection: false, showArea: true },
+                polygon: {allowIntersection: false, showArea: true},
                 polyline: false, rectangle: true, circle: true, marker: false, circlemarker: false
             }
         });
 
-        appStore.set({ map: _map });
+        appStore.set({map: _map});
         setupMapEventListeners();
-        this.loadDrawnShapes();
+        await this.loadDrawnShapes();
         return _map;
     },
 
     async loadDrawnShapes() {
         _drawnItems.clearLayers();
         const geojsonShapes = [];
-        (await dbSvc.getAllDrawnShapes()).forEach(s => {
+        const drawnShapes = await dbSvc.getAllDrawnShapes();
+        drawnShapes.forEach(s => {
             const layer = L.GeoJSON.geometryToLayer(s.geojson);
             layer.options.id = s.id;
             _drawnItems.addLayer(layer);
@@ -155,8 +156,8 @@ export const mapSvc = {
     },
 
     disPickLoc: () => {
-        $('#map-container')?.style.cursor = '';
-        _map?.off('click');
+        if ($('#map-container')) $('#map-container').style.cursor = '';
+        if (_map) _map.off('click');
     },
 
     get: () => _map,

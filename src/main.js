@@ -30,13 +30,14 @@ async function initializeApplication() {
         await confSvc.load();
         await idSvc.init();
 
-        if (!mapSvc.init('map-container')) $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
+        if (!await mapSvc.init('map-container')) $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
 
         initUI();
 
-        appStore.set({ reports: (await dbSvc.getAllReps()).sort((a, b) => b.at - a.at) });
+        const cachedReports = await dbSvc.getAllReps();
+        appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
 
-        nostrSvc.refreshSubs();
+        await nostrSvc.refreshSubs();
         offSvc.setupSyncLs();
         await dbSvc.pruneDb();
     } catch (e) {
@@ -47,6 +48,5 @@ async function initializeApplication() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    setupServiceWorker();
-    initializeApplication();
+    setupServiceWorker().then(_ => initializeApplication());
 });

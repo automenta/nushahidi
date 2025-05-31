@@ -20,15 +20,18 @@ import {
 
 const setupOnboardingModal = () => {
     const onboardingModal = $('#onboarding-info');
-    if (!onboardingModal) return;
+    if (onboardingModal) {
+        const closeBtn = $('.close-btn', onboardingModal);
+        const gotItBtn = $('button', onboardingModal);
 
     const hideOnboarding = () => {
         localStorage.setItem(C.ONBOARDING_KEY, 'true');
         hideModal('onboarding-info');
     };
 
-    $('.close-btn', onboardingModal)?.onclick = hideOnboarding;
-    $('button', onboardingModal)?.onclick = hideOnboarding;
+        if (closeBtn) closeBtn.onclick = hideOnboarding;
+        if (gotItBtn) gotItBtn.onclick = hideOnboarding;
+    }
 };
 
 const initGlobalButtons = () => {
