@@ -565,478 +565,114 @@ function SettPanComp() {
     const modalContent = cE('div', { class: 'modal-content', style: 'max-width:700px' });
     const appState = appStore.get();
 
-    const createSettingsSections = () => {
-        const sections = [
-            cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal('settings-modal') }),
-            cE('h2', { id: 'settings-modal-heading', textContent: 'Settings' }),
-            cE('section', {}, [
-                cE('h3', { textContent: 'Relays' }),
-                cE('div', { id: 'rly-list' }),
-                cE('input', { type: 'url', id: 'new-rly-url', placeholder: 'wss://new.relay.com' }),
-                cE('button', { id: 'add-rly-btn', textContent: 'Add Relay' }),
-                cE('button', { id: 'save-rlys-btn', textContent: 'Save & Reconnect Relays' })
-            ]),
-            cE('hr'),
-        ];
+    // Append the close button and heading directly to modalContent
+    modalContent.appendChild(cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal('settings-modal') }));
+    modalContent.appendChild(cE('h2', { id: 'settings-modal-heading', textContent: 'Settings' }));
 
-        // Only show local key management if a local/imported key is used
-        if (appState.user && (appState.user.authM === 'local' || appState.user.authM === 'import')) {
-            sections.push(
-                cE('section', {}, [
-                    cE('h3', { textContent: 'Local Key Management' }),
-                    cE('button', { id: 'exp-sk-btn', textContent: 'Export Private Key' }),
-                    cE('br'),
-                    cE('label', { for: 'chg-pass-old', textContent: 'Old Passphrase:' }),
-                    cE('input', { type: 'password', id: 'chg-pass-old' }),
-                    cE('label', { for: 'chg-pass-new', textContent: 'New Passphrase:' }),
-                    cE('input', { type: 'password', id: 'chg-pass-new' }),
-                    cE('button', { id: 'chg-pass-btn', textContent: 'Change Passphrase' })
-                ]),
-                cE('hr')
-            );
-        }
+    // Create the wrapper for sections, which the CSS expects
+    const settingsSectionsWrapper = cE('div', { id: 'settings-sections' });
 
-        sections.push(
-            cE('section', {}, [ // Focus Tags Section
-                cE('h3', { textContent: 'Focus Tags' }),
-                cE('div', { id: 'focus-tag-list' }),
-                cE('input', { type: 'text', id: 'new-focus-tag-input', placeholder: '#NewFocusTag' }),
-                cE('button', { id: 'add-focus-tag-btn', textContent: 'Add Focus Tag' }),
-                cE('button', { id: 'save-focus-tags-btn', textContent: 'Save Focus Tags' })
-            ]),
-            cE('hr'),
-            cE('section', {}, [
-                cE('h3', { textContent: 'Categories' }),
-                cE('div', { id: 'cat-list' }),
-                cE('input', { type: 'text', id: 'new-cat-name', placeholder: 'New Category' }),
-                cE('button', { id: 'add-cat-btn', textContent: 'Add Category' }),
-                cE('button', { id: 'save-cats-btn', textContent: 'Save Categories' })
-            ]),
-            cE('hr'),
-            cE('section', {}, [ // Map Tiles Section
-                cE('h3', { textContent: 'Map Tiles' }),
-                cE('label', { for: 'tile-preset-sel', textContent: 'Tile Server Preset:' }),
-                cE('select', { id: 'tile-preset-sel' },
-                    C.TILE_SERVERS_PREDEFINED.map(p => cE('option', { value: p.name, textContent: p.name }))
-                ),
-                cE('label', { for: 'tile-url-in', textContent: 'Custom Tile URL Template:' }),
-                cE('input', { type: 'url', id: 'tile-url-in', value: appState.settings.tileUrl }),
-                cE('button', { id: 'save-tile-btn', textContent: 'Save Tiles' })
-            ]),
-            cE('hr'),
-            cE('section', {}, [
-                cE('h3', { textContent: 'Image Host' }),
-                cE('label', { for: 'img-host-sel', textContent: 'Provider:' }),
-                cE('select', { id: 'img-host-sel' }, [
-                    cE('option', { value: C.IMG_UPLOAD_NOSTR_BUILD, textContent: 'nostr.build (Default)' }),
-                    cE('option', { value: 'nip96', textContent: 'NIP-96 Server' })
-                ]),
-                cE('div', { id: 'nip96-fields', style: appState.settings.nip96Host ? '' : 'display:none' }, [
-                    cE('label', { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' }),
-                    cE('input', { type: 'url', id: 'nip96-url-in', value: appState.settings.nip96Host, placeholder: 'https://your.nip96.server' }),
-                    cE('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
-                    cE('input', { type: 'text', id: 'nip96-token-in', value: appState.settings.nip96Token })
-                ]),
-                cE('button', { id: 'save-img-host-btn', textContent: 'Save Image Host' })
-            ]),
-            cE('hr'),
-            cE('section', {}, [ // Mute List Section
-                cE('h3', { textContent: 'Mute List' }),
-                cE('div', { id: 'mute-list' }),
-                cE('input', { type: 'text', id: 'new-mute-pk-input', placeholder: 'npub... or hex pubkey' }),
-                cE('button', { id: 'add-mute-btn', textContent: 'Add to Mute List' }),
-                cE('button', { id: 'save-mute-list-btn', textContent: 'Save Mute List' })
-            ]),
-            cE('hr'),
-            cE('section', {}, [
-                cE('h3', { textContent: 'Data Management' }),
-                cE('button', { id: 'clr-reps-btn', textContent: 'Clear Cached Reports' }),
-                cE('button', { id: 'exp-setts-btn', textContent: 'Export Settings' }),
-                cE('label', { for: 'imp-setts-file', textContent: 'Import Settings:' }),
-                cE('input', { type: 'file', id: 'imp-setts-file', accept: '.json' })
-            ]),
-            cE('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' })
-        ];
-        return sections;
-    };
+    // Define and append all sections to the settingsSectionsWrapper
+    settingsSectionsWrapper.appendChild(cE('section', {}, [
+        cE('h3', { textContent: 'Relays' }),
+        cE('div', { id: 'rly-list' }),
+        cE('input', { type: 'url', id: 'new-rly-url', placeholder: 'wss://new.relay.com' }),
+        cE('button', { id: 'add-rly-btn', textContent: 'Add Relay' }),
+        cE('button', { id: 'save-rlys-btn', textContent: 'Save & Reconnect Relays' })
+    ]));
+    settingsSectionsWrapper.appendChild(cE('hr'));
 
-    createSettingsSections().forEach(el => modalContent.appendChild(el));
+    if (appState.user && (appState.user.authM === 'local' || appState.user.authM === 'import')) {
+        settingsSectionsWrapper.appendChild(cE('section', {}, [
+            cE('h3', { textContent: 'Local Key Management' }),
+            cE('button', { id: 'exp-sk-btn', textContent: 'Export Private Key' }),
+            cE('br'),
+            cE('label', { for: 'chg-pass-old', textContent: 'Old Passphrase:' }),
+            cE('input', { type: 'password', id: 'chg-pass-old' }),
+            cE('label', { for: 'chg-pass-new', textContent: 'New Passphrase:' }),
+            cE('input', { type: 'password', id: 'chg-pass-new' }),
+            cE('button', { id: 'chg-pass-btn', textContent: 'Change Passphrase' })
+        ]));
+        settingsSectionsWrapper.appendChild(cE('hr'));
+    }
 
-    // Render functions for lists
-    const renderRelays = () => {
-        const listElement = gE('#rly-list', modalContent);
-        listElement.innerHTML = '';
-        appStore.get().relays.forEach((rly, i) => {
-            const relayEntry = cE('div', { class: 'relay-entry' }, [
-                cE('input', { type: 'url', class: 'rly-url-in', value: rly.url, readOnly: true }),
-                cE('label', {}, [cE('input', { type: 'checkbox', class: 'rly-read-cb', checked: rly.read, 'data-idx': i }), 'R']),
-                cE('label', {}, [cE('input', { type: 'checkbox', class: 'rly-write-cb', checked: rly.write, 'data-idx': i }), 'W']),
-                cE('span', { class: 'rly-stat', textContent: `(${rly.status})` }),
-                cE('button', { class: 'remove-relay-btn', 'data-idx': i, textContent: 'X' })
-            ]);
+    settingsSectionsWrapper.appendChild(cE('section', {}, [ // Focus Tags Section
+        cE('h3', { textContent: 'Focus Tags' }),
+        cE('div', { id: 'focus-tag-list' }),
+        cE('input', { type: 'text', id: 'new-focus-tag-input', placeholder: '#NewFocusTag' }),
+        cE('button', { id: 'add-focus-tag-btn', textContent: 'Add Focus Tag' }),
+        cE('button', { id: 'save-focus-tags-btn', textContent: 'Save Focus Tags' })
+    ]));
+    settingsSectionsWrapper.appendChild(cE('hr'));
 
-            if (rly.nip11) {
-                const nip11Details = cE('details', { class: 'nip11-details' }, [
-                    cE('summary', { textContent: 'NIP-11 Info' }),
-                    cE('p', { innerHTML: `<strong>Name:</strong> ${sH(rly.nip11.name || 'N/A')}` }),
-                    cE('p', { innerHTML: `<strong>Description:</strong> ${sH(rly.nip11.description || 'N/A')}` }),
-                    cE('p', { innerHTML: `<strong>Pubkey:</strong> ${sH(rly.nip11.pubkey ? formatNpubShort(rly.nip11.pubkey) : 'N/A')}` }),
-                    cE('p', { innerHTML: `<strong>Contact:</strong> ${sH(rly.nip11.contact || 'N/A')}` }),
-                    cE('p', { innerHTML: `<strong>Supported NIPs:</strong> ${sH((rly.nip11.supported_nips || []).join(', ') || 'N/A')}` })
-                ]);
-                relayEntry.appendChild(nip11Details);
-            } else {
-                relayEntry.appendChild(cE('span', { class: 'nip11-info-na', textContent: 'NIP-11 Info N/A' }));
-            }
-            listElement.appendChild(relayEntry);
-        });
-    };
+    settingsSectionsWrapper.appendChild(cE('section', {}, [
+        cE('h3', { textContent: 'Categories' }),
+        cE('div', { id: 'cat-list' }),
+        cE('input', { type: 'text', id: 'new-cat-name', placeholder: 'New Category' }),
+        cE('button', { id: 'add-cat-btn', textContent: 'Add Category' }),
+        cE('button', { id: 'save-cats-btn', textContent: 'Save Categories' })
+    ]));
+    settingsSectionsWrapper.appendChild(cE('hr'));
 
-    const renderCategories = () => {
-        const listElement = gE('#cat-list', modalContent);
-        listElement.innerHTML = '';
-        appStore.get().settings.cats.forEach((cat, i) => {
-            listElement.appendChild(cE('div', { class: 'category-entry' }, [
-                cE('input', { type: 'text', class: 'cat-name-in', value: cat, readOnly: true }),
-                cE('button', { class: 'remove-category-btn', 'data-idx': i, textContent: 'X' })
-            ]));
-        });
-    };
+    settingsSectionsWrapper.appendChild(cE('section', {}, [ // Map Tiles Section
+        cE('h3', { textContent: 'Map Tiles' }),
+        cE('label', { for: 'tile-preset-sel', textContent: 'Tile Server Preset:' }),
+        cE('select', { id: 'tile-preset-sel' },
+            C.TILE_SERVERS_PREDEFINED.map(p => cE('option', { value: p.name, textContent: p.name }))
+        ),
+        cE('label', { for: 'tile-url-in', textContent: 'Custom Tile URL Template:' }),
+        cE('input', { type: 'url', id: 'tile-url-in', value: appState.settings.tileUrl }),
+        cE('button', { id: 'save-tile-btn', textContent: 'Save Tiles' })
+    ]));
+    settingsSectionsWrapper.appendChild(cE('hr'));
 
-    const renderFocusTags = () => {
-        const listElement = gE('#focus-tag-list', modalContent);
-        listElement.innerHTML = '';
-        appStore.get().focusTags.forEach((ft, i) => {
-            listElement.appendChild(cE('div', { class: 'focus-tag-entry' }, [
-                cE('label', {}, [cE('input', { type: 'radio', name: 'active-focus-tag', value: ft.tag, checked: ft.active, 'data-idx': i }), ` ${sH(ft.tag)}`]),
-                cE('button', { class: 'remove-focus-tag-btn', 'data-idx': i, textContent: 'X' })
-            ]));
-        });
-    };
+    settingsSectionsWrapper.appendChild(cE('section', {}, [
+        cE('h3', { textContent: 'Image Host' }),
+        cE('label', { for: 'img-host-sel', textContent: 'Provider:' }),
+        cE('select', { id: 'img-host-sel' }, [
+            cE('option', { value: C.IMG_UPLOAD_NOSTR_BUILD, textContent: 'nostr.build (Default)' }),
+            cE('option', { value: 'nip96', textContent: 'NIP-96 Server' })
+        ]),
+        cE('div', { id: 'nip96-fields', style: appState.settings.nip96Host ? '' : 'display:none' }, [
+            cE('label', { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' }),
+            cE('input', { type: 'url', id: 'nip96-url-in', value: appState.settings.nip96Host, placeholder: 'https://your.nip96.server' }),
+            cE('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
+            cE('input', { type: 'text', id: 'nip96-token-in', value: appState.settings.nip96Token })
+        ]),
+        cE('button', { id: 'save-img-host-btn', textContent: 'Save Image Host' })
+    ]));
+    settingsSectionsWrapper.appendChild(cE('hr'));
 
-    const renderMuteList = () => {
-        const listElement = gE('#mute-list', modalContent);
-        listElement.innerHTML = '';
-        appStore.get().settings.mute.forEach((pk, i) => {
-            listElement.appendChild(cE('div', { class: 'mute-entry' }, [
-                cE('span', { textContent: formatNpubShort(pk) }),
-                cE('button', { class: 'remove-mute-btn', 'data-idx': i, textContent: 'X' })
-            ]));
-        });
-    };
+    settingsSectionsWrapper.appendChild(cE('section', {}, [ // Mute List Section
+        cE('h3', { textContent: 'Mute List' }),
+        cE('div', { id: 'mute-list' }),
+        cE('input', { type: 'text', id: 'new-mute-pk-input', placeholder: 'npub... or hex pubkey' }),
+        cE('button', { id: 'add-mute-btn', textContent: 'Add to Mute List' }),
+        cE('button', { id: 'save-mute-list-btn', textContent: 'Save Mute List' })
+    ]));
+    settingsSectionsWrapper.appendChild(cE('hr'));
 
-    // Initial render of lists
+    settingsSectionsWrapper.appendChild(cE('section', {}, [
+        cE('h3', { textContent: 'Data Management' }),
+        cE('button', { id: 'clr-reps-btn', textContent: 'Clear Cached Reports' }),
+        cE('button', { id: 'exp-setts-btn', textContent: 'Export Settings' }),
+        cE('label', { for: 'imp-setts-file', textContent: 'Import Settings:' }),
+        cE('input', { type: 'file', id: 'imp-setts-file', accept: '.json' })
+    ]));
+
+    // Append the settingsSectionsWrapper to the modalContent
+    modalContent.appendChild(settingsSectionsWrapper);
+
+    // Append the final close button
+    modalContent.appendChild(cE('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
+
+    // Render functions for lists (these need to be called after elements are in modalContent)
     renderRelays();
     renderCategories();
     renderFocusTags();
     renderMuteList();
 
-    // Event Listeners for Settings Panel
-    const setupRelayListeners = () => {
-        gE('#rly-list', modalContent).onclick = e => {
-            const target = e.target;
-            const index = parseInt(target.dataset.idx);
-            let relays = [...appStore.get().relays];
-            if (target.classList.contains('remove-relay-btn')) {
-                relays.splice(index, 1);
-            } else if (target.classList.contains('rly-read-cb')) {
-                relays[index].read = target.checked;
-            } else if (target.classList.contains('rly-write-cb')) {
-                relays[index].write = target.checked;
-            }
-            appStore.set({ relays: relays });
-            renderRelays();
-        };
-
-        gE('#add-rly-btn', modalContent).onclick = () => {
-            const url = gE('#new-rly-url', modalContent).value.trim();
-            if (!url) return showToast("Relay URL cannot be empty.", 'warning');
-            if (!isValidUrl(url) || !url.startsWith('wss://')) return showToast("Invalid relay URL. Must be a valid wss:// URL.", 'warning');
-            appStore.set(s => ({ relays: [...s.relays, { url, read: true, write: true, status: '?', nip11: null, supportsNip52: false }] }));
-            gE('#new-rly-url', modalContent).value = '';
-            renderRelays();
-        };
-
-        gE('#save-rlys-btn', modalContent).onclick = () => {
-            confSvc.setRlys(appStore.get().relays);
-            nostrSvc.discAllRlys();
-            nostrSvc.connRlys();
-            showToast("Relays saved and reconnected.", 'success');
-        };
-    };
-
-    const setupKeyManagementListeners = () => {
-        const expSkBtn = gE('#exp-sk-btn', modalContent);
-        if (expSkBtn) {
-            expSkBtn.onclick = async () => {
-                const privateKey = await idSvc.getSk();
-                if (privateKey) {
-                    showToast(
-                        `Your private key (nsec) has been copied to clipboard.`,
-                        'warning',
-                        5000, // Show for 5 seconds
-                        nip19.nsecEncode(privateKey) // Pass the value to be copied
-                    );
-                } else {
-                    showToast("Could not retrieve private key. Passphrase might be needed.", 'error');
-                }
-            };
-        }
-
-        const chgPassBtn = gE('#chg-pass-btn', modalContent);
-        if (chgPassBtn) {
-            chgPassBtn.onclick = async () => {
-                const oldPass = gE('#chg-pass-old', modalContent).value;
-                const newPass = gE('#chg-pass-new', modalContent).value;
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-                try {
-                    await idSvc.chgPass(oldPass, newPass);
-                    gE('#chg-pass-old', modalContent).value = '';
-                    gE('#chg-pass-new', modalContent).value = '';
-                } catch (e) {
-                    showToast(e.message, 'error');
-                } finally {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-                }
-            };
-        }
-    };
-
-    const setupFocusTagListeners = () => {
-        gE('#focus-tag-list', modalContent).onclick = e => {
-            const target = e.target;
-            const index = parseInt(target.dataset.idx);
-            let focusTags = [...appStore.get().focusTags];
-            if (target.classList.contains('remove-focus-tag-btn')) {
-                if (focusTags.length === 1) return showToast("Cannot remove the last focus tag.", 'warning');
-                const removedTag = focusTags[index].tag;
-                focusTags.splice(index, 1);
-                if (removedTag === appStore.get().currentFocusTag) { // If removed active tag, set first as active
-                    focusTags[0].active = true;
-                    confSvc.setCurrentFocusTag(focusTags[0].tag);
-                }
-                confSvc.setFocusTags(focusTags);
-            } else if (target.name === 'active-focus-tag') {
-                focusTags.forEach((ft, i) => ft.active = (i === index));
-                confSvc.setFocusTags(focusTags);
-                confSvc.setCurrentFocusTag(focusTags[index].tag);
-            }
-            renderFocusTags();
-        };
-
-        gE('#add-focus-tag-btn', modalContent).onclick = () => {
-            let newTag = gE('#new-focus-tag-input', modalContent).value.trim();
-            if (!newTag) return showToast("Focus tag cannot be empty.", 'warning');
-            if (!newTag.startsWith('#')) newTag = `#${newTag}`;
-            const focusTags = [...appStore.get().focusTags];
-            if (focusTags.some(ft => ft.tag === newTag)) return showToast("Tag already exists.", 'warning');
-            focusTags.push({ tag: newTag, active: false });
-            confSvc.setFocusTags(focusTags);
-            gE('#new-focus-tag-input', modalContent).value = '';
-            renderFocusTags();
-        };
-
-        gE('#save-focus-tags-btn', modalContent).onclick = () => {
-            confSvc.setFocusTags(appStore.get().focusTags); // Ensure saved
-            nostrSvc.refreshSubs(); // Resubscribe with potentially new active tag
-            showToast("Focus tags saved.", 'success');
-        };
-    };
-
-    const setupCategoryListeners = () => {
-        gE('#cat-list', modalContent).onclick = e => {
-            if (e.target.classList.contains('remove-category-btn')) {
-                const index = parseInt(e.target.dataset.idx);
-                const categories = [...appStore.get().settings.cats];
-                categories.splice(index, 1);
-                appStore.set(s => ({ ...s, settings: { ...s.settings, cats: categories } }));
-                renderCategories();
-            }
-        };
-
-        gE('#add-cat-btn', modalContent).onclick = () => {
-            const newCategoryName = gE('#new-cat-name', modalContent).value.trim();
-            if (newCategoryName) {
-                appStore.set(s => ({ ...s, settings: { ...s.settings, cats: [...s.settings.cats, newCategoryName] } }));
-                gE('#new-cat-name', modalContent).value = '';
-                renderCategories();
-            }
-        };
-
-        gE('#save-cats-btn', modalContent).onclick = () => {
-            confSvc.setCats(appStore.get().settings.cats);
-            showToast("Categories saved.", 'success');
-        };
-    };
-
-    const setupMapTilesListeners = () => {
-        gE('#tile-preset-sel', modalContent).onchange = e => {
-            const selectedPresetName = e.target.value;
-            const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === selectedPresetName);
-            if (selectedPreset) {
-                gE('#tile-url-in', modalContent).value = selectedPreset.url;
-                confSvc.setTilePreset(selectedPreset.name, selectedPreset.url);
-                mapSvc.updTile(selectedPreset.url);
-            } else { // Should not happen if options are from predefined list
-                gE('#tile-url-in', modalContent).value = '';
-                confSvc.setTilePreset('Custom', '');
-            }
-        };
-        // Set initial value for preset selector
-        gE('#tile-preset-sel', modalContent).value = appState.settings.tilePreset;
-        if (gE('#tile-preset-sel', modalContent).value !== appState.settings.tilePreset) { // If current URL is custom, set preset to Custom
-            const customOption = cE('option', { value: 'Custom', textContent: 'Custom' });
-            gE('#tile-preset-sel', modalContent).appendChild(customOption);
-            gE('#tile-preset-sel', modalContent).value = 'Custom';
-        }
-
-        gE('#save-tile-btn', modalContent).onclick = () => {
-            const url = gE('#tile-url-in', modalContent).value.trim();
-            if (url) {
-                confSvc.setTileUrl(url); // This also sets preset to 'Custom'
-                mapSvc.updTile(url);
-                showToast("Tile server saved.", 'success');
-            } else {
-                showToast("Tile URL cannot be empty.", 'warning');
-            }
-        };
-    };
-
-    const setupImageHostListeners = () => {
-        gE('#img-host-sel', modalContent).onchange = e => {
-            const nip96Fields = gE('#nip96-fields', modalContent);
-            nip96Fields.style.display = e.target.value === 'nip96' ? 'block' : 'none';
-            if (e.target.value !== C.IMG_UPLOAD_NOSTR_BUILD) {
-                gE('#nip96-url-in', modalContent).value = appStore.get().settings.nip96Host || '';
-            } else {
-                gE('#nip96-url-in', modalContent).value = '';
-            }
-            gE('#nip96-token-in', modalContent).value = appStore.get().settings.nip96Token || '';
-        };
-
-        gE('#save-img-host-btn', modalContent).onclick = () => {
-            const selectedHost = gE('#img-host-sel', modalContent).value;
-            if (selectedHost === 'nip96') {
-                const hostUrl = gE('#nip96-url-in', modalContent).value.trim();
-                const token = gE('#nip96-token-in', modalContent).value.trim();
-                if (!hostUrl) return showToast("NIP-96 URL required.", 'warning');
-                if (!isValidUrl(hostUrl) || (!hostUrl.startsWith('http://') && !hostUrl.startsWith('https://'))) {
-                    return showToast("Invalid NIP-96 URL. Must be a valid http(s):// URL.", 'warning');
-                }
-                confSvc.setImgHost(hostUrl, true, token);
-            } else {
-                confSvc.setImgHost(C.IMG_UPLOAD_NOSTR_BUILD);
-            }
-            showToast("Image host saved.", 'success');
-        };
-    };
-
-    const setupMuteListListeners = () => {
-        gE('#mute-list', modalContent).onclick = e => {
-            if (e.target.classList.contains('remove-mute-btn')) {
-                const index = parseInt(e.target.dataset.idx);
-                const muteList = [...appStore.get().settings.mute];
-                confSvc.rmMute(muteList[index]); // Use the service to update and save
-                renderMuteList(); // Re-render after update
-            }
-        };
-
-        gE('#add-mute-btn', modalContent).onclick = async () => {
-            let pubkeyInput = gE('#new-mute-pk-input', modalContent).value.trim();
-            if (!pubkeyInput) return showToast("Pubkey cannot be empty.", 'warning');
-            appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-            try {
-                const pubkeyHex = npubToHex(pubkeyInput); // Convert npub to hex if needed
-                if (!isNostrId(pubkeyHex)) throw new Error("Invalid Nostr ID format (must be 64 hex characters).");
-                confSvc.addMute(pubkeyHex); // This saves to DB and updates store
-                gE('#new-mute-pk-input', modalContent).value = '';
-                renderMuteList();
-                showToast("Pubkey added to mute list.", 'success');
-            } catch (e) {
-                showToast(`Error adding pubkey to mute list: ${e.message}`, 'error');
-            } finally {
-                appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-            }
-        };
-
-        gE('#save-mute-list-btn', modalContent).onclick = () => {
-            // Mute list is saved immediately by addMute/rmMute, this button just confirms
-            showToast("Mute list saved.", 'success');
-        };
-    };
-
-    const setupDataManagementListeners = () => {
-        gE('#clr-reps-btn', modalContent).onclick = async () => {
-            showConfirmModal(
-                "Clear All Cached Reports?",
-                "Are you sure you want to clear ALL cached reports from your device? This action cannot be undone.",
-                async () => {
-                    await dbSvc.clearReps();
-                    appStore.set({ reports: [] });
-                    showToast("All cached reports cleared.", 'success');
-                },
-                () => showToast("Clearing reports cancelled.", 'info')
-            );
-        };
-
-        gE('#exp-setts-btn', modalContent).onclick = async () => {
-            appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-            try {
-                const settings = await dbSvc.loadSetts();
-                if (settings) {
-                    const json = JSON.stringify(settings, null, 2);
-                    const blob = new Blob([json], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const anchor = cE('a', { href: url, download: 'nm-setts.json' });
-                    document.body.appendChild(anchor);
-                    anchor.click();
-                    document.body.removeChild(anchor);
-                    URL.revokeObjectURL(url);
-                    showToast("Settings exported.", 'success');
-                } else {
-                    showToast("No settings to export.", 'info');
-                }
-            } catch (e) {
-                showToast(`Error exporting settings: ${e.message}`, 'error');
-            } finally {
-                appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-            }
-        };
-
-        gE('#imp-setts-file', modalContent).onchange = async e => {
-            const file = e.target.files[0];
-            if (file) {
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-                const reader = new FileReader();
-                reader.onload = async ev => {
-                    try {
-                        const importedSettings = JSON.parse(ev.target.result);
-                        // Basic validation for imported settings
-                        if (importedSettings.rls && importedSettings.tileUrl) {
-                            await confSvc.save(importedSettings);
-                            showToast("Settings imported. Reconnecting relays...", 'success');
-                            nostrSvc.discAllRlys();
-                            nostrSvc.connRlys();
-                            mapSvc.updTile(importedSettings.tileUrl);
-                            hideModal('settings-modal');
-                            // Reopen settings modal to refresh its content with new settings
-                            setTimeout(() => { gE('#settings-btn').click() }, 100);
-                        } else {
-                            throw new Error("Invalid settings file format.");
-                        }
-                    } catch (error) {
-                        showToast(`Import error: ${error.message}`, 'error');
-                    } finally {
-                        appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-                    }
-                };
-                reader.readAsText(file);
-                e.target.value = ''; // Clear file input
-            }
-        };
-    };
-
-    // Call all setup functions
+    // Event Listeners for Settings Panel (these need to be called after elements are in modalContent)
     setupRelayListeners();
     setupKeyManagementListeners();
     setupFocusTagListeners();
