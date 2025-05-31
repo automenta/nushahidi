@@ -237,13 +237,17 @@ export class ReportFormModal extends Modal {
             const currentFocusTag = appStore.get().currentFocusTag;
             const tags = this.buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag);
 
-            await nostrSvc.pubEv({kind: C.NOSTR_KIND_REPORT, content: data.description, tags});
+            const signedEvent = await nostrSvc.pubEv({kind: C.NOSTR_KIND_REPORT, content: data.description, tags});
             e.target.reset();
             this.pFLocCoordsEl.textContent = 'None';
             this.upldPhotosPreviewEl.innerHTML = '';
             formState.pFLoc = null;
             imagesMetadata.length = 0;
             this.hide();
+
+            // After successful submission, navigate to the report details
+            appStore.set(s => ({ui: {...s.ui, reportIdToView: signedEvent.id, showReportList: false}}));
+
             return 'Report sent!';
         }, null, "Report submission error", e => {
             formElement.querySelector('button[type=submit]').disabled = false;
