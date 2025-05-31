@@ -157,7 +157,8 @@ export function showPassphraseModal(title, message) {
  *   { type: string, id?: string, name?: string, label?: string, placeholder?: string, value?: any,
  *     required?: boolean, autocomplete?: string, rows?: number, multiple?: boolean, accept?: string,
  *     options?: Array<{value: string, label: string, selected?: boolean, onchange?: function}>,
- *     class?: string, buttonType?: string, onclick?: function, content?: (string|HTMLElement)[] }
+ *     class?: string, buttonType?: string, onclick?: function, content?: (string|HTMLElement)[],
+ *     innerHTML?: string, style?: string }
  * @param {object} initialData - Object with initial values for form fields (keyed by 'name').
  * @param {object} formOptions - Options for the form element itself (e.g., { id: 'my-form', onSubmit: handler }).
  * @returns {HTMLElement} The generated <form> element.
@@ -246,17 +247,18 @@ function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                     type: field.buttonType || 'button',
                     id: fieldId,
                     textContent: field.label,
-                    class: field.class || ''
+                    class: field.class || '',
+                    style: field.style || '' // Added style handling
                 });
                 if (field.onclick) {
                     inputElement.onclick = field.onclick;
                 }
                 break;
             case 'custom-html': // For things like location display or image preview
-                inputElement = cE('div', { id: fieldId, class: field.class || '' }, field.content || []);
+                inputElement = cE('div', { id: fieldId, class: field.class || '', innerHTML: field.innerHTML || '' }, field.content || []);
                 break;
             case 'paragraph':
-                inputElement = cE('p', { class: field.class || '' }, field.content || []);
+                inputElement = cE('p', { class: field.class || '', innerHTML: field.innerHTML || '' }, field.content || []);
                 break;
             case 'hr':
                 inputElement = cE('hr');
@@ -685,78 +687,81 @@ function RepFormComp(reportToEdit = null) {
 
 // AuthModal
 function AuthModalComp() {
-    const authModalElementsConfig = (modalContent) => [
-        cE('p', {}, [cE('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)']),
-        cE('button', { id: 'conn-nip07-btn', textContent: 'Connect NIP-07' }),
-        cE('hr'),
-        cE('h4', { textContent: 'Local Keys (Advanced/Risky)' }),
-        cE('div', { class: 'critical-warning', innerHTML: '<p><strong>SECURITY WARNING:</strong> Storing keys in browser is risky. Backup private key (nsec)!</p>' }),
-        cE('label', { for: 'auth-pass', textContent: 'Passphrase (min 8 chars):' }),
-        cE('input', { type: 'password', id: 'auth-pass', autocomplete: 'new-password' }),
-        cE('button', { id: 'create-prof-btn', textContent: 'Create New Profile' }),
-        cE('hr'),
-        cE('label', { for: 'auth-sk', textContent: 'Import Private Key (nsec/hex):' }),
-        cE('input', { type: 'text', id: 'auth-sk' }),
-        cE('button', { id: 'import-sk-btn', textContent: 'Import Key' }),
-        cE('button', { type: 'button', class: 'secondary', textContent: 'Cancel', onclick: () => hideModal('auth-modal'), style: 'margin-top:1rem' })
+    const authFormFields = [
+        { type: 'paragraph', content: [cE('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)'] },
+        { type: 'button', id: 'conn-nip07-btn', label: 'Connect NIP-07' },
+        { type: 'hr' },
+        { type: 'paragraph', content: [cE('h4', { textContent: 'Local Keys (Advanced/Risky)' })] },
+        { type: 'custom-html', class: 'critical-warning', innerHTML: '<p><strong>SECURITY WARNING:</strong> Storing keys in browser is risky. Backup private key (nsec)!</p>' },
+        { label: 'Passphrase (min 8 chars):', type: 'password', id: 'auth-pass', autocomplete: 'new-password' },
+        { type: 'button', id: 'create-prof-btn', label: 'Create New Profile' },
+        { type: 'hr' },
+        { label: 'Import Private Key (nsec/hex):', type: 'text', id: 'auth-sk' },
+        { type: 'button', id: 'import-sk-btn', label: 'Import Key' },
+        { type: 'button', class: 'secondary', label: 'Cancel', onclick: () => hideModal('auth-modal'), style: 'margin-top:1rem' }
     ];
 
-    const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', authModalElementsConfig);
+    const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', (root) => {
+        const form = renderForm(authFormFields, {}, { id: 'auth-form' });
+        root.appendChild(form); // Append the form to the modal content root
 
-    gE('#conn-nip07-btn', modalContent).onclick = async () => {
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-        try {
-            await idSvc.nip07();
-            if (appStore.get().user) hideModal('auth-modal');
-        } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-        }
-    };
+        // Attach event listeners to the elements *after* they are rendered by renderForm
+        gE('#conn-nip07-btn', form).onclick = async () => { // Scope to form
+            appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+            try {
+                await idSvc.nip07();
+                if (appStore.get().user) hideModal('auth-modal');
+            } finally {
+                appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+            }
+        };
 
-    gE('#create-prof-btn', modalContent).onclick = async () => {
-        const passphrase = gE('#auth-pass', modalContent).value;
-        if (!passphrase || passphrase.length < 8) {
-            showToast("Passphrase too short (min 8 chars).", 'warning');
-            return;
-        }
-        showConfirmModal(
-            "Backup Private Key?",
-            "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
-            async () => {
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-                try {
-                    const result = await idSvc.newProf(passphrase);
-                    if (result) hideModal('auth-modal');
-                } finally {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-                }
-            },
-            () => showToast("New profile creation cancelled.", 'info')
-        );
-    };
+        gE('#create-prof-btn', form).onclick = async () => { // Scope to form
+            const passphrase = gE('#auth-pass', form).value;
+            if (!passphrase || passphrase.length < 8) {
+                showToast("Passphrase too short (min 8 chars).", 'warning');
+                return;
+            }
+            showConfirmModal(
+                "Backup Private Key?",
+                "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
+                async () => {
+                    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+                    try {
+                        const result = await idSvc.newProf(passphrase);
+                        if (result) hideModal('auth-modal');
+                    } finally {
+                        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+                    }
+                },
+                () => showToast("New profile creation cancelled.", 'info')
+            );
+        };
 
-    gE('#import-sk-btn', modalContent).onclick = async () => {
-        const privateKey = gE('#auth-sk', modalContent).value;
-        const passphrase = gE('#auth-pass', modalContent).value;
-        if (!privateKey || !passphrase || passphrase.length < 8) {
-            showToast("Private key and passphrase (min 8 chars) are required.", 'warning');
-            return;
-        }
-        showConfirmModal(
-            "Import Private Key?",
-            "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
-            async () => {
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
-                try {
-                    const result = await idSvc.impSk(privateKey, passphrase);
-                    if (result) hideModal('auth-modal');
-                } finally {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
-                }
-            },
-            () => showToast("Private key import cancelled.", 'info')
-        );
-    };
+        gE('#import-sk-btn', form).onclick = async () => { // Scope to form
+            const privateKey = gE('#auth-sk', form).value;
+            const passphrase = gE('#auth-pass', form).value;
+            if (!privateKey || !passphrase || passphrase.length < 8) {
+                showToast("Private key and passphrase (min 8 chars) are required.", 'warning');
+                return;
+            }
+            showConfirmModal(
+                "Import Private Key?",
+                "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
+                async () => {
+                    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+                    try {
+                        const result = await idSvc.impSk(privateKey, passphrase);
+                        if (result) hideModal('auth-modal');
+                    } finally {
+                        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+                    }
+                },
+                () => showToast("Private key import cancelled.", 'info')
+            );
+        };
+        return form; // Return the form element
+    });
     return modalContent;
 }
 
@@ -906,13 +911,12 @@ function SettPanComp() {
         if (appState.user && (appState.user.authM === 'local' || appState.user.authM === 'import')) {
             settingsSectionsWrapper.appendChild(cE('section', {}, [
                 cE('h3', { textContent: 'Local Key Management' }),
-                cE('button', { id: 'exp-sk-btn', textContent: 'Export Private Key' }),
-                cE('br'),
                 renderForm([
+                    { type: 'button', id: 'exp-sk-btn', label: 'Export Private Key' },
                     { label: 'Old Passphrase:', type: 'password', id: 'chg-pass-old', name: 'oldPassphrase' },
                     { label: 'New Passphrase:', type: 'password', id: 'chg-pass-new', name: 'newPassphrase' },
-                    { label: 'Change Passphrase', type: 'button', id: 'chg-pass-btn', buttonType: 'button' }
-                ], {}, { id: 'passphrase-form' })
+                    { type: 'button', id: 'chg-pass-btn', label: 'Change Passphrase' }
+                ], {}, { id: 'key-management-form' })
             ]));
             settingsSectionsWrapper.appendChild(cE('hr'));
         }
@@ -1013,9 +1017,9 @@ function SettPanComp() {
 
         settingsSectionsWrapper.appendChild(cE('section', {}, [
             cE('h3', { textContent: 'Data Management' }),
-            cE('button', { id: 'clr-reps-btn', textContent: 'Clear Cached Reports' }),
-            cE('button', { id: 'exp-setts-btn', textContent: 'Export Settings' }),
             renderForm([
+                { type: 'button', id: 'clr-reps-btn', label: 'Clear Cached Reports' },
+                { type: 'button', id: 'exp-setts-btn', label: 'Export Settings' },
                 { label: 'Import Settings:', type: 'file', id: 'imp-setts-file', name: 'importSettingsFile', accept: '.json' }
             ], {}, { id: 'data-management-form' })
         ]));
