@@ -19,26 +19,20 @@ export class ReportFormModal extends Modal {
         this.pFLocCoordsEl = null;
         this.upldPhotosPreviewEl = null;
 
-        const contentRenderer = () => {
+        // The contentRenderer for the Modal constructor should be minimal
+        // and not access 'this' of ReportFormModal.
+        // The actual form rendering and setup will happen in the show() method.
+        const contentRenderer = (modalContent) => {
             this.modalContentContainer = createEl('div');
-            const {form, fields} = renderForm(this.getReportFormFields(appStore.get().settings.cats, {}), {}, {class: 'nstr-rep-form'});
-            this.form = form;
-            this.modalContentContainer.appendChild(this.form);
-
-            this.pFLocCoordsEl = fields.pFLocCoords;
-            this.upldPhotosPreviewEl = fields.uploadedPhotosPreview;
-
-            fields.reportPhotos.onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this));
-            this.setupReportFormLocationHandlers(fields, this.formState, this.updateLocationDisplay.bind(this));
-            this.setupReportFormSubmission(this.form, this.reportToEdit, this.formState, this.formState.uIMeta);
-
-            this.renderImagePreview(this.formState.uIMeta);
-            this.updateLocationDisplay();
-
+            modalContent.appendChild(this.modalContentContainer);
             return this.modalContentContainer;
         };
 
         super('report-form-modal', 'New Report', contentRenderer);
+
+        // After super() is called, 'this' is available.
+        // Call show() to perform the initial rendering and setup.
+        this.show();
     }
 
     show(focusElOrSelector, reportToEdit = null) {
@@ -64,8 +58,11 @@ export class ReportFormModal extends Modal {
         this.root.querySelector('h2').textContent = reportToEdit ? 'Edit Report' : 'New Report';
 
         const {form: newForm, fields} = renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, {class: 'nstr-rep-form'});
-        this.form.innerHTML = '';
-        newForm.childNodes.forEach(node => this.form.appendChild(node));
+        
+        // Clear existing content and append the new form
+        this.modalContentContainer.innerHTML = '';
+        this.modalContentContainer.appendChild(newForm);
+        this.form = newForm; // Update reference to the current form
 
         this.pFLocCoordsEl = fields.pFLocCoords;
         this.upldPhotosPreviewEl = fields.uploadedPhotosPreview;

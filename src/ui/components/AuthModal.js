@@ -7,12 +7,7 @@ import {withLoading, withToast} from '../../decorators.js';
 
 export class AuthModal extends Modal {
     constructor() {
-        let connNip07Btn;
-        let authPassInput;
-        let createProfBtn;
-        let authSkInput;
-        let importSkBtn;
-        let cancelAuthModalBtn;
+        let _fields; // Temporary variable to hold fields from renderForm
 
         const contentRenderer = () => {
             const authFormFields = [
@@ -30,45 +25,42 @@ export class AuthModal extends Modal {
             ];
 
             const {form, fields} = renderForm(authFormFields, {}, {class: 'auth-form'});
-
-            connNip07Btn = fields.connectNip07Btn;
-            authPassInput = fields.authPassphrase;
-            createProfBtn = fields.createProfileBtn;
-            authSkInput = fields.authPrivateKey;
-            importSkBtn = fields.importKeyBtn;
-            cancelAuthModalBtn = fields.cancelAuthModalBtn;
-
-            connNip07Btn.onclick = this.handleConnectNip07;
-            createProfBtn.onclick = this._handleAuthAction(
-                "Backup Private Key?",
-                "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
-                async () => {
-                    const passphrase = authPassInput.value;
-                    if (!passphrase || passphrase.length < 8) throw new Error("Passphrase too short (min 8 chars).");
-                    if (!await idSvc.newProf(passphrase)) throw new Error("Profile creation failed.");
-                    this.hide();
-                },
-                "New profile creation cancelled.",
-                "Error creating profile"
-            );
-            importSkBtn.onclick = this._handleAuthAction(
-                "Import Private Key?",
-                "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
-                async () => {
-                    const privateKey = authSkInput.value;
-                    const passphrase = authPassInput.value;
-                    if (!privateKey || !passphrase || passphrase.length < 8) throw new Error("Private key and passphrase (min 8 chars) are required.");
-                    if (!await idSvc.impSk(privateKey, passphrase)) throw new Error("Private key import failed.");
-                    this.hide();
-                },
-                "Private key import cancelled.",
-                "Error importing key"
-            );
-            cancelAuthModalBtn.onclick = () => this.hide();
-
+            _fields = fields; // Store fields in the temporary variable
             return form;
         };
+
         super('auth-modal', 'Nostr Identity', contentRenderer);
+
+        // After super() has completed, 'this' is available and _fields contains the references
+        this.formFields = _fields;
+
+        this.formFields.connectNip07Btn.onclick = this.handleConnectNip07;
+        this.formFields.createProfileBtn.onclick = this._handleAuthAction(
+            "Backup Private Key?",
+            "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
+            async () => {
+                const passphrase = this.formFields.authPassphrase.value;
+                if (!passphrase || passphrase.length < 8) throw new Error("Passphrase too short (min 8 chars).");
+                if (!await idSvc.newProf(passphrase)) throw new Error("Profile creation failed.");
+                this.hide();
+            },
+            "New profile creation cancelled.",
+            "Error creating profile"
+        );
+        this.formFields.importKeyBtn.onclick = this._handleAuthAction(
+            "Import Private Key?",
+            "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
+            async () => {
+                const privateKey = this.formFields.authPrivateKey.value;
+                const passphrase = this.formFields.authPassphrase.value;
+                if (!privateKey || !passphrase || passphrase.length < 8) throw new Error("Private key and passphrase (min 8 chars) are required.");
+                if (!await idSvc.impSk(privateKey, passphrase)) throw new Error("Private key import failed.");
+                this.hide();
+            },
+            "Private key import cancelled.",
+            "Error importing key"
+        );
+        this.formFields.cancelAuthModalBtn.onclick = () => this.hide();
     }
 
     handleConnectNip07 = withLoading(async () => {
