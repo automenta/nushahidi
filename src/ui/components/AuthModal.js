@@ -17,26 +17,26 @@ export class AuthModal extends Modal {
         const contentRenderer = (contentRoot, modalRoot) => {
             const authFormFields = [
                 { type: 'paragraph', content: [createEl('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)'] },
-                { type: 'button', id: 'conn-nip07-btn', label: 'Connect NIP-07' },
+                { type: 'button', ref: 'connectNip07Btn', label: 'Connect NIP-07' },
                 { type: 'hr' },
                 { type: 'h4', content: ['Local Keys (Advanced/Risky)'] },
                 { type: 'custom-html', class: 'critical-warning', innerHTML: '<p><strong>SECURITY WARNING:</strong> Storing keys in browser is risky. Backup private key (nsec)!</p>' },
-                { label: 'Passphrase (min 8 chars):', type: 'password', id: 'auth-pass', autocomplete: 'new-password' },
-                { type: 'button', id: 'create-prof-btn', label: 'Create New Profile' },
+                { label: 'Passphrase (min 8 chars):', type: 'password', name: 'authPassphrase', autocomplete: 'new-password' },
+                { type: 'button', ref: 'createProfileBtn', label: 'Create New Profile' },
                 { type: 'hr' },
-                { label: 'Import Private Key (nsec/hex):', type: 'text', id: 'auth-sk' },
-                { type: 'button', id: 'import-sk-btn', label: 'Import Key' },
-                { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => this.hide(), style: 'margin-top:1rem' }
+                { label: 'Import Private Key (nsec/hex):', type: 'text', name: 'authPrivateKey' },
+                { type: 'button', ref: 'importKeyBtn', label: 'Import Key' },
+                { type: 'button', ref: 'cancelAuthModalBtn', class: 'secondary', label: 'Cancel', onclick: () => this.hide(), style: 'margin-top:1rem' }
             ];
 
             const { form, fields } = renderForm(authFormFields, {}, {id: 'auth-form'});
 
-            connNip07Btn = fields['conn-nip07-btn'];
-            authPassInput = fields['auth-pass'];
-            createProfBtn = fields['create-prof-btn'];
-            authSkInput = fields['auth-sk'];
-            importSkBtn = fields['import-sk-btn'];
-            cancelAuthModalBtn = fields['cancel-auth-modal-btn'];
+            connNip07Btn = fields.connectNip07Btn;
+            authPassInput = fields.authPassphrase;
+            createProfBtn = fields.createProfileBtn;
+            authSkInput = fields.authPrivateKey;
+            importSkBtn = fields.importKeyBtn;
+            cancelAuthModalBtn = fields.cancelAuthModalBtn;
 
             connNip07Btn.onclick = this.handleConnectNip07;
             createProfBtn.onclick = withToast(() => this.handleCreateProfile(authPassInput.value), null, "Error creating profile");

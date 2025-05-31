@@ -23,10 +23,10 @@ export class ConfigurableListSetting {
 
         this.listRenderer();
 
-        if (config.addInputId && config.addBtnId && config.addLogic && this.form) {
-            const addInputEl = formFieldsMap[config.addInputId];
-            const addBtnEl = formFieldsMap[config.addBtnId];
-            const saveBtnEl = config.saveBtnId ? formFieldsMap[config.saveBtnId] : null;
+        if (config.addInputRef && config.addBtnRef && config.addLogic && this.form) {
+            const addInputEl = formFieldsMap[config.addInputRef];
+            const addBtnEl = formFieldsMap[config.addBtnRef];
+            const saveBtnEl = config.saveBtnRef ? formFieldsMap[config.saveBtnRef] : null;
 
             addBtnEl.onclick = withToast(async () => {
                 const inputValue = addInputEl.value.trim();

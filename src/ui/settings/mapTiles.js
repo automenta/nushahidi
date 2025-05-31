@@ -26,13 +26,13 @@ export class MapTilesSection {
             {
                 label: 'Tile Server Preset:',
                 type: 'select',
-                id: 'tile-preset-sel',
+                ref: 'tilePresetSelect',
                 name: 'tilePreset',
                 value: appState.settings.tilePreset,
                 options: C.TILE_SERVERS_PREDEFINED.map(p => ({ value: p.name, label: p.name }))
             },
-            { label: 'Custom Tile URL Template:', type: 'url', id: 'tile-url-in', name: 'tileUrl', value: appState.settings.tileUrl },
-            { type: 'button', id: 'save-tile-btn', label: 'Save Map Tiles', buttonType: 'button' }
+            { label: 'Custom Tile URL Template:', type: 'url', ref: 'tileUrlInput', name: 'tileUrl', value: appState.settings.tileUrl },
+            { type: 'button', ref: 'saveTileBtn', label: 'Save Map Tiles', buttonType: 'button' }
         ];
 
         const { form, fields } = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
@@ -45,9 +45,9 @@ export class MapTilesSection {
             this.form = form;
         }
 
-        this.tilePresetSel = fields['tile-preset-sel'];
-        this.tileUrlIn = fields['tile-url-in'];
-        this.saveTileBtn = fields['save-tile-btn'];
+        this.tilePresetSel = fields.tilePresetSelect;
+        this.tileUrlIn = fields.tileUrlInput;
+        this.saveTileBtn = fields.saveTileBtn;
 
         this.tilePresetSel.onchange = () => {
             const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === this.tilePresetSel.value);

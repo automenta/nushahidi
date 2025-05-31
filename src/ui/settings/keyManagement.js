@@ -26,10 +26,10 @@ export class KeyManagementSection {
 
     render(appState) {
         const keyManagementFormFields = [
-            { type: 'button', id: 'exp-sk-btn', label: 'Export Private Key' },
-            { label: 'Old Passphrase:', type: 'password', id: 'chg-pass-old', name: 'oldPassphrase' },
-            { label: 'New Passphrase:', type: 'password', id: 'chg-pass-new', name: 'newPassphrase' },
-            { type: 'button', id: 'chg-pass-btn', label: 'Change Passphrase' }
+            { type: 'button', ref: 'exportSkBtn', label: 'Export Private Key' },
+            { label: 'Old Passphrase:', type: 'password', name: 'oldPassphrase' },
+            { label: 'New Passphrase:', type: 'password', name: 'newPassphrase' },
+            { type: 'button', ref: 'changePassBtn', label: 'Change Passphrase' }
         ];
 
         const { form, fields } = renderForm(keyManagementFormFields, {}, { id: 'key-management-form' });
@@ -42,10 +42,10 @@ export class KeyManagementSection {
             this.form = form;
         }
 
-        this.exportSkBtn = fields['exp-sk-btn'];
-        this.oldPassInput = fields['chg-pass-old'];
-        this.newPassInput = fields['chg-pass-new'];
-        this.changePassBtn = fields['chg-pass-btn'];
+        this.exportSkBtn = fields.exportSkBtn;
+        this.oldPassInput = fields.oldPassphrase;
+        this.newPassInput = fields.newPassphrase;
+        this.changePassBtn = fields.changePassBtn;
 
         this.exportSkBtn.onclick = withLoading(withToast(async () => {
             const user = appStore.get().user;

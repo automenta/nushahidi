@@ -63,8 +63,8 @@ export class FilterControls {
         appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
     }
 
-    setupFilterInput(fields, id, stateKey, handler = applyAllFilters, debounceInput = false) {
-        const inputElement = fields[id];
+    setupFilterInput(fields, refKey, stateKey, handler = applyAllFilters, debounceInput = false) {
+        const inputElement = fields[refKey];
         if (!inputElement) return;
         inputElement.oninput = e => {
             this.updateFilterState(stateKey, e.target.value.trim());
@@ -72,8 +72,8 @@ export class FilterControls {
         };
     }
 
-    setupFilterSelect(fields, id, stateKey, handler = applyAllFilters) {
-        const selectElement = fields[id];
+    setupFilterSelect(fields, refKey, stateKey, handler = applyAllFilters) {
+        const selectElement = fields[refKey];
         if (!selectElement) return;
         selectElement.onchange = e => {
             this.updateFilterState(stateKey, e.target.value);
@@ -81,8 +81,8 @@ export class FilterControls {
         };
     }
 
-    setupFilterTimeInput(fields, id, stateKey) {
-        const inputElement = fields[id];
+    setupFilterTimeInput(fields, refKey, stateKey) {
+        const inputElement = fields[refKey];
         if (!inputElement) return;
         inputElement.onchange = e => {
             this.updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
@@ -93,26 +93,26 @@ export class FilterControls {
     render(appState) {
         const filterFormFields = [
             { type: 'h4', content: ['Filter Reports'] },
-            { label: 'Search reports...', type: 'search', id: 'search-query-input', name: 'searchQuery', placeholder: 'Search reports text' },
-            { label: 'Focus Tag:', type: 'text', id: 'focus-tag-input', name: 'focusTag', readOnly: true },
+            { label: 'Search reports...', type: 'search', ref: 'searchQueryInput', name: 'searchQuery', placeholder: 'Search reports text' },
+            { label: 'Focus Tag:', type: 'text', ref: 'focusTagInput', name: 'focusTag', readOnly: true },
             {
                 label: 'Category:',
                 type: 'select',
-                id: 'filter-category',
+                ref: 'filterCategorySelect',
                 name: 'filterCategory',
                 options: [{ value: '', label: 'All' }, ...(appState.settings?.cats || []).map(cat => ({ value: cat, label: cat }))]
             },
-            { label: 'Author (npub/hex):', type: 'text', id: 'filter-author', name: 'filterAuthor', placeholder: 'Author pubkey' },
-            { label: 'From:', type: 'datetime-local', id: 'filter-time-start', name: 'filterTimeStart' },
-            { label: 'To:', type: 'datetime-local', id: 'filter-time-end', name: 'filterTimeEnd' },
-            { type: 'button', id: 'apply-filters-btn', label: 'Apply', class: 'apply-filters-btn' },
-            { type: 'button', id: 'reset-filters-btn', label: 'Reset', class: 'reset-filters-btn' },
+            { label: 'Author (npub/hex):', type: 'text', ref: 'filterAuthorInput', name: 'filterAuthor', placeholder: 'Author pubkey' },
+            { label: 'From:', type: 'datetime-local', ref: 'filterTimeStartInput', name: 'filterTimeStart' },
+            { label: 'To:', type: 'datetime-local', ref: 'filterTimeEndInput', name: 'filterTimeEnd' },
+            { type: 'button', ref: 'applyFiltersBtn', label: 'Apply', class: 'apply-filters-btn' },
+            { type: 'button', ref: 'resetFiltersBtn', label: 'Reset', class: 'reset-filters-btn' },
             { type: 'hr' },
             { type: 'h4', content: ['Map Drawing Filters'] },
-            { type: 'custom-html', id: 'map-draw-controls', class: 'map-draw-controls' },
-            { label: 'Enable Spatial Filter', type: 'checkbox', id: 'spatial-filter-toggle', name: 'spatialFilterEnabled' },
-            { label: 'Show Only Followed Users', type: 'checkbox', id: 'followed-only-toggle', name: 'followedOnlyFilter' },
-            { type: 'button', id: 'clear-drawn-shapes-btn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
+            { type: 'custom-html', ref: 'mapDrawControlsContainer', class: 'map-draw-controls' },
+            { label: 'Enable Spatial Filter', type: 'checkbox', ref: 'spatialFilterToggle', name: 'spatialFilterEnabled' },
+            { label: 'Show Only Followed Users', type: 'checkbox', ref: 'followedOnlyToggle', name: 'followedOnlyFilter' },
+            { type: 'button', ref: 'clearDrawnShapesBtn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
         ];
 
         const initialFilterData = {
@@ -128,14 +128,14 @@ export class FilterControls {
 
         const { form: newForm, fields } = renderForm(filterFormFields, initialFilterData, { class: 'filter-form' });
 
-        this.setupFilterInput(fields, 'search-query-input', 'q', applyAllFilters, true);
-        this.setupFilterSelect(fields, 'filter-category', 'cat');
-        this.setupFilterInput(fields, 'filter-author', 'auth', applyAllFilters, true);
-        this.setupFilterTimeInput(fields, 'filter-time-start', 'tStart');
-        this.setupFilterTimeInput(fields, 'filter-time-end', 'tEnd');
+        this.setupFilterInput(fields, 'searchQueryInput', 'q', applyAllFilters, true);
+        this.setupFilterSelect(fields, 'filterCategorySelect', 'cat');
+        this.setupFilterInput(fields, 'filterAuthorInput', 'auth', applyAllFilters, true);
+        this.setupFilterTimeInput(fields, 'filterTimeStartInput', 'tStart');
+        this.setupFilterTimeInput(fields, 'filterTimeEndInput', 'tEnd');
 
-        fields['apply-filters-btn'].onclick = applyAllFilters;
-        fields['reset-filters-btn'].onclick = () => {
+        fields.applyFiltersBtn.onclick = applyAllFilters;
+        fields.resetFiltersBtn.onclick = () => {
             appStore.set(s => ({
                 ui: {
                     ...s.ui,
@@ -147,14 +147,14 @@ export class FilterControls {
             }));
         };
 
-        const spatialFilterToggle = fields['spatial-filter-toggle'];
+        const spatialFilterToggle = fields.spatialFilterToggle;
         spatialFilterToggle.checked = appState.ui.spatialFilterEnabled;
         spatialFilterToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
             applyAllFilters();
         };
 
-        const followedOnlyToggle = fields['followed-only-toggle'];
+        const followedOnlyToggle = fields.followedOnlyToggle;
         followedOnlyToggle.checked = appState.ui.followedOnlyFilter;
         followedOnlyToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
@@ -162,9 +162,9 @@ export class FilterControls {
             applyAllFilters();
         };
 
-        fields['clear-drawn-shapes-btn'].onclick = mapSvc.clearAllDrawnShapes;
+        fields.clearDrawnShapesBtn.onclick = mapSvc.clearAllDrawnShapes;
 
-        const mapDrawControlsContainer = fields['map-draw-controls'];
+        const mapDrawControlsContainer = fields.mapDrawControlsContainer;
         mapDrawControlsContainer.innerHTML = '';
         mapDrawControlsContainer.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 

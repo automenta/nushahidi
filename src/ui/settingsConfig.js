@@ -94,8 +94,8 @@ const removeActionConfig = (title, message, onClickHandler) => ({
 });
 
 const setupFollowedListUniqueListeners = (fields) => {
-    const importContactsBtn = fields['import-contacts-btn'];
-    const publishContactsBtn = fields['publish-contacts-btn'];
+    const importContactsBtn = fields['importContactsBtn'];
+    const publishContactsBtn = fields['publishContactsBtn'];
 
     importContactsBtn.onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) throw new Error("Please connect your Nostr identity to import contacts.");
@@ -133,17 +133,17 @@ export const settingsSections = [
         title: 'Relays',
         listId: 'rly-list',
         formFields: [
-            { label: 'New Relay URL:', type: 'url', id: 'new-rly-url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
-            { type: 'button', id: 'add-rly-btn', label: 'Add Relay', buttonType: 'button' },
-            { type: 'button', id: 'save-rlys-btn', label: 'Save & Reconnect Relays', buttonType: 'button' }
+            { label: 'New Relay URL:', type: 'url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
+            { type: 'button', ref: 'addRelayBtn', label: 'Add Relay', buttonType: 'button' },
+            { type: 'button', ref: 'saveRelaysBtn', label: 'Save & Reconnect Relays', buttonType: 'button' }
         ],
-        addInputId: 'new-rly-url',
-        addBtnId: 'add-rly-btn',
+        addInputRef: 'newRelayUrl',
+        addBtnRef: 'addRelayBtn',
         addLogic: addRelayLogic,
         itemRenderer: (item) => new RelayItem(item).element,
         actionsConfig: [removeActionConfig('Remove Relay', 'Are you sure you want to remove this relay?', handleRelayRemove)],
         itemWrapperClass: 'relay-entry',
-        saveBtnId: 'save-rlys-btn',
+        saveBtnRef: 'saveRelaysBtn',
         onSaveCallback: reconnectRelays,
         getItems: () => appStore.get().relays,
         addSuccessMsg: "Relay added.",
@@ -160,17 +160,17 @@ export const settingsSections = [
         title: 'Focus Tags',
         listId: 'focus-tag-list',
         formFields: [
-            { label: 'New Focus Tag:', type: 'text', id: 'new-focus-tag-input', name: 'newFocusTag', placeholder: '#NewFocusTag' },
-            { type: 'button', id: 'add-focus-tag-btn', label: 'Add Focus Tag', buttonType: 'button' },
-            { type: 'button', id: 'save-focus-tags-btn', label: 'Save Focus Tags', buttonType: 'button' }
+            { label: 'New Focus Tag:', type: 'text', name: 'newFocusTag', placeholder: '#NewFocusTag' },
+            { type: 'button', ref: 'addFocusTagBtn', label: 'Add Focus Tag', buttonType: 'button' },
+            { type: 'button', ref: 'saveFocusTagsBtn', label: 'Save Focus Tags', buttonType: 'button' }
         ],
-        addInputId: 'new-focus-tag-input',
-        addBtnId: 'add-focus-tag-btn',
+        addInputRef: 'newFocusTag',
+        addBtnRef: 'addFocusTagBtn',
         addLogic: addFocusTagLogic,
         itemRenderer: (item) => new FocusTagItem(item).element,
         actionsConfig: [removeActionConfig('Remove Focus Tag', 'Are you sure you want to remove this focus tag?', handleFocusTagRemove)],
         itemWrapperClass: 'focus-tag-entry',
-        saveBtnId: 'save-focus-tags-btn',
+        saveBtnRef: 'saveFocusTagsBtn',
         onSaveCallback: () => nostrSvc.refreshSubs(),
         getItems: () => appStore.get().focusTags,
         addSuccessMsg: "Focus tag added.",
@@ -182,17 +182,17 @@ export const settingsSections = [
         title: 'Categories',
         listId: 'cat-list',
         formFields: [
-            { label: 'New Category Name:', type: 'text', id: 'new-cat-name', name: 'newCategory', placeholder: 'New Category' },
-            { type: 'button', id: 'add-cat-btn', label: 'Add Category', buttonType: 'button' },
-            { type: 'button', id: 'save-cats-btn', label: 'Save Categories', buttonType: 'button' }
+            { label: 'New Category Name:', type: 'text', name: 'newCategory', placeholder: 'New Category' },
+            { type: 'button', ref: 'addCategoryBtn', label: 'Add Category', buttonType: 'button' },
+            { type: 'button', ref: 'saveCategoriesBtn', label: 'Save Categories', buttonType: 'button' }
         ],
-        addInputId: 'new-cat-name',
-        addBtnId: 'add-cat-btn',
+        addInputRef: 'newCategory',
+        addBtnRef: 'addCategoryBtn',
         addLogic: addCategoryLogic,
         itemRenderer: (item) => new CategoryItem(item).element,
         actionsConfig: [removeActionConfig('Remove Category', 'Are you sure you want to remove this category?', handleCategoryRemove)],
         itemWrapperClass: 'category-entry',
-        saveBtnId: 'save-cats-btn',
+        saveBtnRef: 'saveCategoriesBtn',
         getItems: () => appStore.get().settings.cats,
         addSuccessMsg: "Category added.",
         addErrorMsg: "Error adding category",
@@ -213,17 +213,17 @@ export const settingsSections = [
         title: 'Mute List',
         listId: 'mute-list',
         formFields: [
-            { label: 'New Muted Pubkey:', type: 'text', id: 'new-mute-pk-input', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
-            { type: 'button', id: 'add-mute-btn', label: 'Add to Mute List', buttonType: 'button' },
-            { type: 'button', id: 'save-mute-list-btn', label: 'Save Mute List', buttonType: 'button' }
+            { label: 'New Muted Pubkey:', type: 'text', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
+            { type: 'button', ref: 'addMuteBtn', label: 'Add to Mute List', buttonType: 'button' },
+            { type: 'button', ref: 'saveMuteListBtn', label: 'Save Mute List', buttonType: 'button' }
         ],
-        addInputId: 'new-mute-pk-input',
-        addBtnId: 'add-mute-btn',
+        addInputRef: 'newMutePk',
+        addBtnRef: 'addMuteBtn',
         addLogic: addMutePubkeyLogic,
         itemRenderer: (item) => new MutePubkeyItem(item).element,
         actionsConfig: [removeActionConfig('Remove Muted Pubkey', 'Are you sure you want to unmute this pubkey?', handleMutePubkeyRemove)],
         itemWrapperClass: 'mute-entry',
-        saveBtnId: 'save-mute-list-btn',
+        saveBtnRef: 'saveMuteListBtn',
         getItems: () => appStore.get().settings.mute,
         addSuccessMsg: "Pubkey added to mute list.",
         addErrorMsg: "Error adding pubkey to mute list",
@@ -234,20 +234,20 @@ export const settingsSections = [
         title: 'Followed Users (NIP-02)',
         listId: 'followed-list',
         formFields: [
-            { label: 'New Followed Pubkey:', type: 'text', id: 'new-followed-pk-input', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
-            { type: 'button', id: 'add-followed-btn', label: 'Add to Followed', buttonType: 'button' },
-            { type: 'button', id: 'save-followed-btn', label: 'Save Followed List', buttonType: 'button' },
+            { label: 'New Followed Pubkey:', type: 'text', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
+            { type: 'button', ref: 'addFollowedBtn', label: 'Add to Followed', buttonType: 'button' },
+            { type: 'button', ref: 'saveFollowedBtn', label: 'Save Followed List', buttonType: 'button' },
             { type: 'hr' },
-            { label: 'Import NIP-02 Contacts', type: 'button', id: 'import-contacts-btn', buttonType: 'button' },
-            { label: 'Publish NIP-02 Contacts', type: 'button', id: 'publish-contacts-btn', buttonType: 'button' }
+            { label: 'Import NIP-02 Contacts', type: 'button', ref: 'importContactsBtn', buttonType: 'button' },
+            { label: 'Publish NIP-02 Contacts', type: 'button', ref: 'publishContactsBtn', buttonType: 'button' }
         ],
-        addInputId: 'new-followed-pk-input',
-        addBtnId: 'add-followed-btn',
+        addInputRef: 'newFollowedPk',
+        addBtnRef: 'addFollowedBtn',
         addLogic: addFollowedPubkeyLogic,
         itemRenderer: (item) => new FollowedPubkeyItem(item).element,
         actionsConfig: [removeActionConfig('Unfollow User', 'Are you sure you want to unfollow this user?', handleFollowedPubkeyRemove)],
         itemWrapperClass: 'followed-entry',
-        saveBtnId: 'save-followed-btn',
+        saveBtnRef: 'saveFollowedBtn',
         uniqueListenersSetup: setupFollowedListUniqueListeners,
         getItems: () => appStore.get().followedPubkeys,
         addSuccessMsg: "User added to followed list.",

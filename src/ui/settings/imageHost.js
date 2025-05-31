@@ -30,7 +30,7 @@ export class ImageHostSection {
             {
                 label: 'Provider:',
                 type: 'select',
-                id: 'img-host-sel',
+                ref: 'imgHostProviderSelect',
                 name: 'imgHostProvider',
                 value: appState.settings.nip96H ? 'nip96' : (appState.settings.imgH || C.IMG_UPLOAD_NOSTR_BUILD),
                 options: [
@@ -40,7 +40,7 @@ export class ImageHostSection {
             },
             {
                 type: 'custom-html',
-                id: 'nip96-fields',
+                ref: 'nip96FieldsContainer',
                 class: 'nip96-fields',
                 content: [
                     createEl('label', { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' }),
@@ -49,7 +49,7 @@ export class ImageHostSection {
                     createEl('input', { type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96T })
                 ]
             },
-            { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' }
+            { type: 'button', ref: 'saveImgHostBtn', textContent: 'Save Image Host' }
         ];
 
         const { form, fields } = renderForm(imageHostFormFields, {}, { id: 'image-host-form' });
@@ -62,11 +62,11 @@ export class ImageHostSection {
             this.form = form;
         }
 
-        this.imgHostSel = fields['img-host-sel'];
-        this.nip96Fields = fields['nip96-fields'];
-        this.nip96UrlIn = fields['nip96-url-in'];
-        this.nip96TokenIn = fields['nip96-token-in'];
-        this.saveBtn = fields['save-img-host-btn'];
+        this.imgHostSel = fields.imgHostProviderSelect;
+        this.nip96Fields = fields.nip96FieldsContainer;
+        this.nip96UrlIn = fields.nip96Url;
+        this.nip96TokenIn = fields.nip96Token;
+        this.saveBtn = fields.saveImgHostBtn;
 
         this.imgHostSel.onchange = () => {
             this.nip96Fields.style.display = this.imgHostSel.value === 'nip96' ? '' : 'none';

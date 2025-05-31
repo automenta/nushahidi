@@ -8,7 +8,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     if (formOptions.onSubmit) form.onsubmit = formOptions.onSubmit;
 
     for (const field of fieldsConfig) {
-        const fieldId = field.id || (field.name ? `field-${field.name}` : null);
+        const fieldId = field.id || (field.name ? `field-${field.name}-${Math.random().toString(36).substring(2, 9)}` : null);
         const commonAttrs = { id: fieldId, name: field.name, required: field.required || false };
         const initialValue = initialData[field.name] ?? field.value ?? '';
 
@@ -108,10 +108,12 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                 return;
         }
         form.appendChild(inputElement);
-        if (fieldId) {
-            fields[fieldId] = inputElement;
+        if (field.ref) {
+            fields[field.ref] = inputElement;
         } else if (field.name) {
             fields[field.name] = inputElement;
+        } else if (fieldId) {
+            fields[fieldId] = inputElement;
         }
     }
     return { form, fields };

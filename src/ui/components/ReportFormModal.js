@@ -24,10 +24,10 @@ export class ReportFormModal extends Modal {
             this.form = form;
             this.modalContentContainer.appendChild(this.form);
 
-            this.pFLocCoordsEl = fields['pFLoc-coords'];
-            this.upldPhotosPreviewEl = fields['upld-photos-preview'];
+            this.pFLocCoordsEl = fields.pFLocCoords;
+            this.upldPhotosPreviewEl = fields.uploadedPhotosPreview;
 
-            fields['rep-photos'].onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this));
+            fields.reportPhotos.onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this));
             this.setupReportFormLocationHandlers(fields, this.formState, this.updateLocationDisplay.bind(this));
             this.setupReportFormSubmission(this.form, this.reportToEdit, this.formState, this.formState.uIMeta);
 
@@ -66,10 +66,10 @@ export class ReportFormModal extends Modal {
         this.form.innerHTML = '';
         newForm.childNodes.forEach(node => this.form.appendChild(node));
 
-        this.pFLocCoordsEl = fields['pFLoc-coords'];
-        this.upldPhotosPreviewEl = fields['upld-photos-preview'];
+        this.pFLocCoordsEl = fields.pFLocCoords;
+        this.upldPhotosPreviewEl = fields.uploadedPhotosPreview;
 
-        fields['rep-photos'].onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this));
+        fields.reportPhotos.onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this));
         this.setupReportFormLocationHandlers(fields, this.formState, this.updateLocationDisplay.bind(this));
         this.setupReportFormSubmission(this.form, this.reportToEdit, this.formState, this.formState.uIMeta);
 
@@ -81,42 +81,39 @@ export class ReportFormModal extends Modal {
 
     getReportFormFields(cats, initialData) {
         return [
-            { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
-            { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
-            { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
-            { label: 'Location:', type: 'custom-html', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', class: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
-            { type: 'button', id: 'pick-loc-map-btn', label: 'Pick Location', buttonType: 'button' },
-            { type: 'button', id: 'use-gps-loc-btn', label: 'Use GPS', buttonType: 'button' },
-            { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
-            { type: 'button', id: 'geocode-address-btn', label: 'Geocode Address', buttonType: 'button' },
+            { label: 'Title:', type: 'text', name: 'title' },
+            { label: 'Summary:', type: 'text', name: 'summary', required: true },
+            { label: 'Description (MD):', type: 'textarea', name: 'description', required: true, rows: 3 },
+            { label: 'Location:', type: 'custom-html', ref: 'pFLocCoords', content: ['Selected: ', createEl('span', { class: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
+            { type: 'button', ref: 'pickLocMapBtn', label: 'Pick Location', buttonType: 'button' },
+            { type: 'button', ref: 'useGpsLocBtn', label: 'Use GPS', buttonType: 'button' },
+            { label: 'Or Enter Address:', type: 'text', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
+            { type: 'button', ref: 'geocodeAddressBtn', label: 'Geocode Address', buttonType: 'button' },
             {
                 label: 'Categories:',
                 type: 'checkbox-group',
-                id: 'cats-cont-form',
                 name: 'category',
                 class: 'cats-cont-form',
                 options: (cats || []).map(cat => ({ value: cat, label: cat }))
             },
-            { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
+            { label: 'Add. Tags (comma-sep):', type: 'text', name: 'freeTags' },
             {
                 label: 'Event Type:',
                 type: 'select',
-                id: 'rep-evType',
                 name: 'eventType',
                 options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({ value: type.toLowerCase(), label: type }))
             },
             {
                 label: 'Status:',
                 type: 'select',
-                id: 'rep-stat',
                 name: 'status',
                 options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
             },
-            { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', class: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' },
-            { type: 'custom-html', id: 'upld-photos-preview', class: 'upld-photos-preview' },
+            { label: 'Photos (max 5MB each):', type: 'file', ref: 'reportPhotos', name: 'photos', multiple: true, accept: 'image/*' },
+            { type: 'custom-html', ref: 'uploadedPhotosPreview', class: 'upld-photos-preview' },
             { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
-            { type: 'button', id: 'submit-report-btn', label: initialData.isEdit ? 'Update Report' : 'Submit', buttonType: 'submit' },
-            { type: 'button', id: 'cancel-report-btn', class: 'secondary', label: 'Cancel', onclick: () => this.hide() }
+            { type: 'button', ref: 'submitReportBtn', label: initialData.isEdit ? 'Update Report' : 'Submit', buttonType: 'submit' },
+            { type: 'button', ref: 'cancelReportBtn', class: 'secondary', label: 'Cancel', onclick: () => this.hide() }
         ];
     }
 
@@ -155,10 +152,10 @@ export class ReportFormModal extends Modal {
     }
 
     setupReportFormLocationHandlers(fields, formState, updateLocationDisplay) {
-        const pickLocMapBtn = fields['pick-loc-map-btn'];
-        const useGpsLocBtn = fields['use-gps-loc-btn'];
-        const geocodeAddressBtn = fields['geocode-address-btn'];
-        const repAddressInput = fields['rep-address'];
+        const pickLocMapBtn = fields.pickLocMapBtn;
+        const useGpsLocBtn = fields.useGpsLocBtn;
+        const geocodeAddressBtn = fields.geocodeAddressBtn;
+        const repAddressInput = fields.address;
 
         pickLocMapBtn.onclick = () => {
             this.hide();

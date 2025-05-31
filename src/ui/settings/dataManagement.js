@@ -18,9 +18,9 @@ export class DataManagementSection {
 
     render() {
         const dataManagementFormFields = [
-            { type: 'button', id: 'clr-reps-btn', label: 'Clear Cached Reports' },
-            { type: 'button', id: 'exp-setts-btn', label: 'Export Settings' },
-            { label: 'Import Settings:', type: 'file', id: 'imp-setts-file', name: 'importSettingsFile', accept: '.json' }
+            { type: 'button', ref: 'clearReportsBtn', label: 'Clear Cached Reports' },
+            { type: 'button', ref: 'exportSettingsBtn', label: 'Export Settings' },
+            { label: 'Import Settings:', type: 'file', ref: 'importSettingsFile', name: 'importSettingsFile', accept: '.json' }
         ];
 
         const { form, fields } = renderForm(dataManagementFormFields, {}, { id: 'data-management-form' });
@@ -33,9 +33,9 @@ export class DataManagementSection {
             this.form = form;
         }
 
-        this.clearReportsBtn = fields['clr-reps-btn'];
-        this.exportSettingsBtn = fields['exp-setts-btn'];
-        this.importSettingsFile = fields['imp-setts-file'];
+        this.clearReportsBtn = fields.clearReportsBtn;
+        this.exportSettingsBtn = fields.exportSettingsBtn;
+        this.importSettingsFile = fields.importSettingsFile;
 
         this.clearReportsBtn.onclick = () => {
             showConfirmModal(
