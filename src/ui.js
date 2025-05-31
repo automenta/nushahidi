@@ -669,6 +669,18 @@ function SettPanComp() {
     ]));
     settingsSectionsWrapper.appendChild(cE('hr'));
 
+    settingsSectionsWrapper.appendChild(cE('section', {}, [ // New: Followed Users Section
+        cE('h3', { textContent: 'Followed Users (NIP-02)' }),
+        cE('div', { id: 'followed-list' }),
+        cE('input', { type: 'text', id: 'new-followed-pk-input', placeholder: 'npub... or hex pubkey' }),
+        cE('button', { id: 'add-followed-btn', textContent: 'Add to Followed' }),
+        cE('button', { id: 'save-followed-btn', textContent: 'Save Followed List' }),
+        cE('hr'),
+        cE('button', { id: 'import-contacts-btn', textContent: 'Import NIP-02 Contacts' }),
+        cE('button', { id: 'publish-contacts-btn', textContent: 'Publish NIP-02 Contacts' })
+    ]));
+    settingsSectionsWrapper.appendChild(cE('hr'));
+
     settingsSectionsWrapper.appendChild(cE('section', {}, [
         cE('h3', { textContent: 'Data Management' }),
         cE('button', { id: 'clr-reps-btn', textContent: 'Clear Cached Reports' }),
@@ -688,6 +700,7 @@ function SettPanComp() {
     renderCategories();
     renderFocusTags();
     renderMuteList();
+    renderFollowedList(); // New: Render followed list
 
     // Event Listeners for Settings Panel (these need to be called after elements are in modalContent)
     setupRelayListeners();
@@ -697,6 +710,7 @@ function SettPanComp() {
     setupMapTilesListeners();
     setupImageHostListeners();
     setupMuteListListeners();
+    setupFollowedListListeners(); // New: Setup followed list listeners
     setupDataManagementListeners();
 
     return modalContent;
@@ -723,18 +737,28 @@ const showReportDetails = async report => {
     ).join('');
     const descriptionHtml = marked.parse(sH(report.ct || ''));
 
-    // Fetch profile for NIP-05 display
+    // Fetch profile for NIP-05 display and other details
     const profile = await nostrSvc.fetchProf(report.pk);
-    const authorDisplay = profile?.nip05 ? sH(profile.nip05) : formatNpubShort(report.pk);
+    const authorDisplay = profile?.name || (profile?.nip05 ? sH(profile.nip05) : formatNpubShort(report.pk));
+    const authorPicture = profile?.picture ? `<img src="${sH(profile.picture)}" alt="Profile Picture" class="profile-picture">` : '';
+    const authorAbout = profile?.about ? `<p class="profile-about">${sH(profile.about)}</p>` : '';
+    const authorNip05 = profile?.nip05 ? `<span class="nip05-verified">${sH(profile.nip05)} ✅</span>` : '';
 
     const currentUserPk = appStore.get().user?.pk;
     const isAuthor = currentUserPk && currentUserPk === report.pk;
+    const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
+    const canFollow = currentUserPk && currentUserPk !== report.pk; // Can follow if logged in and not self
 
     detailContainer.innerHTML = `<button id="back-to-list-btn" class="small-button">&lt; List</button>
     ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sH(report.id)}" style="float:right;">Edit Report</button>` : ''}
     ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sH(report.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
     <h2 id="detail-title">${sH(report.title || 'Report')}</h2>
-    <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(report.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a></p>
+    <div class="report-author-info">
+        ${authorPicture}
+        <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(report.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a> ${authorNip05}</p>
+        ${authorAbout}
+        ${canFollow ? `<button id="follow-toggle-btn" class="small-button ${isFollowed ? 'unfollow-button' : 'follow-button'}" data-pubkey="${sH(report.pk)}">${isFollowed ? 'Unfollow' : 'Follow'}</button>` : ''}
+    </div>
     <p><strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}</p>
     <p><strong>Summary:</strong> ${sH(report.sum || 'N/A')}</p>
     <p><strong>Description:</strong></p><div class="markdown-content" tabindex="0">${descriptionHtml}</div>
@@ -760,7 +784,7 @@ const showReportDetails = async report => {
                 async () => {
                     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
                     try {
-                        await nostrSvc.deleteEv(report.id);
+                        await nostrSvc.deleteEv(report.id); // Assuming deleteEv exists or will be added
                         hideModal('report-detail-container'); // Hide detail view after deletion
                         listContainer.style.display = 'block'; // Show list view
                     } catch (e) {
@@ -774,6 +798,10 @@ const showReportDetails = async report => {
         };
     }
 
+    if (canFollow) {
+        gE('#follow-toggle-btn', detailContainer).onclick = handleFollowToggle;
+    }
+
     if (report.lat && report.lon && typeof L !== 'undefined') {
         const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);
         L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
@@ -782,6 +810,38 @@ const showReportDetails = async report => {
     }
     loadAndDisplayInteractions(report.id, report.pk, gE(`#interactions-for-${report.id}`, detailContainer));
 };
+
+async function handleFollowToggle(event) {
+    const btn = event.target;
+    const pubkeyToToggle = btn.dataset.pubkey;
+    const isCurrentlyFollowed = appStore.get().followedPubkeys.some(f => f.pk === pubkeyToToggle);
+
+    if (!appStore.get().user) {
+        showToast("Please connect your Nostr identity to follow users.", 'warning');
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+
+        if (isCurrentlyFollowed) {
+            confSvc.rmFollowed(pubkeyToToggle);
+            showToast(`Unfollowed ${formatNpubShort(pubkeyToToggle)}.`, 'info');
+        } else {
+            confSvc.addFollowed(pubkeyToToggle);
+            showToast(`Followed ${formatNpubShort(pubkeyToToggle)}!`, 'success');
+        }
+        // Re-render the report details to update the button state
+        const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle); // Find any report by this author
+        if (report) showReportDetails(report); // Re-render to update button
+    } catch (e) {
+        showToast(`Error toggling follow status: ${e.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+    }
+}
 
 const rendRepList = reports => {
     const listElement = gE('#report-list');
@@ -806,13 +866,14 @@ const rendRepList = reports => {
 };
 
 // --- Filtering ---
-let _cFilt = { q: '', fT: '', cat: '', auth: '', tStart: null, tEnd: null }; /* cFilt: currentFilters */
+let _cFilt = { q: '', fT: '', cat: '', auth: '', tStart: null, tEnd: null, followedOnly: false }; /* cFilt: currentFilters */
 
 const applyAllFilters = () => {
     const allReports = appStore.get().reports;
     const mutedPubkeys = appStore.get().settings.mute;
     const drawnShapes = appStore.get().drawnShapes;
     const spatialFilterEnabled = appStore.get().ui.spatialFilterEnabled;
+    const followedPubkeys = appStore.get().followedPubkeys.map(f => f.pk); // New: Get followed pubkeys for filtering
 
     const filteredReports = allReports.filter(report => {
         // Mute filter
@@ -861,6 +922,11 @@ const applyAllFilters = () => {
             if (!isInDrawnShape) return false;
         }
 
+        // New: Followed Only filter
+        if (_cFilt.followedOnly && !followedPubkeys.includes(report.pk)) {
+            return false;
+        }
+
         return true;
     }).sort((a, b) => b.at - a.at); // Sort by created_at descending
 
@@ -868,6 +934,110 @@ const applyAllFilters = () => {
     mapSvc.updReps(filteredReports);
 };
 const debAppAllFilt = debounce(applyAllFilters, 350);
+
+// --- Settings Panel Listeners (New and Modified) ---
+
+function renderFollowedList() {
+    const followedListDiv = gE('#followed-list');
+    followedListDiv.innerHTML = '';
+    const followedPubkeys = appStore.get().followedPubkeys;
+    if (followedPubkeys.length === 0) {
+        followedListDiv.textContent = 'No users followed.';
+        return;
+    }
+    followedPubkeys.forEach(f => {
+        const entry = cE('div', { class: 'followed-entry' }, [
+            cE('span', { textContent: formatNpubShort(f.pk) }),
+            cE('button', {
+                class: 'remove-followed-btn',
+                textContent: 'Remove',
+                onclick: () => {
+                    showConfirmModal(
+                        "Remove Followed User",
+                        `Are you sure you want to unfollow ${formatNpubShort(f.pk)}?`,
+                        () => confSvc.rmFollowed(f.pk),
+                        () => showToast("Unfollow cancelled.", 'info')
+                    );
+                }
+            })
+        ]);
+        followedListDiv.appendChild(entry);
+    });
+}
+
+function setupFollowedListListeners() {
+    gE('#add-followed-btn').onclick = () => {
+        const input = gE('#new-followed-pk-input');
+        let pk = input.value.trim();
+        if (!pk) return showToast("Please enter a pubkey or npub.", 'warning');
+        try {
+            pk = npubToHex(pk);
+            if (!isNostrId(pk)) throw new Error("Invalid Nostr pubkey format.");
+            confSvc.addFollowed(pk);
+            input.value = '';
+            showToast("User added to followed list.", 'success');
+        } catch (e) {
+            showToast(`Error adding user: ${e.message}`, 'error');
+        }
+    };
+
+    gE('#save-followed-btn').onclick = () => {
+        // The add/remove functions already update the appStore and trigger save via confSvc.save
+        // This button is mostly for user clarity or if manual edits were allowed in the UI
+        showToast("Followed list saved.", 'info');
+    };
+
+    gE('#import-contacts-btn').onclick = async () => {
+        if (!appStore.get().user) {
+            showToast("Please connect your Nostr identity to import contacts.", 'warning');
+            return;
+        }
+        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+        try {
+            const contacts = await nostrSvc.fetchContacts();
+            if (contacts.length > 0) {
+                const currentFollowed = appStore.get().followedPubkeys.map(f => f.pk);
+                const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({ pk: c.pubkey, followedAt: Date.now() }));
+                if (newFollowed.length > 0) {
+                    confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
+                    showToast(`Imported ${newFollowed.length} contacts from Nostr.`, 'success');
+                } else {
+                    showToast("No new contacts found to import.", 'info');
+                }
+            } else {
+                showToast("No NIP-02 contact list found on relays for your account.", 'info');
+            }
+        } catch (e) {
+            showToast(`Error importing contacts: ${e.message}`, 'error');
+        } finally {
+            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+        }
+    };
+
+    gE('#publish-contacts-btn').onclick = async () => {
+        if (!appStore.get().user) {
+            showToast("Please connect your Nostr identity to publish contacts.", 'warning');
+            return;
+        }
+        showConfirmModal(
+            "Publish Contacts",
+            "This will publish your current followed list as a NIP-02 contact list (Kind 3 event) to your connected relays. This will overwrite any existing Kind 3 event for your pubkey. Continue?",
+            async () => {
+                appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+                try {
+                    const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' })); // NIP-02 only requires pubkey
+                    await nostrSvc.pubContacts(contactsToPublish);
+                    showToast("NIP-02 contact list published!", 'success');
+                } catch (e) {
+                    showToast(`Error publishing contacts: ${e.message}`, 'error');
+                } finally {
+                    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+                }
+            },
+            () => showToast("Publish contacts cancelled.", 'info')
+        );
+    };
+}
 
 // --- Init UI ---
 export function initUI() {
@@ -926,7 +1096,7 @@ export function initUI() {
         gE('#apply-filters-btn').onclick = applyAllFilters;
 
         gE('#reset-filters-btn').onclick = () => {
-            _cFilt = { q: '', fT: appStore.get().currentFocusTag, cat: '', auth: '', tStart: null, tEnd: null };
+            _cFilt = { q: '', fT: appStore.get().currentFocusTag, cat: '', auth: '', tStart: null, tEnd: null, followedOnly: false };
             gE('#search-query-input').value = '';
             gE('#focus-tag-input').value = _cFilt.fT;
             gE('#filter-category').value = '';
@@ -934,8 +1104,9 @@ export function initUI() {
             gE('#filter-time-start').value = '';
             gE('#filter-time-end').value = '';
             // Reset spatial filter state
-            appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: false } }));
+            appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: false, followedOnlyFilter: false } })); // New: Reset followedOnlyFilter
             gE('#spatial-filter-toggle').checked = false;
+            gE('#followed-only-toggle').checked = false; // New: Reset followed only toggle
             applyAllFilters();
         };
 
@@ -955,6 +1126,19 @@ export function initUI() {
             applyAllFilters(); // Re-apply filters immediately
         };
 
+        // New: Followed Only Toggle
+        const followedOnlyToggle = cE('input', { type: 'checkbox', id: 'followed-only-toggle' });
+        const followedOnlyLabel = cE('label', {}, [followedOnlyToggle, ' Show Only Followed Users']);
+        gE('#filter-controls').insertBefore(followedOnlyLabel, gE('#clear-drawn-shapes-btn')); // Insert before clear button
+        followedOnlyToggle.checked = appStore.get().ui.followedOnlyFilter;
+        followedOnlyToggle.onchange = e => {
+            appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
+            _cFilt.followedOnly = e.target.checked; // Update local filter state
+            applyAllFilters(); // Re-apply filters immediately
+            nostrSvc.refreshSubs(); // Refresh subscriptions to apply author filter if needed
+        };
+
+
         // New: Clear Drawn Shapes Button
         gE('#clear-drawn-shapes-btn').onclick = () => {
             mapSvc.clearAllDrawnShapes();
@@ -973,11 +1157,14 @@ export function initUI() {
                 newState.settings.mute !== oldState?.settings?.mute ||
                 newState.currentFocusTag !== oldState?.currentFocusTag ||
                 newState.drawnShapes !== oldState?.drawnShapes || // New: Trigger filter on drawn shapes change
-                newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled) { // New: Trigger filter on spatial filter toggle
+                newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled || // New: Trigger filter on spatial filter toggle
+                newState.followedPubkeys !== oldState?.followedPubkeys || // New: Trigger filter on followed pubkeys change
+                newState.ui.followedOnlyFilter !== oldState?.ui?.followedOnlyFilter) { // New: Trigger filter on followed only toggle
                 if (newState.currentFocusTag !== _cFilt.fT) {
                     _cFilt.fT = newState.currentFocusTag;
                     gE('#focus-tag-input').value = _cFilt.fT;
                 }
+                _cFilt.followedOnly = newState.ui.followedOnlyFilter; // Ensure filter state is in sync
                 applyAllFilters();
             }
 
@@ -985,6 +1172,11 @@ export function initUI() {
             if (newState.settings.cats !== oldState?.settings?.cats) {
                 gE('#filter-category').innerHTML = '<option value="">All</option>'; // Clear existing options
                 newState.settings.cats.forEach(c => gE('#filter-category').appendChild(cE('option', { value: c, textContent: sH(c) })));
+            }
+
+            // Re-render followed list in settings if it changes
+            if (newState.followedPubkeys !== oldState?.followedPubkeys && gE('#settings-modal').style.display === 'block') {
+                renderFollowedList();
             }
 
             // Handle modal focus

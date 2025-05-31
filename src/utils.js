@@ -2,7 +2,7 @@ import { nip19 } from 'nostr-tools';
 import ngeohash from 'ngeohash';
 
 export const C = { // Constants
-    NOSTR_KIND_REPORT: 30315, NOSTR_KIND_REACTION: 7, NOSTR_KIND_NOTE: 1, NOSTR_KIND_PROFILE: 0,
+    NOSTR_KIND_REPORT: 30315, NOSTR_KIND_REACTION: 7, NOSTR_KIND_NOTE: 1, NOSTR_KIND_PROFILE: 0, NOSTR_KIND_CONTACTS: 3, // New: NOSTR_KIND_CONTACTS
     RELAYS_DEFAULT: ['wss://relay.damus.io','wss://relay.snort.social','wss://nostr.wine','wss://nos.lol'],
     TILE_SERVER_DEFAULT: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     TILE_SERVERS_PREDEFINED: [ // New: Predefined tile servers
@@ -13,7 +13,7 @@ export const C = { // Constants
     ],
     FOCUS_TAG_DEFAULT: '#NostrMapper_Global',
     DB_NAME: 'NostrMapperDB_vFinal', DB_VERSION: 1,
-    STORE_REPORTS: 'reports', STORE_PROFILES: 'profiles', STORE_SETTINGS: 'settings', STORE_OFFLINE_QUEUE: 'offlineQueue', STORE_DRAWN_SHAPES: 'drawnShapes', // New: Store for drawn shapes
+    STORE_REPORTS: 'reports', STORE_PROFILES: 'profiles', STORE_SETTINGS: 'settings', STORE_OFFLINE_QUEUE: 'offlineQueue', STORE_DRAWN_SHAPES: 'drawnShapes', STORE_FOLLOWED_PUBKEYS: 'followedPubkeys', // New: Store for followed pubkeys
     IMG_UPLOAD_NOSTR_BUILD: 'https://nostr.build/api/v2/upload/files',
     IMG_SIZE_LIMIT_BYTES: 5 * 1024 * 1024, // 5MB
     ONBOARDING_KEY: 'nostrmapper_onboarded_v1',

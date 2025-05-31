@@ -6,6 +6,7 @@ let _s={
     currentFocusTag:C.FOCUS_TAG_DEFAULT, // New: stores the currently active focus tag string
     reports:[],
     relays:C.RELAYS_DEFAULT.map(u=>({url:u,read:!0,write:!0,status:'?',nip11:null})),
+    followedPubkeys:[], // New: Stores public keys of followed users
     settings:{
         tileUrl:C.TILE_SERVER_DEFAULT, // Changed from 'tile' to 'tileUrl'
         tilePreset:'OpenStreetMap', // New: stores the name of the selected tile preset
@@ -19,7 +20,7 @@ let _s={
     mapBnds:null,
     mapGhs:[],
     drawnShapes:[], // New: Stores GeoJSON of drawn shapes
-    ui:{modalOpen:null,loading:!1,syncMsg:'', spatialFilterEnabled: false} // Changed 'modal' to 'modalOpen' for consistency, added spatialFilterEnabled
+    ui:{modalOpen:null,loading:!1,syncMsg:'', spatialFilterEnabled: false, followedOnlyFilter: false} // Changed 'modal' to 'modalOpen' for consistency, added spatialFilterEnabled, followedOnlyFilter
 }; /* s: state */
 const _l=new Set(); /* l: listeners */
 export const appStore={
