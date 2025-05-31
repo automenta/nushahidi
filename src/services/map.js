@@ -106,8 +106,6 @@ export const mapSvc = {
     }, "All drawn shapes cleared.", "Error clearing drawn shapes"),
 
     addDrawControlsToElement: (element) => {
-        // This method provides the Leaflet Draw control's DOM element
-        // for integration into other UI components without exposing the control object itself.
         return _drawControl.onAdd(_map);
     },
 
