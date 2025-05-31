@@ -48,6 +48,61 @@ const updSyncDisp = async () => {
     }
 };
 
+// New: Handles updates related to reports and filters
+const handleReportAndFilterUpdates = (newState, oldState) => {
+    const shouldReapplyFilters =
+        newState.reports !== oldState?.reports ||
+        newState.settings.mute !== oldState?.settings?.mute ||
+        newState.currentFocusTag !== oldState?.currentFocusTag ||
+        newState.drawnShapes !== oldState?.drawnShapes ||
+        newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled ||
+        newState.followedPubkeys !== oldState?.followedPubkeys ||
+        newState.ui.followedOnlyFilter !== oldState?.ui?.followedOnlyFilter;
+
+    if (shouldReapplyFilters) {
+        // Update local filter state if currentFocusTag changed in appStore
+        if (newState.currentFocusTag !== _cFilt.fT) {
+            _cFilt.fT = newState.currentFocusTag;
+            gE('#focus-tag-input', gE('#filter-controls')).value = _cFilt.fT; // Scope to filter form
+        }
+        // Update local filter state for followedOnlyFilter
+        _cFilt.followedOnly = newState.ui.followedOnlyFilter;
+        applyAllFilters();
+    }
+};
+
+// New: Updates the category filter dropdown
+const updateFilterCategories = (newCategories) => {
+    const selectElement = gE('#filter-category', gE('#filter-controls')); // Scope to filter form
+    if (selectElement) {
+        selectElement.innerHTML = '<option value="">All</option>'; // Clear existing options
+        newCategories.forEach(c => selectElement.appendChild(cE('option', { value: c, textContent: sH(c) })));
+    }
+};
+
+// New: Handles modal focus when a modal opens
+const handleModalFocus = (newModalId, oldModalId) => {
+    if (newModalId && newModalId !== oldModalId && gE(`#${newModalId}`)) {
+        gE(`#${newModalId}`).focus();
+    }
+};
+
+// New: Handles displaying a specific report in the detail view
+const handleReportViewing = (reportId, reports) => {
+    if (reportId) {
+        const report = reports.find(r => r.id === reportId);
+        if (report) showReportDetails(report);
+    }
+};
+
+// New: Controls the visibility of the global loading spinner
+const updateGlobalLoadingSpinner = (isLoading) => {
+    const globalSpinner = gE('#global-loading-spinner');
+    if (globalSpinner) {
+        globalSpinner.style.display = isLoading ? 'flex' : 'none';
+    }
+};
+
 // --- Generic Modal Factory ---
 /**
  * Creates a generic modal wrapper with common elements (close button, heading).
@@ -793,7 +848,7 @@ function AuthModalComp() {
                         appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
                     }
                 },
-                () => showToast("Private key import cancelled.", 'info')
+                (() => showToast("Private key import cancelled.", 'info'))
             );
         };
         return form; // Return the form element
@@ -1777,53 +1832,42 @@ export function initUI() {
     // Setup appStore listeners for UI updates
     const setupAppStoreListeners = () => {
         appStore.on((newState, oldState) => {
-            updAuthDisp(newState.user?.pk);
-            updConnDisp(newState.online);
-            updSyncDisp();
-
-            // Trigger filter re-application if relevant state changes
-            const shouldReapplyFilters =
-                newState.reports !== oldState?.reports ||
-                newState.settings.mute !== oldState?.settings?.mute ||
-                newState.currentFocusTag !== oldState?.currentFocusTag ||
-                newState.drawnShapes !== oldState?.drawnShapes ||
-                newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled ||
-                newState.followedPubkeys !== oldState?.followedPubkeys ||
-                newState.ui.followedOnlyFilter !== oldState?.ui?.followedOnlyFilter;
-
-            if (shouldReapplyFilters) {
-                // Update local filter state if currentFocusTag changed in appStore
-                if (newState.currentFocusTag !== _cFilt.fT) {
-                    _cFilt.fT = newState.currentFocusTag;
-                    gE('#focus-tag-input', gE('#filter-controls')).value = _cFilt.fT; // Scope to filter form
-                }
-                // Update local filter state for followedOnlyFilter
-                _cFilt.followedOnly = newState.ui.followedOnlyFilter;
-                applyAllFilters();
+            // Update authentication display
+            if (newState.user?.pk !== oldState?.user?.pk) {
+                updAuthDisp(newState.user?.pk);
             }
+
+            // Update connection status display
+            if (newState.online !== oldState?.online) {
+                updConnDisp(newState.online);
+            }
+
+            // Update sync status display (call if online status changes or reports might have changed queue)
+            if (newState.online !== oldState?.online || newState.reports !== oldState?.reports) {
+                updSyncDisp();
+            }
+
+            // Handle updates related to reports and filters
+            handleReportAndFilterUpdates(newState, oldState);
 
             // Re-populate categories if settings change
             if (newState.settings.cats !== oldState?.settings?.cats) {
-                const selectElement = gE('#filter-category', gE('#filter-controls')); // Scope to filter form
-                selectElement.innerHTML = '<option value="">All</option>'; // Clear existing options
-                newState.settings.cats.forEach(c => selectElement.appendChild(cE('option', { value: c, textContent: sH(c) })));
+                updateFilterCategories(newState.settings.cats);
             }
 
             // Handle modal focus
-            if (newState.ui.modalOpen && !oldState?.ui?.modalOpen && gE(`#${newState.ui.modalOpen}`)) {
-                gE(`#${newState.ui.modalOpen}`).focus();
+            if (newState.ui.modalOpen !== oldState?.ui?.modalOpen) {
+                handleModalFocus(newState.ui.modalOpen, oldState?.ui?.modalOpen);
             }
 
             // Handle viewing a specific report
-            if (newState.ui.viewingReport && newState.ui.viewingReport !== oldState?.ui?.viewingReport) {
-                const report = newState.reports.find(r => r.id === newState.ui.viewingReport);
-                if (report) showReportDetails(report);
+            if (newState.ui.viewingReport !== oldState?.ui?.viewingReport) {
+                handleReportViewing(newState.ui.viewingReport, newState.reports);
             }
 
             // Global Loading Spinner visibility
-            const globalSpinner = gE('#global-loading-spinner');
-            if (globalSpinner) {
-                globalSpinner.style.display = newState.ui.loading ? 'flex' : 'none';
+            if (newState.ui.loading !== oldState?.ui?.loading) {
+                updateGlobalLoadingSpinner(newState.ui.loading);
             }
         });
     };
