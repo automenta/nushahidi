@@ -34,7 +34,10 @@ async function initializeApplication() {
 
         initUI();
 
-        const cachedReports = await dbSvc.getAllReps();
+        let cachedReports = await dbSvc.getAllReps();
+        if (!Array.isArray(cachedReports)) {
+            cachedReports = [];
+        }
         appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
 
         await nostrSvc.refreshSubs();
