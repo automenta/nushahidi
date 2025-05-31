@@ -9,26 +9,25 @@ const settingsContentRenderer = modalRoot => {
 
     settingsSections.forEach(section => {
         if (section.type === 'list') {
-            // renderConfigurableListSetting already creates the section and appends it to settingsSectionsWrapper,
-            // and also appends an <hr> after it.
             renderConfigurableListSetting(settingsSectionsWrapper, section);
         } else {
-            // For 'section' and 'offline-queue' types, we manually create the section and hr.
             const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
             if (section.type === 'section') {
-                // Assuming section.renderer returns a Node to be appended to sectionEl
-                sectionEl.appendChild(section.renderer(settingsSectionsWrapper));
+                const renderedContent = section.renderer(settingsSectionsWrapper);
+                if (Array.isArray(renderedContent)) {
+                    renderedContent.forEach(el => sectionEl.appendChild(el));
+                } else if (renderedContent instanceof Node) {
+                    sectionEl.appendChild(renderedContent);
+                }
             } else if (section.type === 'offline-queue') {
                 sectionEl.append(
                     createEl('p', { textContent: 'Events waiting to be published when online.' }),
-                    createEl('div', { id: section.listId }) // This div will be the container for renderOfflineQueue
+                    createEl('div', { id: section.listId })
                 );
             }
             settingsSectionsWrapper.appendChild(sectionEl);
-            settingsSectionsWrapper.appendChild(createEl('hr')); // Add HR after this section
+            settingsSectionsWrapper.appendChild(createEl('hr'));
             if (section.type === 'offline-queue') {
-                // This function renders content into the div created above, which is inside sectionEl.
-                // It uses settingsSectionsWrapper as the scope to find the list container.
                 renderOfflineQueue(settingsSectionsWrapper);
             }
         }
