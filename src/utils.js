@@ -28,7 +28,9 @@ export const C = { // Constants
     IMG_SIZE_LIMIT_BYTES: 5 * 1024 * 1024, // 5MB
     ONBOARDING_KEY: 'nostrmapper_onboarded_v1',
     DB_PRUNE_REPORTS_MAX: 5000, // Max number of reports to keep
-    DB_PRUNE_PROFILES_MAX_AGE_DAYS: 30 // Max age for profiles in days
+    DB_PRUNE_PROFILES_MAX_AGE_DAYS: 30, // Max age for profiles in days
+    MAX_RELAY_RETRIES: 3,
+    RELAY_RETRY_DELAY_MS: 5000 // 5 seconds
 };
 
 export const $ = (selector, parent = document) => parent.querySelector(selector);

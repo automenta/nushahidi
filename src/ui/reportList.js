@@ -21,20 +21,38 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
     appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading for interactions
     try {
         const interactions = await nostrSvc.fetchInteractions(reportId, reportPk);
-        let html = '<h4>Interactions</h4>';
+
+        const fragment = document.createDocumentFragment();
+        fragment.appendChild(createEl('h4', { textContent: 'Interactions' }));
+
         if (interactions.length === 0) {
-            html += '<p>No interactions yet.</p>';
+            fragment.appendChild(createEl('p', { textContent: 'No interactions yet.' }));
         } else {
             interactions.forEach(i => {
                 const interactionUser = formatNpubShort(i.pubkey);
                 const interactionTime = new Date(i.created_at * 1000).toLocaleString();
+                let interactionItemContent;
+
                 if (i.kind === C.NOSTR_KIND_REACTION) { // Simple reaction
-                    html += `<div class="interaction-item"><strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(i.content)} <small>(${interactionTime})</small></div>`;
+                    interactionItemContent = createEl('div', {
+                        innerHTML: `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(i.content)} <small>(${interactionTime})</small>`
+                    });
                 } else if (i.kind === C.NOSTR_KIND_NOTE) { // Text note comment
-                    html += `<div class="interaction-item"><strong>${sanitizeHTML(interactionUser)}</strong> commented: <div class="markdown-content">${marked.parse(sanitizeHTML(i.content))}</div> <small>(${interactionTime})</small></div>`;
+                    const markdownContent = createEl('div', { class: 'markdown-content', innerHTML: marked.parse(sanitizeHTML(i.content)) });
+                    interactionItemContent = createEl('div', {}, [
+                        createEl('strong', { textContent: interactionUser }),
+                        document.createTextNode(' commented: '),
+                        markdownContent,
+                        createEl('small', { textContent: `(${interactionTime})` })
+                    ]);
+                }
+                if (interactionItemContent) {
+                    interactionItemContent.classList.add('interaction-item');
+                    fragment.appendChild(interactionItemContent);
                 }
             });
         }
+
         // Add reaction buttons
         const reactionButtonsDiv = createEl('div', { class: 'reaction-buttons', style: 'margin-top:0.5rem;' });
         reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '+', textContent: '👍 Like' }));
@@ -55,7 +73,8 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
             style: 'margin-top:0.5rem;'
         });
 
-        container.innerHTML = html; // Set the static HTML content first
+        container.innerHTML = ''; // Clear previous content
+        container.appendChild(fragment); // Append the dynamically generated content
         container.appendChild(reactionButtonsDiv); // Append reaction buttons
         container.appendChild(commentForm); // Append the dynamically rendered form
 

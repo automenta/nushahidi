@@ -207,23 +207,25 @@ export const confSvc = { /* confSvc: configService */
             }
         }
 
-        appStore.set(s => ({
-            relays: updatedSettings.rls || s.relays,
-            focusTags: updatedSettings.focusTags || s.focusTags,
-            currentFocusTag: updatedSettings.currentFocusTag || s.currentFocusTag,
-            followedPubkeys: partialSettings.followedPubkeys !== undefined ? partialSettings.followedPubkeys : s.followedPubkeys,
+        // Prepare the state update object for appStore.set
+        const appStoreUpdate = {
+            relays: updatedSettings.rls || appStore.get().relays,
+            focusTags: updatedSettings.focusTags || appStore.get().focusTags,
+            currentFocusTag: updatedSettings.currentFocusTag || appStore.get().currentFocusTag,
+            followedPubkeys: partialSettings.followedPubkeys !== undefined ? partialSettings.followedPubkeys : appStore.get().followedPubkeys,
             settings: {
-                ...s.settings,
-                tileUrl: updatedSettings.tileUrl || s.settings.tileUrl,
-                tilePreset: updatedSettings.tilePreset || s.settings.tilePreset,
-                cats: updatedSettings.cats || s.settings.cats,
-                mute: updatedSettings.mute || s.settings.mute,
-                imgHost: updatedSettings.imgH || s.settings.imgHost,
-                nip96Host: updatedSettings.nip96H || s.settings.nip96Host,
-                nip96Token: updatedSettings.nip96T || s.settings.nip96T
+                ...appStore.get().settings,
+                tileUrl: updatedSettings.tileUrl || appStore.get().settings.tileUrl,
+                tilePreset: updatedSettings.tilePreset || appStore.get().settings.tilePreset,
+                cats: updatedSettings.cats || appStore.get().settings.cats,
+                mute: updatedSettings.mute || appStore.get().settings.mute,
+                imgHost: updatedSettings.imgH || appStore.get().settings.imgHost,
+                nip96Host: updatedSettings.nip96H || appStore.get().settings.nip96Host,
+                nip96Token: updatedSettings.nip96T || appStore.get().settings.nip96T
             },
-            user: updatedSettings.id ? { pk: updatedSettings.id.pk, authM: updatedSettings.id.authM } : s.user
-        }));
+            user: updatedSettings.id ? { pk: updatedSettings.id.pk, authM: updatedSettings.id.authM } : appStore.get().user
+        };
+        appStore.set(appStoreUpdate);
     },
 
     setRlys: rls => confSvc.save({ rls }),
@@ -478,22 +480,22 @@ export const nostrSvc = { /* nostrSvc: nostrService */
                         updRlyStore(relay.url, 'disconnected');
                         showToast(`Disconnected from ${url}`, 'warning', 2000);
                         // Optional: try to reconnect after a delay
-                        setTimeout(() => connectRelay(url, 1), 5000);
+                        setTimeout(() => connectRelay(url, 1), C.RELAY_RETRY_DELAY_MS);
                     });
                     relay.on('error', () => {
                         updRlyStore(relay.url, 'error');
                         showToast(`Error connecting to ${url}`, 'error', 2000);
                         // Optional: retry with backoff
-                        if (attempt < 3) { // Max 3 retries
-                            setTimeout(() => connectRelay(url, attempt + 1), attempt * 5000);
+                        if (attempt < C.MAX_RELAY_RETRIES) {
+                            setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
                         }
                     });
                     await relay.connect();
                 } catch (e) {
                     updRlyStore(url, 'error');
                     showToast(`Failed to connect to ${url}: ${e.message}`, 'error', 2000);
-                    if (attempt < 3) {
-                        setTimeout(() => connectRelay(url, attempt + 1), attempt * 5000);
+                    if (attempt < C.MAX_RELAY_RETRIES) {
+                        setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
                     }
                 }
             };
@@ -615,6 +617,12 @@ export const nostrSvc = { /* nostrSvc: nostrService */
     async pubEv(eventData) {
         const signedEvent = await idSvc.signEv(eventData);
 
+        // Add/update report in DB and appStore immediately for UI responsiveness
+        // regardless of whether it's published directly or queued.
+        if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
+            await addReportToStoreAndDb(signedEvent);
+        }
+
         if (appStore.get().online) {
             try {
                 // Use a local API endpoint that the Service Worker can intercept
@@ -630,23 +638,14 @@ export const nostrSvc = { /* nostrSvc: nostrService */
                     console.error("Publish Error (SW Proxy):", response.statusText);
                 } else if (response.status === 503) {
                     console.log("Publish deferred by Service Worker (offline or network issue).");
-                    if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
-                        await addReportToStoreAndDb(signedEvent);
-                    }
                 }
             } catch (e) {
                 // Network error, SW should handle it via fetch interception
                 console.warn("Publish Network Error, Service Worker should handle:", e);
-                if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
-                    await addReportToStoreAndDb(signedEvent);
-                }
             }
         } else {
             // Explicitly offline, add to IndexedDB queue
             await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
-            if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
-                await addReportToStoreAndDb(signedEvent);
-            }
         }
 
         return signedEvent;
@@ -897,7 +896,7 @@ const _handleDrawCreated = async e => {
     const geojson = layer.toGeoJSON();
     const shapeId = generateUUID(); // Generate a unique ID for the shape
     geojson.properties = { ...geojson.properties, id: shapeId }; // Add ID to properties
-    layer.options.id = shapeId; // Store ID on the layer itself for easy lookup
+    layer.options.id = shapeId; // Store the ID on the layer itself for easy lookup
 
     _drawnItems.addLayer(layer);
     await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
