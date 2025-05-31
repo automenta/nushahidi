@@ -4,7 +4,7 @@ import { C, $, createEl, sanitizeHTML, geohashEncode, showToast, isValidUrl, gen
 import { renderForm, renderList } from './forms.js';
 import { createModalWrapper, showModal, hideModal } from './modals.js';
 
-const _renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
+const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     previewElement.innerHTML = '';
     if (imagesMetadata.length === 0) {
         previewElement.textContent = 'No images selected.';
@@ -28,12 +28,12 @@ const _renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     );
 };
 
-const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDisplay) => {
+const setupReportFormLocationHandlers = (formRoot, formState, updateLocationDisplay) => {
     $('#pick-loc-map-btn', formRoot).onclick = () => {
         hideModal('report-form-modal');
         mapSvc.enPickLoc(latlng => {
             formState.pFLoc = latlng;
-            renderLocationDisplay();
+            updateLocationDisplay();
             showModal('report-form-modal', 'rep-title');
         });
     };
@@ -43,7 +43,7 @@ const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDis
         navigator.geolocation.getCurrentPosition(
             position => {
                 formState.pFLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
-                renderLocationDisplay();
+                updateLocationDisplay();
             },
             error => showToast(`GPS Error: ${error.message}`, 'error')
         );
@@ -59,7 +59,7 @@ const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDis
             if (data?.length > 0) {
                 const { lat, lon, display_name } = data[0];
                 formState.pFLoc = { lat: parseFloat(lat), lng: parseFloat(lon) };
-                renderLocationDisplay(display_name);
+                updateLocationDisplay(display_name);
                 showToast(`Address found: ${display_name}`, 'success');
             } else {
                 showToast("Address not found.", 'info');
@@ -72,7 +72,7 @@ const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDis
     };
 };
 
-const _setupReportFormImageUploadHandler = (imagesMetadata, renderPreview) => {
+const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => {
     return async e => {
         const files = e.target.files;
         appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
@@ -92,14 +92,14 @@ const _setupReportFormImageUploadHandler = (imagesMetadata, renderPreview) => {
                     showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
                 }
             }
-            renderPreview();
+            updatePreview();
         } finally {
             appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
         }
     };
 };
 
-const _setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
+const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
     formElement.onsubmit = async e => {
         e.preventDefault();
         const submitBtn = e.target.querySelector('button[type=submit]');
@@ -151,7 +151,7 @@ const _setupReportFormSubmission = (formElement, reportToEdit, formState, images
             $('#pFLoc-coords', formRoot).textContent = 'None';
             $('#upld-photos-preview', formRoot).innerHTML = '';
             formState.pFLoc = null;
-            uIMeta.length = 0;
+            imagesMetadata.length = 0;
             hideModal('report-form-modal');
         } catch (error) {
             showToast(`Report submission error: ${error.message}`, 'error');
@@ -177,7 +177,7 @@ export function RepFormComp(reportToEdit = null) {
         }
     }
 
-    const renderLocationDisplay = (addressName = '') => {
+    const updateLocationDisplay = (addressName = '') => {
         const coordsEl = $('#pFLoc-coords', formRoot);
         if (pFLoc) {
             coordsEl.textContent = `${pFLoc.lat.toFixed(5)},${pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}`;
@@ -186,11 +186,11 @@ export function RepFormComp(reportToEdit = null) {
         }
     };
 
-    const renderImagePreview = () => {
+    const updateImagePreview = () => {
         const previewElement = $('#upld-photos-preview', formRoot);
-        _renderImagePreview(previewElement, uIMeta, (index) => {
+        renderImagePreview(previewElement, uIMeta, (index) => {
             uIMeta.splice(index, 1);
-            renderImagePreview();
+            updateImagePreview();
         });
     };
 
@@ -236,7 +236,7 @@ export function RepFormComp(reportToEdit = null) {
             name: 'status',
             options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
         },
-        { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*', onchange: _setupReportFormImageUploadHandler(uIMeta, renderImagePreview) },
+        { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*', onchange: setupReportFormImageUploadHandler(uIMeta, updateImagePreview) },
         { type: 'custom-html', id: 'upld-photos-preview' },
         { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
         { label: reportToEdit ? 'Update Report' : 'Submit', type: 'button', buttonType: 'submit' },
@@ -247,11 +247,11 @@ export function RepFormComp(reportToEdit = null) {
         const form = renderForm(reportFormFields, initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
 
-        _setupReportFormLocationHandlers(form, { pFLoc }, renderLocationDisplay);
-        _setupReportFormSubmission(form, reportToEdit, { pFLoc }, uIMeta);
+        setupReportFormLocationHandlers(form, { pFLoc }, updateLocationDisplay);
+        setupReportFormSubmission(form, reportToEdit, { pFLoc }, uIMeta);
 
-        renderImagePreview();
-        renderLocationDisplay();
+        updateImagePreview();
+        updateLocationDisplay();
 
         return form;
     });

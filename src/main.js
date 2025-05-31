@@ -44,7 +44,6 @@ async function main() {
     await dbSvc.pruneDb();
 
     appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    console.log("NostrMapper Initialized.");
 }
 
 document.addEventListener('DOMContentLoaded', main);

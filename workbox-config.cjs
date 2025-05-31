@@ -1,5 +1,5 @@
 module.exports = {
-  swSrc: 'src/sw.js', // Path to your service worker file
+  swSrc: 'src/sw.js',
   swDest: 'dist/sw.js',
   globDirectory: 'dist/',
   globPatterns: [
@@ -17,7 +17,7 @@ module.exports = {
         cacheName: 'nostr-build-api',
         expiration: {
           maxEntries: 10,
-          maxAgeSeconds: 24 * 60 * 60, // 1 day
+          maxAgeSeconds: 24 * 60 * 60,
         },
         networkTimeoutSeconds: 10,
       }
@@ -29,7 +29,7 @@ module.exports = {
         cacheName: 'map-tiles',
         expiration: {
           maxEntries: 500,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          maxAgeSeconds: 30 * 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],

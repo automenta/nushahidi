@@ -50,7 +50,6 @@ export const dbSvc = {
     clearFollowedPubkeys: async () => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).clear(),
 
     async pruneDb() {
-        console.log("Pruning IndexedDB...");
         const now = Date.now();
 
         const allReports = await this.getAllReps();
@@ -76,7 +75,6 @@ export const dbSvc = {
         if (profilesDeleted > 0) {
             showToast(`Pruned ${profilesDeleted} old profiles.`, 'info');
         }
-        console.log("IndexedDB pruning complete.");
     }
 };
 
@@ -85,7 +83,7 @@ export const confSvc = {
         let settings = await dbSvc.loadSetts();
         let followedPubkeys = await dbSvc.getFollowedPubkeys();
 
-        const _initializeSettingsDefaults = () => ({
+        const initializeSettingsDefaults = () => ({
             rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),
             tileUrl: C.TILE_SERVER_DEFAULT,
             tilePreset: 'OpenStreetMap',
@@ -98,7 +96,7 @@ export const confSvc = {
             nip96T: ''
         });
 
-        const _migrateRelaySettings = (currentSettings) => {
+        const migrateRelaySettings = (currentSettings) => {
             currentSettings.rls = currentSettings.rls || C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null }));
             currentSettings.rls.forEach(r => {
                 if (r.status === undefined) r.status = '?';
@@ -107,7 +105,7 @@ export const confSvc = {
             return currentSettings.rls;
         };
 
-        const _migrateFocusTags = (currentSettings) => {
+        const migrateFocusTags = (currentSettings) => {
             if (typeof currentSettings.focus === 'string') {
                 const tags = [{ tag: currentSettings.focus, active: true }];
                 delete currentSettings.focus;
@@ -118,7 +116,7 @@ export const confSvc = {
             return currentSettings.focusTags;
         };
 
-        const _migrateTileSettings = (currentSettings) => {
+        const migrateTileSettings = (currentSettings) => {
             const tileUrl = currentSettings.tileUrl || currentSettings.tile || C.TILE_SERVER_DEFAULT;
             const tilePreset = currentSettings.tilePreset || (currentSettings.tile === C.TILE_SERVER_DEFAULT ? 'OpenStreetMap' : 'Custom');
             delete currentSettings.tile;
@@ -126,12 +124,12 @@ export const confSvc = {
         };
 
         if (!settings) {
-            settings = _initializeSettingsDefaults();
+            settings = initializeSettingsDefaults();
         }
 
-        const updatedRelays = _migrateRelaySettings(settings);
-        const updatedFocusTags = _migrateFocusTags(settings);
-        const { tileUrl, tilePreset } = _migrateTileSettings(settings);
+        const updatedRelays = migrateRelaySettings(settings);
+        const updatedFocusTags = migrateFocusTags(settings);
+        const { tileUrl, tilePreset } = migrateTileSettings(settings);
         const currentFocusTag = updatedFocusTags.find(t => t.active)?.tag || C.FOCUS_TAG_DEFAULT;
 
         if (!followedPubkeys) {
@@ -760,7 +758,7 @@ let _map, _mapRepsLyr = L.layerGroup(),
 let _drawnItems;
 let _drawControl;
 
-const _handleDrawCreated = async e => {
+const handleDrawCreated = async e => {
     const layer = e.layer;
     const geojson = layer.toGeoJSON();
     const shapeId = generateUUID();
@@ -773,7 +771,7 @@ const _handleDrawCreated = async e => {
     showToast("Shape drawn and saved!", 'success');
 };
 
-const _handleDrawEdited = async e => {
+const handleDrawEdited = async e => {
     for (const layer of Object.values(e.layers._layers)) {
         const geojson = layer.toGeoJSON();
         const shapeId = layer.options.id;
@@ -785,7 +783,7 @@ const _handleDrawEdited = async e => {
     showToast("Shape edited and saved!", 'success');
 };
 
-const _handleDrawDeleted = async e => {
+const handleDrawDeleted = async e => {
     for (const layer of Object.values(e.layers._layers)) {
         const shapeId = layer.options.id;
         await dbSvc.rmDrawnShape(shapeId);
@@ -835,9 +833,9 @@ export const mapSvc = {
             appStore.set({ mapBnds: bounds, mapGhs: geohashes });
         });
 
-        _map.on(L.Draw.Event.CREATED, _handleDrawCreated);
-        _map.on(L.Draw.Event.EDITED, _handleDrawEdited);
-        _map.on(L.Draw.Event.DELETED, _handleDrawDeleted);
+        _map.on(L.Draw.Event.CREATED, handleDrawCreated);
+        _map.on(L.Draw.Event.EDITED, handleDrawEdited);
+        _map.on(L.Draw.Event.DELETED, handleDrawDeleted);
 
         this.loadDrawnShapes();
 
@@ -855,7 +853,6 @@ export const mapSvc = {
             geojsonShapes.push(s.geojson);
         });
         appStore.set({ drawnShapes: geojsonShapes });
-        console.log(`Loaded ${storedShapes.length} drawn shapes.`);
     },
 
     async clearAllDrawnShapes() {

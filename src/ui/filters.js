@@ -64,7 +64,7 @@ export const applyAllFilters = () => {
 };
 export const debAppAllFilt = debounce(applyAllFilters, 350);
 
-const _setupFilterEventListeners = (filterForm) => {
+const setupFilterEventListeners = (filterForm) => {
     $('#search-query-input', filterForm).oninput = e => {
         appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, q: e.target.value } } }));
         debAppAllFilt();
@@ -147,7 +147,7 @@ export const initFilterControls = () => {
     const filterForm = renderForm(filterFormFields, initialFilterData, { id: 'filter-form' });
     filterControlsContainer.appendChild(filterForm);
 
-    _setupFilterEventListeners(filterForm);
+    setupFilterEventListeners(filterForm);
 
     const mapDrawControlsDiv = $('#map-draw-controls', filterForm);
     const drawControl = mapSvc.getDrawControl();

@@ -148,7 +148,7 @@ async function handleCommentSubmit(event) {
     }
 }
 
-const _renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
+const renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
     const imagesHtml = (report.imgs || []).map(img =>
         `<img src="${sanitizeHTML(img.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`
     ).join('');
@@ -180,7 +180,7 @@ const _renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollo
     `;
 };
 
-const _setupReportDetailEventListeners = (report, isAuthor, canFollow, detailContainer, listContainer) => {
+const setupReportDetailEventListeners = (report, isAuthor, canFollow, detailContainer, listContainer) => {
     $('#back-to-list-btn', detailContainer).onclick = () => { detailContainer.style.display = 'none'; listContainer.style.display = 'block' };
 
     if (isAuthor) {
@@ -230,12 +230,12 @@ export const showReportDetails = async report => {
     const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
     const canFollow = currentUserPk && currentUserPk !== report.pk;
 
-    detailContainer.innerHTML = _renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
+    detailContainer.innerHTML = renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
 
     detailContainer.style.display = 'block';
     detailContainer.focus();
 
-    _setupReportDetailEventListeners(report, isAuthor, canFollow, detailContainer, listContainer);
+    setupReportDetailEventListeners(report, isAuthor, canFollow, detailContainer, listContainer);
 
     if (report.lat && report.lon && typeof L !== 'undefined') {
         const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);
