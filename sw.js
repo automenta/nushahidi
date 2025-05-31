@@ -3,13 +3,13 @@ import {NavigationRoute, registerRoute} from 'workbox-routing';
 import {NetworkFirst, StaleWhileRevalidate} from 'workbox-strategies';
 import {ExpirationPlugin} from 'workbox-expiration';
 import {BackgroundSyncPlugin} from 'workbox-background-sync';
-import { setLogLevel, LogLevel } from 'workbox-core'; // Import setLogLevel and LogLevel
+import { setLogLevel, LOG_LEVELS } from 'workbox-core'; // Corrected import from LogLevel to LOG_LEVELS
 
-setLogLevel(LogLevel.SILENT); // Disable all Workbox logs
+setLogLevel(LOG_LEVELS.SILENT); // Corrected usage from LogLevel to LOG_LEVELS
 
 cleanupOutdatedCaches();
 
-precacheAndRoute(self.__WB_MANIFEST || []); // Added defensive check for __WB_MANIFEST
+precacheAndRoute(self.__WB_MANIFEST || []);
 
 const navigationRoute = new NavigationRoute(new StaleWhileRevalidate({
   cacheName: 'app-shell-navigations',
