@@ -2,7 +2,7 @@ import { appStore } from '../store.js';
 import { mapSvc, idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
 import { C, $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
 import { createModalWrapper, hideModal } from './modals.js';
-import { renderForm, setupAddRemoveListSection } from './forms.js';
+import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
 import {
     createListSectionRenderer,
     addRelayLogic,
@@ -16,7 +16,7 @@ import {
 import { renderKeyManagementSection } from './settings/keyManagement.js';
 import { renderMapTilesSection } from './settings/mapTiles.js';
 import { renderImageHostSection } from './settings/imageHost.js';
-import { renderFollowedUsersSection, renderFollowedList } from './settings/followedUsers.js';
+import { renderFollowedUsersSection, renderFollowedList, setupFollowedListUniqueListeners } from './settings/followedUsers.js';
 import { renderDataManagementSection } from './settings/dataManagement.js';
 
 
@@ -144,19 +144,6 @@ const renderOfflineQueue = async (modalContent) => {
     renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig, 'offline-q-entry', modalContent);
 };
 
-// Helper to setup common list management sections
-const setupListManagement = (modalContent, config) => {
-    setupAddRemoveListSection({
-        modalContent,
-        addInputId: config.addInputId,
-        addBtnId: config.addBtnId,
-        addLogic: config.addLogic,
-        listRenderer: config.listRenderer,
-        saveBtnId: config.saveBtnId,
-        onSaveCallback: config.onSaveCallback
-    });
-};
-
 export function SettPanComp() {
     const appState = appStore.get();
 
@@ -269,7 +256,8 @@ export function SettPanComp() {
     renderOfflineQueue(modalContent);
 
     // Setup list management for sections that use it
-    setupListManagement(modalContent, {
+    setupAddRemoveListSection({
+        modalContent,
         addInputId: 'new-rly-url',
         addBtnId: 'add-rly-btn',
         addLogic: addRelayLogic,
@@ -281,7 +269,8 @@ export function SettPanComp() {
         }
     });
 
-    setupListManagement(modalContent, {
+    setupAddRemoveListSection({
+        modalContent,
         addInputId: 'new-cat-name',
         addBtnId: 'add-cat-btn',
         addLogic: addCategoryLogic,
@@ -289,7 +278,8 @@ export function SettPanComp() {
         saveBtnId: 'save-cats-btn'
     });
 
-    setupListManagement(modalContent, {
+    setupAddRemoveListSection({
+        modalContent,
         addInputId: 'new-focus-tag-input',
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
@@ -298,7 +288,8 @@ export function SettPanComp() {
         onSaveCallback: () => nostrSvc.refreshSubs()
     });
 
-    setupListManagement(modalContent, {
+    setupAddRemoveListSection({
+        modalContent,
         addInputId: 'new-mute-pk-input',
         addBtnId: 'add-mute-btn',
         addLogic: addMutePubkeyLogic,
@@ -306,8 +297,16 @@ export function SettPanComp() {
         saveBtnId: 'save-mute-list-btn'
     });
 
-    // Note: Followed users list management is handled within its own module (followedUsers.js)
-    // as it has unique import/publish buttons.
+    // Followed users list management
+    setupAddRemoveListSection({
+        modalContent,
+        addInputId: 'new-followed-pk-input',
+        addBtnId: 'add-followed-btn',
+        addLogic: addFollowedPubkeyLogic,
+        listRenderer: () => renderFollowedList(modalContent),
+        saveBtnId: 'save-followed-btn'
+    });
+    setupFollowedListUniqueListeners(modalContent); // Setup unique listeners for import/publish
 
     return modalContent;
 }

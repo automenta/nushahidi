@@ -2,8 +2,8 @@ import { appStore } from '../../store.js';
 import { confSvc, nostrSvc } from '../../services.js';
 import { $, formatNpubShort, showToast } from '../../utils.js';
 import { withLoading, withToast } from '../../decorators.js';
-import { renderForm, setupAddRemoveListSection } from '../forms.js';
-import { createListSectionRenderer, addFollowedPubkeyLogic } from '../settingsHelpers.js';
+import { renderForm } from '../forms.js';
+import { createListSectionRenderer } from '../settingsHelpers.js';
 import { showConfirmModal } from '../modals.js';
 
 /**
@@ -24,8 +24,6 @@ export const renderFollowedUsersSection = (modalContent) => {
     const form = renderForm(followedUsersFormFields, {}, { id: 'followed-list-form' });
     modalContent.appendChild(form); // Append to modalContent directly
 
-    setupListManagement(modalContent);
-    setupFollowedListUniqueListeners(modalContent);
     return form;
 };
 
@@ -45,25 +43,10 @@ export const renderFollowedList = createListSectionRenderer('followed-list',
 );
 
 /**
- * Sets up the common list management logic for followed users.
- * @param {HTMLElement} modalContent The root element containing the followed users section.
- */
-const setupListManagement = (modalContent) => {
-    setupAddRemoveListSection({
-        modalContent,
-        addInputId: 'new-followed-pk-input',
-        addBtnId: 'add-followed-btn',
-        addLogic: addFollowedPubkeyLogic,
-        listRenderer: () => renderFollowedList(modalContent),
-        saveBtnId: 'save-followed-btn'
-    });
-};
-
-/**
  * Sets up unique event listeners for the followed users section (import/publish contacts).
  * @param {HTMLElement} modalContent The root element containing the followed users section.
  */
-const setupFollowedListUniqueListeners = (modalContent) => {
+export const setupFollowedListUniqueListeners = (modalContent) => {
     $('#import-contacts-btn', modalContent).onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) {
             throw new Error("Please connect your Nostr identity to import contacts.");
