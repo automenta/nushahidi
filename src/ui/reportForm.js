@@ -5,7 +5,7 @@ import {renderForm, renderList} from './forms.js';
 import {createModalWrapper, hideModal, showModal} from './modals.js';
 import {withLoading, withToast} from '../decorators.js';
 
-const REPORT_FORM_FIELDS = (categories, initialFormData, updateImagePreview, updateLocationDisplay) => [
+const REPORT_FORM_FIELDS = (categories, initialFormData) => [
     { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
     { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
     { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
@@ -37,7 +37,7 @@ const REPORT_FORM_FIELDS = (categories, initialFormData, updateImagePreview, upd
         name: 'status',
         options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
     },
-    { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*', onchange: setupReportFormImageUploadHandler(initialFormData.uIMeta, updateImagePreview) },
+    { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' },
     { type: 'custom-html', id: 'upld-photos-preview' },
     { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
     { label: initialFormData.isEdit ? 'Update Report' : 'Submit', type: 'button', buttonType: 'submit' },
@@ -66,69 +66,6 @@ const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
         'uploaded-image-item',
         previewElement.parentNode
     );
-};
-
-const setupReportFormLocationHandlers = (formRoot, formState, updateLocationDisplay) => {
-    $('#pick-loc-map-btn', formRoot).onclick = () => {
-        hideModal('report-form-modal');
-        mapSvc.enPickLoc(latlng => {
-            formState.pFLoc = latlng;
-            updateLocationDisplay();
-            showModal('report-form-modal', 'rep-title');
-        });
-    };
-
-    $('#use-gps-loc-btn', formRoot).onclick = () => {
-        if (!navigator.geolocation) {
-            showToast("GPS not supported by your browser.", 'warning');
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                formState.pFLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
-                updateLocationDisplay();
-            },
-            error => showToast(`GPS Error: ${error.message}`, 'error')
-        );
-    };
-
-    $('#geocode-address-btn', formRoot).onclick = withLoading(withToast(async () => {
-        const address = $('#rep-address', formRoot).value.trim();
-        if (!address) throw new Error("Please enter an address to geocode.");
-
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
-        const data = await response.json();
-        if (data?.length > 0) {
-            const { lat, lon, display_name } = data[0];
-            formState.pFLoc = { lat: parseFloat(lat), lng: parseFloat(lon) };
-            updateLocationDisplay(display_name);
-            return `Address found: ${display_name}`;
-        } else {
-            throw new Error("Location not found.");
-        }
-    }, null, "Geocoding error"));
-};
-
-const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => {
-    return withLoading(async e => {
-        const files = e.target.files;
-        for (const file of files) {
-            try {
-                const processedImage = await processImageFile(file);
-                const uploadedUrl = await imgSvc.upload(processedImage.file);
-                imagesMetadata.push({
-                    url: uploadedUrl,
-                    type: processedImage.file.type,
-                    dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
-                    hHex: processedImage.hash
-                });
-                showToast(`Image ${file.name} uploaded.`, 'success', 1500);
-            } catch (error) {
-                showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
-            }
-        }
-        updatePreview();
-    });
 };
 
 const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
@@ -178,8 +115,8 @@ const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesM
 
         await nostrSvc.pubEv(eventData);
         e.target.reset();
-        $('#pFLoc-coords', formRoot).textContent = 'None';
-        $('#upld-photos-preview', formRoot).innerHTML = '';
+        $('#pFLoc-coords', formElement).textContent = 'None'; // Use formElement as root
+        $('#upld-photos-preview', formElement).innerHTML = ''; // Use formElement as root
         formState.pFLoc = null;
         imagesMetadata.length = 0;
         hideModal('report-form-modal');
@@ -206,23 +143,6 @@ export function RepFormComp(reportToEdit = null) {
 
     const formState = { pFLoc, uIMeta };
 
-    const updateLocationDisplay = (addressName = '') => {
-        const coordsEl = $('#pFLoc-coords', formRoot);
-        if (formState.pFLoc) {
-            coordsEl.textContent = `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}`;
-        } else {
-            coordsEl.textContent = 'None';
-        }
-    };
-
-    const updateImagePreview = () => {
-        const previewElement = $('#upld-photos-preview', formRoot);
-        renderImagePreview(previewElement, formState.uIMeta, index => {
-            formState.uIMeta.splice(index, 1);
-            updateImagePreview();
-        });
-    };
-
     const initialFormData = {
         title: reportToEdit?.title,
         summary: reportToEdit?.sum,
@@ -236,8 +156,92 @@ export function RepFormComp(reportToEdit = null) {
     };
 
     const formRoot = createModalWrapper('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
-        const form = renderForm(REPORT_FORM_FIELDS(categories, initialFormData, updateImagePreview, updateLocationDisplay), initialFormData, { id: 'nstr-rep-form' });
+        // Define functions that need access to modalContent (which is formRoot here)
+        const updateLocationDisplay = (addressName = '') => {
+            const coordsEl = $('#pFLoc-coords', modalContent);
+            if (formState.pFLoc) {
+                coordsEl.textContent = `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}`;
+            } else {
+                coordsEl.textContent = 'None';
+            }
+        };
+
+        const updateImagePreview = () => {
+            const previewElement = $('#upld-photos-preview', modalContent);
+            renderImagePreview(previewElement, formState.uIMeta, index => {
+                formState.uIMeta.splice(index, 1);
+                updateImagePreview();
+            });
+        };
+
+        const setupReportFormLocationHandlers = (formElement, formState, updateLocationDisplay) => {
+            $('#pick-loc-map-btn', formElement).onclick = () => {
+                hideModal('report-form-modal');
+                mapSvc.enPickLoc(latlng => {
+                    formState.pFLoc = latlng;
+                    updateLocationDisplay();
+                    showModal('report-form-modal', 'rep-title');
+                });
+            };
+
+            $('#use-gps-loc-btn', formElement).onclick = () => {
+                if (!navigator.geolocation) {
+                    showToast("GPS not supported by your browser.", 'warning');
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        formState.pFLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
+                        updateLocationDisplay();
+                    },
+                    error => showToast(`GPS Error: ${error.message}`, 'error')
+                );
+            };
+
+            $('#geocode-address-btn', formElement).onclick = withLoading(withToast(async () => {
+                const address = $('#rep-address', formElement).value.trim();
+                if (!address) throw new Error("Please enter an address to geocode.");
+
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+                const data = await response.json();
+                if (data?.length > 0) {
+                    const { lat, lon, display_name } = data[0];
+                    formState.pFLoc = { lat: parseFloat(lat), lng: parseFloat(lon) };
+                    updateLocationDisplay(display_name);
+                    return `Address found: ${display_name}`;
+                } else {
+                    throw new Error("Location not found.");
+                }
+            }, null, "Geocoding error"));
+        };
+
+        const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => {
+            return withLoading(async e => {
+                const files = e.target.files;
+                for (const file of files) {
+                    try {
+                        const processedImage = await processImageFile(file);
+                        const uploadedUrl = await imgSvc.upload(processedImage.file);
+                        imagesMetadata.push({
+                            url: uploadedUrl,
+                            type: processedImage.file.type,
+                            dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
+                            hHex: processedImage.hash
+                        });
+                        showToast(`Image ${file.name} uploaded.`, 'success', 1500);
+                    } catch (error) {
+                        showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
+                    }
+                }
+                updatePreview();
+            });
+        };
+
+        const form = renderForm(REPORT_FORM_FIELDS(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
+
+        // Attach image upload handler after form is rendered
+        $('#rep-photos', form).onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview);
 
         setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
         setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
