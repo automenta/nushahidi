@@ -63,8 +63,8 @@ export class FilterControls {
         appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
     }
 
-    setupFilterInput(formScope, id, stateKey, handler = applyAllFilters, debounceInput = false) {
-        const inputElement = formScope.querySelector(`#${id}`);
+    setupFilterInput(fields, id, stateKey, handler = applyAllFilters, debounceInput = false) {
+        const inputElement = fields[id];
         if (!inputElement) return;
         inputElement.oninput = e => {
             this.updateFilterState(stateKey, e.target.value.trim());
@@ -72,8 +72,8 @@ export class FilterControls {
         };
     }
 
-    setupFilterSelect(formScope, id, stateKey, handler = applyAllFilters) {
-        const selectElement = formScope.querySelector(`#${id}`);
+    setupFilterSelect(fields, id, stateKey, handler = applyAllFilters) {
+        const selectElement = fields[id];
         if (!selectElement) return;
         selectElement.onchange = e => {
             this.updateFilterState(stateKey, e.target.value);
@@ -81,8 +81,8 @@ export class FilterControls {
         };
     }
 
-    setupFilterTimeInput(formScope, id, stateKey) {
-        const inputElement = formScope.querySelector(`#${id}`);
+    setupFilterTimeInput(fields, id, stateKey) {
+        const inputElement = fields[id];
         if (!inputElement) return;
         inputElement.onchange = e => {
             this.updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
@@ -109,7 +109,7 @@ export class FilterControls {
             { type: 'button', id: 'reset-filters-btn', label: 'Reset', class: 'reset-filters-btn' },
             { type: 'hr' },
             { type: 'h4', content: ['Map Drawing Filters'] },
-            { type: 'custom-html', class: 'map-draw-controls' }, // Use class
+            { type: 'custom-html', id: 'map-draw-controls', class: 'map-draw-controls' },
             { label: 'Enable Spatial Filter', type: 'checkbox', id: 'spatial-filter-toggle', name: 'spatialFilterEnabled' },
             { label: 'Show Only Followed Users', type: 'checkbox', id: 'followed-only-toggle', name: 'followedOnlyFilter' },
             { type: 'button', id: 'clear-drawn-shapes-btn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
@@ -126,16 +126,16 @@ export class FilterControls {
             followedOnlyFilter: appState.ui.followedOnlyFilter
         };
 
-        const newForm = renderForm(filterFormFields, initialFilterData, { class: 'filter-form' });
+        const { form: newForm, fields } = renderForm(filterFormFields, initialFilterData, { class: 'filter-form' });
 
-        this.setupFilterInput(newForm, 'search-query-input', 'q', applyAllFilters, true);
-        this.setupFilterSelect(newForm, 'filter-category', 'cat');
-        this.setupFilterInput(newForm, 'filter-author', 'auth', applyAllFilters, true);
-        this.setupFilterTimeInput(newForm, 'filter-time-start', 'tStart');
-        this.setupFilterTimeInput(newForm, 'filter-time-end', 'tEnd');
+        this.setupFilterInput(fields, 'search-query-input', 'q', applyAllFilters, true);
+        this.setupFilterSelect(fields, 'filter-category', 'cat');
+        this.setupFilterInput(fields, 'filter-author', 'auth', applyAllFilters, true);
+        this.setupFilterTimeInput(fields, 'filter-time-start', 'tStart');
+        this.setupFilterTimeInput(fields, 'filter-time-end', 'tEnd');
 
-        newForm.querySelector('#apply-filters-btn').onclick = applyAllFilters;
-        newForm.querySelector('#reset-filters-btn').onclick = () => {
+        fields['apply-filters-btn'].onclick = applyAllFilters;
+        fields['reset-filters-btn'].onclick = () => {
             appStore.set(s => ({
                 ui: {
                     ...s.ui,
@@ -147,14 +147,14 @@ export class FilterControls {
             }));
         };
 
-        const spatialFilterToggle = newForm.querySelector('#spatial-filter-toggle');
+        const spatialFilterToggle = fields['spatial-filter-toggle'];
         spatialFilterToggle.checked = appState.ui.spatialFilterEnabled;
         spatialFilterToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
             applyAllFilters();
         };
 
-        const followedOnlyToggle = newForm.querySelector('#followed-only-toggle');
+        const followedOnlyToggle = fields['followed-only-toggle'];
         followedOnlyToggle.checked = appState.ui.followedOnlyFilter;
         followedOnlyToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
@@ -162,9 +162,9 @@ export class FilterControls {
             applyAllFilters();
         };
 
-        newForm.querySelector('#clear-drawn-shapes-btn').onclick = mapSvc.clearAllDrawnShapes;
+        fields['clear-drawn-shapes-btn'].onclick = mapSvc.clearAllDrawnShapes;
 
-        const mapDrawControlsContainer = newForm.querySelector('.map-draw-controls'); // Use class
+        const mapDrawControlsContainer = fields['map-draw-controls'];
         mapDrawControlsContainer.innerHTML = '';
         mapDrawControlsContainer.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 

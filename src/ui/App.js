@@ -1,5 +1,5 @@
 import { appStore } from '../store.js';
-import { idSvc } from '../services.js';
+import { idSvc, mapSvc } from '../services.js'; // Import mapSvc
 import { C, createEl } from '../utils.js';
 import { showConfirmModal } from './modals.js';
 import { FilterControls, applyAllFilters } from './components/FilterControls.js';
@@ -66,6 +66,16 @@ export class App {
         this.setupEventListeners();
         applyAllFilters();
         appStore.set(s => ({ ui: { ...s.ui, showReportList: true } }));
+
+        // Initialize map after App has created its container
+        mapSvc.init(this.mapContainerEl)
+            .then(success => {
+                if (!success) this.mapContainerEl.innerHTML = '<p style="color:red">Map init failed.</p>';
+            })
+            .catch(e => {
+                console.error("Map initialization failed:", e);
+                this.mapContainerEl.innerHTML = `<p style="color:red">Map init failed: ${e.message}</p>`;
+            });
 
         if (!localStorage.getItem(C.ONBOARDING_KEY)) this.onboardingModal.show();
     }

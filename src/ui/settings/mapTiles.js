@@ -35,53 +35,34 @@ export class MapTilesSection {
             { type: 'button', id: 'save-tile-btn', label: 'Save Map Tiles', buttonType: 'button' }
         ];
 
+        const { form, fields } = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
+
         if (!this.form) {
-            this.form = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
+            this.form = form;
             this.sectionEl.appendChild(this.form);
-
-            this.tilePresetSel = this.form.querySelector('#tile-preset-sel');
-            this.tileUrlIn = this.form.querySelector('#tile-url-in');
-            this.saveTileBtn = this.form.querySelector('#save-tile-btn');
-
-            this.tilePresetSel.onchange = () => {
-                const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === this.tilePresetSel.value);
-                this.tileUrlIn.value = selectedPreset?.url || '';
-            };
-
-            this.saveTileBtn.onclick = withToast(async () => {
-                const selectedPresetName = this.tilePresetSel.value;
-                const customUrl = this.tileUrlIn.value.trim();
-
-                if (!isValidUrl(customUrl)) throw new Error("Invalid tile URL.");
-
-                await confSvc.setTilePreset(selectedPresetName, customUrl);
-                mapSvc.updTile(customUrl);
-            }, "Map tile settings saved.", "Error saving map tile settings");
         } else {
-            // Update existing form fields if the form already exists
-            const newForm = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
-            this.form.replaceWith(newForm);
-            this.form = newForm;
-
-            this.tilePresetSel = this.form.querySelector('#tile-preset-sel');
-            this.tileUrlIn = this.form.querySelector('#tile-url-in');
-            this.saveTileBtn = this.form.querySelector('#save-tile-btn');
-
-            this.tilePresetSel.onchange = () => {
-                const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === this.tilePresetSel.value);
-                this.tileUrlIn.value = selectedPreset?.url || '';
-            };
-
-            this.saveTileBtn.onclick = withToast(async () => {
-                const selectedPresetName = this.tilePresetSel.value;
-                const customUrl = this.tileUrlIn.value.trim();
-
-                if (!isValidUrl(customUrl)) throw new Error("Invalid tile URL.");
-
-                await confSvc.setTilePreset(selectedPresetName, customUrl);
-                mapSvc.updTile(customUrl);
-            }, "Map tile settings saved.", "Error saving map tile settings");
+            this.form.replaceWith(form);
+            this.form = form;
         }
+
+        this.tilePresetSel = fields['tile-preset-sel'];
+        this.tileUrlIn = fields['tile-url-in'];
+        this.saveTileBtn = fields['save-tile-btn'];
+
+        this.tilePresetSel.onchange = () => {
+            const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === this.tilePresetSel.value);
+            this.tileUrlIn.value = selectedPreset?.url || '';
+        };
+
+        this.saveTileBtn.onclick = withToast(async () => {
+            const selectedPresetName = this.tilePresetSel.value;
+            const customUrl = this.tileUrlIn.value.trim();
+
+            if (!isValidUrl(customUrl)) throw new Error("Invalid tile URL.");
+
+            await confSvc.setTilePreset(selectedPresetName, customUrl);
+            mapSvc.updTile(customUrl);
+        }, "Map tile settings saved.", "Error saving map tile settings");
 
         this.tilePresetSel.value = appState.settings.tilePreset;
         this.tileUrlIn.value = appState.settings.tileUrl;

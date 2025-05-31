@@ -195,7 +195,7 @@ export class ReportDetailsModal extends Modal {
             { type: 'button', buttonType: 'submit', label: 'Post Comment' }
         ];
 
-        const commentForm = renderForm(commentFormFields, {}, {
+        const { form: commentForm } = renderForm(commentFormFields, {}, {
             onSubmit: this.handleCommentSubmit,
             'data-report-id': sanitizeHTML(reportId),
             'data-report-pk': sanitizeHTML(reportPk),

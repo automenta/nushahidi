@@ -20,14 +20,15 @@ export class ReportFormModal extends Modal {
 
         const contentRenderer = (contentRoot, modalRoot) => {
             this.modalContentContainer = createEl('div');
-            this.form = renderForm(this.getReportFormFields(appStore.get().settings.cats, {}), {}, { class: 'nstr-rep-form' }); // Use class
+            const { form, fields } = renderForm(this.getReportFormFields(appStore.get().settings.cats, {}), {}, { class: 'nstr-rep-form' });
+            this.form = form;
             this.modalContentContainer.appendChild(this.form);
 
-            this.pFLocCoordsEl = this.form.querySelector('.pFLoc-coords'); // Use class
-            this.upldPhotosPreviewEl = this.form.querySelector('.upld-photos-preview'); // Use class
+            this.pFLocCoordsEl = fields['pFLoc-coords'];
+            this.upldPhotosPreviewEl = fields['upld-photos-preview'];
 
-            this.form.querySelector('.rep-photos').onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this), this.form); // Use class
-            this.setupReportFormLocationHandlers(this.form, this.formState, this.updateLocationDisplay.bind(this));
+            fields['rep-photos'].onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this));
+            this.setupReportFormLocationHandlers(fields, this.formState, this.updateLocationDisplay.bind(this));
             this.setupReportFormSubmission(this.form, this.reportToEdit, this.formState, this.formState.uIMeta);
 
             this.renderImagePreview(this.formState.uIMeta);
@@ -60,14 +61,16 @@ export class ReportFormModal extends Modal {
         };
 
         this.root.querySelector('h2').textContent = reportToEdit ? 'Edit Report' : 'New Report';
-        this.form.innerHTML = '';
-        renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, { class: 'nstr-rep-form' }).childNodes.forEach(node => this.form.appendChild(node)); // Use class
+        
+        const { form: newForm, fields } = renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, { class: 'nstr-rep-form' });
+        this.form.innerHTML = ''; // Clear old content
+        newForm.childNodes.forEach(node => this.form.appendChild(node)); // Append new content
 
-        this.pFLocCoordsEl = this.form.querySelector('.pFLoc-coords'); // Use class
-        this.upldPhotosPreviewEl = this.form.querySelector('.upld-photos-preview'); // Use class
+        this.pFLocCoordsEl = fields['pFLoc-coords'];
+        this.upldPhotosPreviewEl = fields['upld-photos-preview'];
 
-        this.form.querySelector('.rep-photos').onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this), this.form); // Use class
-        this.setupReportFormLocationHandlers(this.form, this.formState, this.updateLocationDisplay.bind(this));
+        fields['rep-photos'].onchange = this.setupReportFormImageUploadHandler(this.formState.uIMeta, this.renderImagePreview.bind(this));
+        this.setupReportFormLocationHandlers(fields, this.formState, this.updateLocationDisplay.bind(this));
         this.setupReportFormSubmission(this.form, this.reportToEdit, this.formState, this.formState.uIMeta);
 
         this.renderImagePreview(this.formState.uIMeta);
@@ -81,7 +84,7 @@ export class ReportFormModal extends Modal {
             { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
             { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
             { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
-            { label: 'Location:', type: 'custom-html', content: ['Selected: ', createEl('span', { class: 'pFLoc-coords', textContent: initialData.location || 'None' })] }, // Use class
+            { label: 'Location:', type: 'custom-html', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', class: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
             { type: 'button', id: 'pick-loc-map-btn', label: 'Pick Location', buttonType: 'button' },
             { type: 'button', id: 'use-gps-loc-btn', label: 'Use GPS', buttonType: 'button' },
             { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
@@ -89,7 +92,7 @@ export class ReportFormModal extends Modal {
             {
                 label: 'Categories:',
                 type: 'checkbox-group',
-                id: 'cats-cont-form', // Keep ID for form field config, but CSS uses class
+                id: 'cats-cont-form',
                 name: 'category',
                 class: 'cats-cont-form',
                 options: (cats || []).map(cat => ({ value: cat, label: cat }))
@@ -109,8 +112,8 @@ export class ReportFormModal extends Modal {
                 name: 'status',
                 options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
             },
-            { label: 'Photos (max 5MB each):', type: 'file', class: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' }, // Use class
-            { type: 'custom-html', class: 'upld-photos-preview' }, // Use class
+            { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', class: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' },
+            { type: 'custom-html', id: 'upld-photos-preview', class: 'upld-photos-preview' },
             { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
             { type: 'button', id: 'submit-report-btn', label: initialData.isEdit ? 'Update Report' : 'Submit', buttonType: 'submit' },
             { type: 'button', id: 'cancel-report-btn', class: 'secondary', label: 'Cancel', onclick: () => this.hide() }
@@ -151,11 +154,11 @@ export class ReportFormModal extends Modal {
         }
     }
 
-    setupReportFormLocationHandlers(formElement, formState, updateLocationDisplay) {
-        const pickLocMapBtn = formElement.querySelector('#pick-loc-map-btn');
-        const useGpsLocBtn = formElement.querySelector('#use-gps-loc-btn');
-        const geocodeAddressBtn = formElement.querySelector('#geocode-address-btn');
-        const repAddressInput = formElement.querySelector('#rep-address');
+    setupReportFormLocationHandlers(fields, formState, updateLocationDisplay) {
+        const pickLocMapBtn = fields['pick-loc-map-btn'];
+        const useGpsLocBtn = fields['use-gps-loc-btn'];
+        const geocodeAddressBtn = fields['geocode-address-btn'];
+        const repAddressInput = fields['rep-address'];
 
         pickLocMapBtn.onclick = () => {
             this.hide();

@@ -10,23 +10,26 @@ export class ConfigurableListSetting {
     constructor(config) {
         this.config = config;
         this.sectionEl = createEl('section');
-        this.listContainer = createEl('div', { class: 'configurable-list-container' }); // Use a class instead of ID
+        this.listContainer = createEl('div', { class: 'configurable-list-container' });
         this.form = null;
 
         this.sectionEl.appendChild(createEl('h3', { textContent: config.title }));
         this.sectionEl.appendChild(this.listContainer);
 
+        let formFieldsMap = {};
         if (config.formFields) {
-            this.form = renderForm(config.formFields, {}, { class: 'configurable-list-form' }); // Use a class instead of ID
+            const { form, fields } = renderForm(config.formFields, {}, { class: 'configurable-list-form' });
+            this.form = form;
+            formFieldsMap = fields;
             this.sectionEl.appendChild(this.form);
         }
 
         this.listRenderer();
 
         if (config.addInputId && config.addBtnId && config.addLogic && this.form) {
-            const addInputEl = this.form.querySelector(`#${config.addInputId}`);
-            const addBtnEl = this.form.querySelector(`#${config.addBtnId}`);
-            const saveBtnEl = config.saveBtnId ? this.form.querySelector(`#${config.saveBtnId}`) : null;
+            const addInputEl = formFieldsMap[config.addInputId];
+            const addBtnEl = formFieldsMap[config.addBtnId];
+            const saveBtnEl = config.saveBtnId ? formFieldsMap[config.saveBtnId] : null;
 
             addBtnEl.onclick = withToast(async () => {
                 const inputValue = addInputEl.value.trim();
@@ -41,7 +44,7 @@ export class ConfigurableListSetting {
         }
 
         if (config.uniqueListenersSetup && this.form) {
-            config.uniqueListenersSetup(this.form);
+            config.uniqueListenersSetup(formFieldsMap); // Pass the fields map
         }
 
         this.unsubscribe = appStore.on((newState, oldState) => {

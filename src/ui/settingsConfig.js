@@ -93,9 +93,9 @@ const removeActionConfig = (title, message, onClickHandler) => ({
     confirm: { title, message }
 });
 
-const setupFollowedListUniqueListeners = (form) => {
-    const importContactsBtn = form.querySelector('#import-contacts-btn');
-    const publishContactsBtn = form.querySelector('#publish-contacts-btn');
+const setupFollowedListUniqueListeners = (fields) => { // Now accepts fields map
+    const importContactsBtn = fields['import-contacts-btn'];
+    const publishContactsBtn = fields['publish-contacts-btn'];
 
     importContactsBtn.onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) throw new Error("Please connect your Nostr identity to import contacts.");
