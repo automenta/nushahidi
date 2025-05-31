@@ -16,7 +16,10 @@ export const C = { // Constants
     STORE_REPORTS: 'reports', STORE_PROFILES: 'profiles', STORE_SETTINGS: 'settings', STORE_OFFLINE_QUEUE: 'offlineQueue',
     IMG_UPLOAD_NOSTR_BUILD: 'https://nostr.build/api/v2/upload/files',
     IMG_SIZE_LIMIT_BYTES: 5 * 1024 * 1024, // 5MB
-    ONBOARDING_KEY: 'nostrmapper_onboarded_v1'
+    ONBOARDING_KEY: 'nostrmapper_onboarded_v1',
+    // New: DB Pruning Constants
+    DB_PRUNE_REPORTS_MAX: 5000, // Max number of reports to keep
+    DB_PRUNE_PROFILES_MAX_AGE_DAYS: 30 // Max age for profiles in days
 };
 export const $ = (s,p=document)=>p.querySelector(s);
 export const $$ = (s,p=document)=>Array.from(p.querySelectorAll(s));
@@ -39,3 +42,24 @@ export const debounce=(fn,dl)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeou
 export const getImgDims=f=>new Promise((rs,rj)=>{const i=new Image();i.onload=()=>rs({w:i.width,h:i.height});i.onerror=rj;i.src=URL.createObjectURL(f)});
 export const formatNpubShort = pk => nip19.npubEncode(pk).substring(0,12)+'...';
 export const isNostrId = id => /^[0-9a-f]{64}$/.test(id);
+
+// New: Toast Notification System
+export function showToast(message, type = 'info', duration = 3000) {
+    const toastContainer = $('#toast-container');
+    if (!toastContainer) {
+        console.warn('Toast container not found. Message:', message);
+        return;
+    }
+
+    const toast = createEl('div', { class: `toast toast-${type}`, textContent: message });
+    toastContainer.appendChild(toast);
+
+    // Force reflow to enable CSS transition
+    void toast.offsetWidth;
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, duration);
+}

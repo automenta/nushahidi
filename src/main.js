@@ -7,6 +7,7 @@ import { $, C } from './utils.js';
 const gE=(id,p=document)=>$(id,p);
 
 async function main(){
+appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start global loading
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').then(r=>{r.onupdatefound=()=>{const w=r.installing;w.onstatechange=()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)if(confirm("New version available. Refresh?"))window.location.reload()}}}).catch(e=>console.error("SW Reg Fail:",e))})}
 await confSvc.load();
 await idSvc.init();
@@ -21,6 +22,8 @@ if(cReps?.length>0){
 } else if(appStore.get().reports.length===0){appStore.set({reports:[]})}
 nostrSvc.refreshSubs();
 offSvc.setupSyncLs();
+await dbSvc.pruneDb(); // New: Prune IndexedDB on startup
+appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End global loading
 console.log("NostrMapper Initialized (vFinal Compact). Focus Tag:", appStore.get().currentFocusTag); // Updated to currentFocusTag
 }
 document.addEventListener('DOMContentLoaded',main);
