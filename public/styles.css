@@ -736,15 +736,8 @@ footer {
     background-color: #45a049;
 }
 
-.leaflet-draw-toolbar a {
-    background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png');
-}
-
-.leaflet-draw-toolbar a.leaflet-draw-draw-polygon { background-position: -144px 0; }
-.leaflet-draw-toolbar a.leaflet-draw-draw-rectangle { background-position: -168px 0; }
-.leaflet-draw-toolbar a.leaflet-draw-draw-circle { background-position: -120px 0; }
-.leaflet-draw-toolbar a.leaflet-draw-edit-edit { background-position: -72px 0; }
-.leaflet-draw-toolbar a.leaflet-draw-edit-remove { background-position: -96px 0; }
+/* Removed background-image and background-position rules for leaflet-draw-toolbar a */
+/* These styles are typically provided by the leaflet.draw.css file from the CDN */
 
 #filter-controls hr {
     border: none;

@@ -21,20 +21,7 @@ module.exports = {
         },
         networkTimeoutSeconds: 10,
       }
-    },
-    {
-      urlPattern: ({url}) => url.href.includes('tile.openstreetmap.org') || url.href.includes('tile.thunderforest.com') || url.href.includes('tile.stamen.com') || url.href.includes('server.arcgisonline.com'),
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'map-tiles',
-        expiration: {
-          maxEntries: 500,
-          maxAgeSeconds: 30 * 24 * 60 * 60,
-        },
-        cacheableResponse: {
-          statuses: [0, 200],
-        },
-      },
     }
+    // Removed map-tiles runtime caching as it's handled directly in sw.js
   ]
 };

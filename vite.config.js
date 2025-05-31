@@ -5,9 +5,9 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        // manualChunks: undefined, // This is Vite's default behavior, can be removed
       },
     },
   },
-  publicDir: 'public'
+  // publicDir: 'public' // This is Vite's default behavior, can be removed
 });
