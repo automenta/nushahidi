@@ -35,6 +35,7 @@ export const dbSvc = { /* dbSvc: dbService */
     getRep: async id => (await getDbStore(C.STORE_REPORTS)).get(id),
     getAllReps: async () => (await getDbStore(C.STORE_REPORTS)).getAll(),
     addRep: async r => (await getDbStore(C.STORE_REPORTS, 'readwrite')).put(r),
+    rmRep: async id => (await getDbStore(C.STORE_REPORTS, 'readwrite')).delete(id), // Added for deletion
     clearReps: async () => (await getDbStore(C.STORE_REPORTS, 'readwrite')).clear(),
     getProf: async pk => (await getDbStore(C.STORE_PROFILES)).get(pk),
     addProf: async p => (await getDbStore(C.STORE_PROFILES, 'readwrite')).put(p),
@@ -577,6 +578,17 @@ export const nostrSvc = { /* nostrSvc: nostrService */
                 appStore.set(s => ({ reports: [...s.reports, report].sort((a, b) => b.at - a.at) }));
             }
         }
+
+        // If it's a deletion event (Kind 5), remove the original event from appStore and DB
+        if (signedEvent.kind === 5) {
+            const eventIdToDelete = signedEvent.tags.find(tag => tag[0] === 'e')?.[1];
+            if (eventIdToDelete) {
+                appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventIdToDelete) }));
+                await dbSvc.rmRep(eventIdToDelete);
+                showToast("Report deleted successfully (NIP-09).", 'info');
+            }
+        }
+
         return signedEvent;
     },
 
@@ -666,6 +678,20 @@ export const nostrSvc = { /* nostrSvc: nostrService */
 
         return allInteractions.sort((a, b) => a.created_at - b.created_at); // Oldest first for display
     },
+
+    /**
+     * Publishes a NIP-09 event deletion request.
+     * @param {string} eventId - The ID of the event to delete.
+     * @param {string} [reason=''] - Optional reason for deletion.
+     */
+    async deleteEv(eventId, reason = '') {
+        const eventData = {
+            kind: 5, // NIP-09 Event Deletion
+            content: reason,
+            tags: [['e', eventId]]
+        };
+        await this.pubEv(eventData);
+    }
 };
 
 export const offSvc = { /* offSvc: offlineService */

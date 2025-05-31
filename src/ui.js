@@ -317,13 +317,36 @@ function RepFormComp(reportToEdit = null) {
 
     createReportFormStructure().forEach(el => _repFormRoot.appendChild(el));
 
-    // Display existing images if editing
-    if (reportToEdit && _uIMeta.length > 0) {
+    // Helper to render the image preview with remove buttons
+    const renderImagePreview = () => {
         const previewElement = gE('#upld-photos-preview', _repFormRoot);
         previewElement.innerHTML = '';
-        _uIMeta.forEach(img => {
-            previewElement.innerHTML += `<p>${sH(img.url.substring(img.url.lastIndexOf('/') + 1))} (existing)</p>`;
+        if (_uIMeta.length === 0) {
+            previewElement.textContent = 'No images selected.';
+            return;
+        }
+        _uIMeta.forEach((img, index) => {
+            const imgDiv = cE('div', { class: 'uploaded-image-item' }, [
+                cE('span', { textContent: sH(img.url.substring(img.url.lastIndexOf('/') + 1)) }),
+                cE('button', {
+                    type: 'button',
+                    class: 'remove-image-btn',
+                    textContent: 'x',
+                    onclick: () => {
+                        _uIMeta.splice(index, 1); // Remove image from array
+                        renderImagePreview(); // Re-render preview
+                    }
+                })
+            ]);
+            previewElement.appendChild(imgDiv);
         });
+    };
+
+    // Display existing images if editing
+    if (reportToEdit && _uIMeta.length > 0) {
+        renderImagePreview();
+    } else {
+        gE('#upld-photos-preview', _repFormRoot).textContent = 'No images selected.';
     }
 
 
@@ -376,10 +399,6 @@ function RepFormComp(reportToEdit = null) {
     const setupReportFormImageUpload = () => {
         gE('#rep-photos', _repFormRoot).onchange = async e => {
             const files = e.target.files;
-            const previewElement = gE('#upld-photos-preview', _repFormRoot);
-            previewElement.innerHTML = 'Processing...';
-            // Keep existing images if editing, otherwise clear
-            _uIMeta = reportToEdit ? [...reportToEdit.imgs] : [];
             appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading for image upload
             try {
                 for (const file of files) {
@@ -390,16 +409,12 @@ function RepFormComp(reportToEdit = null) {
                         const dimensions = await getImgDims(file);
                         const uploadedUrl = await imgSvc.upload(file);
                         _uIMeta.push({ url: uploadedUrl, type: file.type, dim: `${dimensions.w}x${dimensions.h}`, hHex: hash });
-                        previewElement.innerHTML += `<p>${sH(file.name)} ready</p>`;
                         showToast(`Image ${file.name} uploaded.`, 'success', 1500);
                     } catch (error) {
-                        previewElement.innerHTML += `<p style="color:red;">${sH(file.name)} Err: ${error.message}</p>`;
                         showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
                     }
                 }
-                if (_uIMeta.length > 0 && previewElement.innerHTML.startsWith('Processing...')) {
-                    previewElement.innerHTML = previewElement.innerHTML.substring(13); // Remove "Processing..."
-                }
+                renderImagePreview(); // Re-render preview after all uploads
             } finally {
                 appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
             }
@@ -715,7 +730,8 @@ const showReportDetails = async report => {
     const isAuthor = currentUserPk && currentUserPk === report.pk;
 
     detailContainer.innerHTML = `<button id="back-to-list-btn" class="small-button">&lt; List</button>
-    ${isAuthor ? `<button id="edit-report-btn" class="small-button" data-report-id="${sH(report.id)}" style="float:right;">Edit Report</button>` : ''}
+    ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sH(report.id)}" style="float:right;">Edit Report</button>` : ''}
+    ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sH(report.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
     <h2 id="detail-title">${sH(report.title || 'Report')}</h2>
     <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(report.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a></p>
     <p><strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}</p>
@@ -735,6 +751,25 @@ const showReportDetails = async report => {
             gE('#report-form-modal').innerHTML = '';
             gE('#report-form-modal').appendChild(RepFormComp(report)); // Pass the report for editing
             showModal('report-form-modal', 'rep-title');
+        };
+        gE('#delete-report-btn', detailContainer).onclick = () => {
+            showConfirmModal(
+                "Delete Report",
+                `Are you sure you want to delete the report "${sH(report.title || report.id.substring(0, 8) + '...')}"? This action publishes a deletion event to relays.`,
+                async () => {
+                    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+                    try {
+                        await nostrSvc.deleteEv(report.id);
+                        hideModal('report-detail-container'); // Hide detail view after deletion
+                        listContainer.style.display = 'block'; // Show list view
+                    } catch (e) {
+                        showToast(`Failed to delete report: ${e.message}`, 'error');
+                    } finally {
+                        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+                    }
+                },
+                () => showToast("Report deletion cancelled.", 'info')
+            );
         };
     }
 

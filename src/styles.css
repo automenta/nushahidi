@@ -246,6 +246,33 @@ main {
     margin-bottom: .5em;
 }
 
+#report-detail-container .edit-button {
+    background-color: var(--secondary-color);
+    color: var(--light-text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color .2s;
+}
+
+#report-detail-container .edit-button:hover {
+    background-color: #45a049;
+}
+
+#report-detail-container .delete-button {
+    background-color: var(--danger-color);
+    color: var(--light-text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color .2s;
+}
+
+#report-detail-container .delete-button:hover {
+    background-color: #c9302c;
+}
+
+
 #report-detail-container .interactions {
     margin-top: 1rem;
     border-top: 1px solid #eee;
@@ -348,7 +375,7 @@ footer {
 }
 
 .modal-content button[type=submit],
-.modal-content button:not(.secondary):not(.remove-relay-btn):not(.remove-category-btn):not(.remove-mute-btn):not(.confirm-button):not(.cancel-button) {
+.modal-content button:not(.secondary):not(.remove-relay-btn):not(.remove-category-btn):not(.remove-mute-btn):not(.confirm-button):not(.cancel-button):not(.remove-image-btn) {
     background-color: var(--primary-color);
     color: var(--light-text);
     padding: .65rem .9rem;
@@ -425,19 +452,57 @@ footer {
     border-radius: 4px;
 }
 
-#categories-container-form label {
+#cats-cont-form label { /* Corrected ID from #categories-container-form */
     display: inline-block;
     margin-right: .8rem;
     font-weight: 400;
     font-size: .9em;
 }
 
-#uploaded-photos-preview p {
+#upld-photos-preview p {
     font-size: .8em;
     margin: .15rem 0;
     word-break: break-all;
     color: #555;
 }
+
+.uploaded-image-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: .8em;
+    margin: .15rem 0;
+    padding: .2rem .4rem;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+}
+
+.uploaded-image-item span {
+    flex-grow: 1;
+    word-break: break-all;
+    margin-right: .5rem;
+}
+
+.remove-image-btn {
+    background-color: var(--danger-color);
+    color: var(--light-text);
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: .7em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.remove-image-btn:hover {
+    background-color: #c9302c;
+}
+
 
 #settings-sections section {
     margin-bottom: 1.2rem;
