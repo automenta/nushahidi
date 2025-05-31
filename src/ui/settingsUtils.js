@@ -1,7 +1,6 @@
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
 import {$, createEl, showToast, sanitizeHTML, formatNpubShort} from '../utils.js';
-import {renderForm, renderList, setupAddRemoveListSection} from './forms.js';
 import {showConfirmModal} from './modals.js';
 import {withLoading, withToast} from '../decorators.js';
 import {C} from '../utils.js';
