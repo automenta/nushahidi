@@ -1,111 +1,73 @@
-import { appStore } from '../../store.js';
-import { confSvc, nostrSvc, dbSvc } from '../../services.js';
-import { C, createEl, showToast, npubToHex, formatNpubShort, sanitizeHTML } from '../../utils.js';
+import { appStore } from '../store.js';
+import { confSvc, nostrSvc, dbSvc } from '../services.js';
+import { C, createEl, showToast, npubToHex, formatNpubShort, sanitizeHTML } from '../utils.js';
 import { renderForm, renderList, setupAddRemoveListSection } from '../forms.js';
 import { showConfirmModal } from '../modals.js';
 import { withLoading, withToast } from '../decorators.js';
 
-// Generic function to create an add logic handler
-export const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async (inputValue) => {
-    if (!inputValue) {
-        showToast("Input cannot be empty.", 'warning');
-        return false;
-    }
-    try {
-        if (itemExistsChecker && itemExistsChecker(inputValue)) {
-            showToast(warningMsg || "Item already exists.", 'info');
-            return false;
-        }
-        await confSvcMethod(inputValue);
-        showToast(successMsg || "Item added.", 'success');
-        return true;
-    } catch (e) {
-        showToast(`${errorMsg || 'Error adding item'}: ${e.message}`, 'error');
-        return false;
-    }
-};
+// Generic function to create an add logic handler - MOVED TO settingsConfig.js
+// export const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async (inputValue) => { ... };
 
-// Generic function to create a list section renderer
-export const createListSectionRenderer = (containerId, itemRenderer, actionsConfig, itemWrapperClass) => (scopeElement) => {
-    let items;
-    if (containerId === 'rly-list') {
-        items = appStore.get().relays;
-    } else if (containerId === 'followed-list') {
-        items = appStore.get().followedPubkeys;
-    } else {
-        items = appStore.get().settings[containerId.replace('-list', '')];
-    }
+// Generic function to create a list section renderer - REMOVED, logic integrated into renderConfigurableListSetting
+// export const createListSectionRenderer = (containerId, itemRenderer, actionsConfig, itemWrapperClass) => (scopeElement) => { ... };
 
-    renderList(containerId, items || [], itemRenderer, actionsConfig, itemWrapperClass, scopeElement);
-};
-
-// Specific add logic handlers
-export const addRelayLogic = createAddLogicHandler(
-    async (url) => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
-    (url) => appStore.get().relays.some(r => r.url === url),
-    "Relay added.",
-    "Relay already exists.",
-    "Error adding relay"
-);
-
-export const addCategoryLogic = createAddLogicHandler(
-    (cat) => confSvc.setCats([...appStore.get().settings.cats, cat]),
-    (cat) => appStore.get().settings.cats.includes(cat),
-    "Category added.",
-    "Category already exists.",
-    "Error adding category"
-);
-
-export const addFocusTagLogic = createAddLogicHandler(
-    async (tag) => {
-        if (!tag.startsWith('#')) tag = '#' + tag;
-        confSvc.setFocusTags([...appStore.get().focusTags, { tag, active: false }]);
-    },
-    (tag) => appStore.get().focusTags.some(t => t.tag === (tag.startsWith('#') ? tag : '#' + tag)),
-    "Focus tag added.",
-    "Focus tag already exists.",
-    "Error adding focus tag"
-);
-
-export const addMutePubkeyLogic = createAddLogicHandler(
-    async (pk) => confSvc.addMute(npubToHex(pk)),
-    (pk) => appStore.get().settings.mute.includes(npubToHex(pk)),
-    "Pubkey added to mute list.",
-    "Pubkey already muted.",
-    "Error adding pubkey to mute list"
-);
-
-export const addFollowedPubkeyLogic = createAddLogicHandler(
-    async (pk) => confSvc.addFollowed(npubToHex(pk)),
-    (pk) => appStore.get().followedPubkeys.some(f => f.pk === npubToHex(pk)),
-    "User added to followed list.",
-    "User already followed.",
-    "Error adding user to followed list"
-);
+// Specific add logic handlers - MOVED TO settingsConfig.js
+// export const addRelayLogic = createAddLogicHandler(...);
+// export const addCategoryLogic = createAddLogicHandler(...);
+// export const addFocusTagLogic = createAddLogicHandler(...);
+// export const addMutePubkeyLogic = createAddLogicHandler(...);
+// export const addFollowedPubkeyLogic = createAddLogicHandler(...);
 
 // New generalized function to render a list-based settings section
 export function renderConfigurableListSetting(wrapper, config) {
     wrapper.appendChild(createEl('section', {}, [
         createEl('h3', { textContent: config.title }),
         createEl('div', { id: config.listId }),
-        renderForm(config.formFields, {}, { id: config.formId })
-    ]));
+        config.formFields ? renderForm(config.formFields, {}, { id: config.formId }) : null // Render form only if formFields exist
+    ].filter(Boolean))); // Filter out null if formFields is not present
     wrapper.appendChild(createEl('hr'));
 
-    const listRenderer = createListSectionRenderer(config.listId, config.itemRenderer, config.actionsConfig, config.itemWrapperClass);
+    // The listRenderer logic is now directly within this function, using config.itemRenderer and config.actionsConfig
+    const listRenderer = () => {
+        let items;
+        if (config.listId === 'rly-list') {
+            items = appStore.get().relays;
+        } else if (config.listId === 'followed-list') {
+            items = appStore.get().followedPubkeys;
+        } else if (config.listId === 'offline-queue-list') {
+            // Offline queue is handled by customRenderLogic, this path should not be taken for it
+            // but keeping it for consistency if it were to be rendered generically
+            items = appStore.get().offlineQueue; // Assuming offlineQueue is in appStore for generic rendering
+        } else {
+            items = appStore.get().settings[config.listId.replace('-list', '')];
+        }
 
-    setupAddRemoveListSection({
-        modalContent: wrapper,
-        addInputId: config.addInputId,
-        addBtnId: config.addBtnId,
-        addLogic: config.addLogic,
-        listRenderer: () => listRenderer(wrapper), // Pass wrapper as scopeElement
-        saveBtnId: config.saveBtnId,
-        onSaveCallback: config.onSaveCallback
-    });
+        renderList(config.listId, items || [], config.itemRenderer, config.actionsConfig, config.itemWrapperClass, wrapper);
+    };
+
+    if (config.addInputId && config.addBtnId && config.addLogic) { // Only setup add/remove if relevant fields exist
+        setupAddRemoveListSection({
+            modalContent: wrapper,
+            addInputId: config.addInputId,
+            addBtnId: config.addBtnId,
+            addLogic: config.addLogic,
+            listRenderer: listRenderer,
+            saveBtnId: config.saveBtnId,
+            onSaveCallback: config.onSaveCallback
+        });
+    } else if (config.saveBtnId && config.onSaveCallback) { // Setup save button even if no add logic
+        const saveBtn = $(`#${config.saveBtnId}`, wrapper);
+        if (saveBtn) {
+            saveBtn.onclick = () => {
+                if (config.onSaveCallback) config.onSaveCallback();
+                showToast("Settings saved.", 'success');
+            };
+        }
+    }
+
 
     // Initial render of the list
-    listRenderer(wrapper);
+    listRenderer();
 
     // Call any unique listeners setup for this section
     if (config.uniqueListenersSetup) {
@@ -113,95 +75,12 @@ export function renderConfigurableListSetting(wrapper, config) {
     }
 }
 
-// Specific renderers for list items (used by createListSectionRenderer)
-export const renderRelays = createListSectionRenderer('rly-list',
-    r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` }),
-    [{
-        label: 'Remove',
-        className: 'remove-relay-btn',
-        onClick: r => {
-            const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
-            confSvc.setRlys(updatedRelays);
-            nostrSvc.discAllRlys();
-            nostrSvc.connRlys();
-        },
-        confirm: { title: 'Remove Relay', message: 'Are you sure you want to remove this relay?' }
-    }],
-    'relay-entry'
-);
-
-export const renderCategories = createListSectionRenderer('cat-list',
-    c => createEl('span', { textContent: sanitizeHTML(c) }),
-    [{
-        label: 'Remove',
-        className: 'remove-category-btn',
-        onClick: c => {
-            const updatedCats = appStore.get().settings.cats.filter(cat => cat !== c);
-            confSvc.setCats(updatedCats);
-        },
-        confirm: { title: 'Remove Category', message: 'Are you sure you want to remove this category?' }
-    }],
-    'category-entry'
-);
-
-export const renderFocusTags = createListSectionRenderer('focus-tag-list',
-    ft => {
-        const span = createEl('span', { textContent: `${sanitizeHTML(ft.tag)}${ft.active ? ' (Active)' : ''}` });
-        const radio = createEl('input', {
-            type: 'radio',
-            name: 'activeFocusTag',
-            value: ft.tag,
-            checked: ft.active,
-            onchange: () => {
-                const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === ft.tag }));
-                confSvc.setFocusTags(updatedTags);
-                confSvc.setCurrentFocusTag(ft.tag);
-                nostrSvc.refreshSubs();
-            }
-        });
-        const label = createEl('label', {}, [radio, ` Set Active`]);
-        return createEl('div', {}, [span, label]);
-    },
-    [{
-        label: 'Remove',
-        className: 'remove-focus-tag-btn',
-        onClick: t => {
-            const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
-            confSvc.setFocusTags(updatedTags);
-            if (t.active && updatedTags.length > 0) {
-                confSvc.setCurrentFocusTag(updatedTags[0].tag);
-                updatedTags[0].active = true;
-            } else if (updatedTags.length === 0) {
-                confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
-                confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
-            }
-        },
-        confirm: { title: 'Remove Focus Tag', message: 'Are you sure you want to remove this focus tag?' }
-    }],
-    'focus-tag-entry'
-);
-
-export const renderMuteList = createListSectionRenderer('mute-list',
-    pk => createEl('span', { textContent: formatNpubShort(pk) }),
-    [{
-        label: 'Remove',
-        className: 'remove-mute-btn',
-        onClick: pk => confSvc.rmMute(pk),
-        confirm: { title: 'Remove Muted Pubkey', message: 'Are you sure you want to unmute this pubkey?' }
-    }],
-    'mute-entry'
-);
-
-export const renderFollowedList = createListSectionRenderer('followed-list',
-    f => createEl('span', { textContent: formatNpubShort(f.pk) }),
-    [{
-        label: 'Unfollow',
-        className: 'remove-followed-btn',
-        onClick: f => confSvc.rmFollowed(f.pk),
-        confirm: { title: 'Unfollow User', message: 'Are you sure you want to unfollow this user?' }
-    }],
-    'followed-entry'
-);
+// Specific renderers for list items (used by createListSectionRenderer) - MOVED TO settingsConfig.js
+// export const renderRelays = createListSectionRenderer(...);
+// export const renderCategories = createListSectionRenderer(...);
+// export const renderFocusTags = createListSectionRenderer(...);
+// export const renderMuteList = createListSectionRenderer(...);
+// export const renderFollowedList = createListSectionRenderer(...);
 
 export const getOfflineQueueEventType = (kind) => {
     switch (kind) {
