@@ -9,12 +9,9 @@ import {applyAllFilters} from './filters.js';
 import { nip19 } from 'nostr-tools';
 import {withLoading, withToast} from '../decorators.js';
 
-
 async function handleReactionSubmit(event) {
     const btn = event.target;
-    const reportId = btn.dataset.reportId;
-    const reportPk = btn.dataset.reportPk;
-    const reactionContent = btn.dataset.reaction;
+    const { reportId, reportPk, reaction } = btn.dataset;
     if (!appStore.get().user) {
         showToast("Please connect your Nostr identity to react.", 'warning');
         return;
@@ -24,22 +21,18 @@ async function handleReactionSubmit(event) {
         btn.disabled = true;
         await nostrSvc.pubEv({
             kind: C.NOSTR_KIND_REACTION,
-            content: reactionContent,
+            content: reaction,
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
-        const report = appStore.get().reports.find(r => r.id === reportId);
-        if (report) await showReportDetails(report);
-    }, "Reaction sent!", "Error sending reaction", () => {
-        btn.disabled = false;
-    }))();
+        await showReportDetails(appStore.get().reports.find(r => r.id === reportId));
+    }, "Reaction sent!", "Error sending reaction", () => { btn.disabled = false; }))();
 }
 
 async function handleCommentSubmit(event) {
     event.preventDefault();
     const form = event.target;
     const submitBtn = form.querySelector('button[type="submit"]');
-    const reportId = form.dataset.reportId;
-    const reportPk = form.dataset.reportPk;
+    const { reportId, reportPk } = form.dataset;
     const commentText = form.elements.comment.value.trim();
     if (!commentText) {
         showToast("Comment cannot be empty.", 'warning');
@@ -58,20 +51,15 @@ async function handleCommentSubmit(event) {
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
         form.reset();
-        const report = appStore.get().reports.find(r => r.id === reportId);
-        if (report) await showReportDetails(report);
-    }, "Comment sent!", "Error sending comment", () => {
-        submitBtn.disabled = false;
-    }))();
+        await showReportDetails(appStore.get().reports.find(r => r.id === reportId));
+    }, "Comment sent!", "Error sending comment", () => { submitBtn.disabled = false; }))();
 }
 
-function renderReportImages(images) {
-    return (images || []).map(img =>
-        `<img src="${sanitizeHTML(img.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`
-    ).join('');
-}
+const renderReportImages = images => (images || []).map(img =>
+    `<img src="${sanitizeHTML(img.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`
+).join('');
 
-function renderAuthorInfo(report, profile, isFollowed, canFollow) {
+const renderAuthorInfo = (report, profile, isFollowed, canFollow) => {
     const authorDisplay = profile?.name || (profile?.nip05 ? sanitizeHTML(profile.nip05) : formatNpubShort(report.pk));
     const authorPicture = profile?.picture ? `<img src="${sanitizeHTML(profile.picture)}" alt="Profile Picture" class="profile-picture">` : '';
     const authorAbout = profile?.about ? `<p class="profile-about">${sanitizeHTML(profile.about)}</p>` : '';
@@ -85,27 +73,22 @@ function renderAuthorInfo(report, profile, isFollowed, canFollow) {
             ${canFollow ? `<button id="follow-toggle-btn" class="small-button ${isFollowed ? 'unfollow-button' : 'follow-button'}" data-pubkey="${sanitizeHTML(report.pk)}">${isFollowed ? 'Unfollow' : 'Follow'}</button>` : ''}
         </div>
     `;
-}
-
-const renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
-    const imagesHtml = renderReportImages(report.imgs);
-    const descriptionHtml = marked.parse(sanitizeHTML(report.ct || ''));
-
-    return `
-        <button id="back-to-list-btn" class="small-button">&lt; List</button>
-        ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right;">Edit Report</button>` : ''}
-        ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
-        <h2 id="detail-title">${sanitizeHTML(report.title || 'Report')}</h2>
-        ${renderAuthorInfo(report, profile, isFollowed, canFollow)}
-        <p><strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}</p>
-        <p><strong>Summary:</strong> ${sanitizeHTML(report.sum || 'N/A')}</p>
-        <p><strong>Description:</strong></p><div class="markdown-content" tabindex="0">${descriptionHtml}</div>
-        ${imagesHtml ? `<h3>Images:</h3>${imagesHtml}` : ''}
-        <p><strong>Location:</strong> ${report.lat?.toFixed(5)}, ${report.lon?.toFixed(5)} (Geohash: ${sanitizeHTML(report.gh || 'N/A')})</p>
-        <div id="mini-map-det" style="height:150px;margin-top:.7rem;border:1px solid #ccc"></div>
-        <div class="interactions" id="interactions-for-${report.id}">Loading interactions...</div>
-    `;
 };
+
+const renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => `
+    <button id="back-to-list-btn" class="small-button">&lt; List</button>
+    ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right;">Edit Report</button>` : ''}
+    ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
+    <h2 id="detail-title">${sanitizeHTML(report.title || 'Report')}</h2>
+    ${renderAuthorInfo(report, profile, isFollowed, canFollow)}
+    <p><strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}</p>
+    <p><strong>Summary:</strong> ${sanitizeHTML(report.sum || 'N/A')}</p>
+    <p><strong>Description:</strong></p><div class="markdown-content" tabindex="0">${marked.parse(sanitizeHTML(report.ct || ''))}</div>
+    ${renderReportImages(report.imgs) ? `<h3>Images:</h3>${renderReportImages(report.imgs)}` : ''}
+    <p><strong>Location:</strong> ${report.lat?.toFixed(5)}, ${report.lon?.toFixed(5)} (Geohash: ${sanitizeHTML(report.gh || 'N/A')})</p>
+    <div id="mini-map-det" style="height:150px;margin-top:.7rem;border:1px solid #ccc"></div>
+    <div class="interactions" id="interactions-for-${report.id}">Loading interactions...</div>
+`;
 
 const setupReportDetailEventListeners = (report, isAuthor, canFollow, detailContainer, listContainer) => {
     $('#back-to-list-btn', detailContainer).onclick = () => { detailContainer.style.display = 'none'; listContainer.style.display = 'block' };
@@ -131,9 +114,7 @@ const setupReportDetailEventListeners = (report, isAuthor, canFollow, detailCont
         };
     }
 
-    if (canFollow) {
-        $('#follow-toggle-btn', detailContainer).onclick = handleFollowToggle;
-    }
+    if (canFollow) $('#follow-toggle-btn', detailContainer).onclick = handleFollowToggle;
 };
 
 async function handleFollowToggle(event) {
@@ -148,57 +129,29 @@ async function handleFollowToggle(event) {
 
     await withLoading(withToast(async () => {
         btn.disabled = true;
-        if (isCurrentlyFollowed) {
-            await confSvc.rmFollowed(pubkeyToToggle);
-            return `Unfollowed ${formatNpubShort(pubkeyToToggle)}.`;
-        } else {
-            confSvc.addFollowed(pubkeyToToggle);
-            return `Followed ${formatNpubShort(pubkeyToToggle)}!`;
-        }
-    }, null, "Error toggling follow status", () => {
-        btn.disabled = false;
-    }))();
+        isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
+        return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
+    }, null, "Error toggling follow status", () => { btn.disabled = false; }))();
 
-    const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
-    if (report) await showReportDetails(report);
+    await showReportDetails(appStore.get().reports.find(r => r.pk === pubkeyToToggle));
 }
 
 function renderInteractionItem(interaction) {
     const interactionUser = formatNpubShort(interaction.pubkey);
     const interactionTime = new Date(interaction.created_at * 1000).toLocaleString();
-    let interactionItemContent;
+    const contentHtml = interaction.kind === C.NOSTR_KIND_REACTION ?
+        `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(interaction.content)} <small>(${interactionTime})</small>` :
+        `<strong>${sanitizeHTML(interactionUser)}</strong> commented: ${marked.parse(sanitizeHTML(interaction.content))} <small>(${interactionTime})</small>`;
 
-    if (interaction.kind === C.NOSTR_KIND_REACTION) {
-        interactionItemContent = createEl('div', {
-            innerHTML: `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(interaction.content)} <small>(${interactionTime})</small>`
-        });
-    } else if (interaction.kind === C.NOSTR_KIND_NOTE) {
-        const markdownContent = createEl('div', { class: 'markdown-content', innerHTML: marked.parse(sanitizeHTML(interaction.content)) });
-        interactionItemContent = createEl('div', {}, [
-            createEl('strong', { textContent: interactionUser }),
-            document.createTextNode(' commented: '),
-            markdownContent,
-            createEl('small', { textContent: `(${interactionTime})` })
-        ]);
-    }
-    if (interactionItemContent) {
-        interactionItemContent.classList.add('interaction-item');
-    }
-    return interactionItemContent;
+    return createEl('div', { class: 'interaction-item', innerHTML: contentHtml });
 }
 
 function renderInteractionsContent(interactions) {
     const fragment = document.createDocumentFragment();
     fragment.appendChild(createEl('h4', { textContent: 'Interactions' }));
 
-    if (interactions.length === 0) {
-        fragment.appendChild(createEl('p', { textContent: 'No interactions yet.' }));
-    } else {
-        interactions.forEach(i => {
-            const item = renderInteractionItem(i);
-            if (item) fragment.appendChild(item);
-        });
-    }
+    if (!interactions.length) fragment.appendChild(createEl('p', { textContent: 'No interactions yet.' }));
+    else interactions.forEach(i => fragment.appendChild(renderInteractionItem(i)));
     return fragment;
 }
 
@@ -239,7 +192,7 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
             const reportIndex = s.reports.findIndex(rep => rep.id === reportId);
             if (reportIndex > -1) {
                 const updatedReports = [...s.reports];
-                updatedReports[reportIndex] = { ...updatedReports[reportIndex], interactions: interactions };
+                updatedReports[reportIndex] = { ...updatedReports[reportIndex], interactions };
                 return { reports: updatedReports };
             }
             return {};
@@ -251,7 +204,7 @@ function initializeMiniMap(report) {
     if (report.lat && report.lon && typeof L !== 'undefined') {
         const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);
         L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
-        setTimeout(() => { miniMap.invalidateSize(); }, 0);
+        setTimeout(() => miniMap.invalidateSize(), 0);
     }
 }
 
@@ -263,14 +216,12 @@ export const showReportDetails = async report => {
     listContainer.style.display = 'none';
 
     const profile = await nostrSvc.fetchProf(report.pk);
-
     const currentUserPk = appStore.get().user?.pk;
     const isAuthor = currentUserPk && currentUserPk === report.pk;
     const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
     const canFollow = currentUserPk && currentUserPk !== report.pk;
 
     detailContainer.innerHTML = renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
-
     detailContainer.style.display = 'block';
     detailContainer.focus();
 

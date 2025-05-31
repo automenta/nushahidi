@@ -1,7 +1,7 @@
 import {appStore} from './store.js';
 import {showToast} from './utils.js';
 
-export const withLoading = (fn) => async (...args) => {
+export const withLoading = fn => async (...args) => {
     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
     try {
         return await fn(...args);
@@ -17,7 +17,7 @@ export const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => a
         return result;
     } catch (e) {
         showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
-        if (onErrorCallback) onErrorCallback(e);
+        onErrorCallback?.(e);
         throw e;
     }
 };

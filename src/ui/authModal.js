@@ -19,8 +19,7 @@ const handleCreateProfile = async passphrase => {
         "Backup Private Key?",
         "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
         withLoading(async () => {
-            const result = await idSvc.newProf(passphrase);
-            if (result) hideModal('auth-modal');
+            if (await idSvc.newProf(passphrase)) hideModal('auth-modal');
         }),
         () => showToast("New profile creation cancelled.", 'info')
     );
@@ -35,10 +34,9 @@ const handleImportKey = async (privateKey, passphrase) => {
         "Import Private Key?",
         "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
         withLoading(async () => {
-            const result = await idSvc.impSk(privateKey, passphrase);
-            if (result) hideModal('auth-modal');
+            if (await idSvc.impSk(privateKey, passphrase)) hideModal('auth-modal');
         }),
-        (() => showToast("Private key import cancelled.", 'info'))
+        () => showToast("Private key import cancelled.", 'info')
     );
 };
 
@@ -58,17 +56,8 @@ const authFormFields = [
 
 function setupAuthModalListeners(form) {
     $('#conn-nip07-btn', form).onclick = handleConnectNip07;
-
-    $('#create-prof-btn', form).onclick = () => {
-        const passphrase = $('#auth-pass', form).value;
-        handleCreateProfile(passphrase);
-    };
-
-    $('#import-sk-btn', form).onclick = () => {
-        const privateKey = $('#auth-sk', form).value;
-        const passphrase = $('#auth-pass', form).value;
-        handleImportKey(privateKey, passphrase);
-    };
+    $('#create-prof-btn', form).onclick = () => handleCreateProfile($('#auth-pass', form).value);
+    $('#import-sk-btn', form).onclick = () => handleImportKey($('#auth-sk', form).value, $('#auth-pass', form).value);
 }
 
 export function AuthModalComp() {

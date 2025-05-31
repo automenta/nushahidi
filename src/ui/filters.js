@@ -30,50 +30,20 @@ const filterFormFields = [
 ];
 
 const isMuted = (report, mutedPubkeys) => !mutedPubkeys.includes(report.pk);
-
-const matchesFocusTag = (report, currentFocusTag) => {
-    const focusTagMatch = currentFocusTag?.startsWith('#') ? currentFocusTag.substring(1) : currentFocusTag;
-    return focusTagMatch === 'NostrMapper_Global' || report.fTags.includes(focusTagMatch);
-};
-
-const matchesSearchQuery = (report, searchQuery) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return report.title?.toLowerCase().includes(query) ||
-           report.sum?.toLowerCase().includes(query) ||
-           report.ct?.toLowerCase().includes(query);
-};
-
-const matchesCategory = (report, categoryFilter) => {
-    return categoryFilter ? report.cat.includes(categoryFilter) : true;
-};
-
-const matchesAuthor = (report, authorFilter) => {
-    return authorFilter ? report.pk === npubToHex(authorFilter) : true;
-};
-
-const matchesTimeRange = (report, timeStart, timeEnd) => {
-    return !(timeStart && report.at < timeStart) ? !(timeEnd && report.at > timeEnd) : false;
-};
-
+const matchesFocusTag = (report, currentFocusTag) => (currentFocusTag === 'NostrMapper_Global' || report.fTags.includes(currentFocusTag?.substring(1)));
+const matchesSearchQuery = (report, searchQuery) => !searchQuery || ['title', 'sum', 'ct'].some(prop => report[prop]?.toLowerCase().includes(searchQuery.toLowerCase()));
+const matchesCategory = (report, categoryFilter) => !categoryFilter || report.cat.includes(categoryFilter);
+const matchesAuthor = (report, authorFilter) => !authorFilter || report.pk === npubToHex(authorFilter);
+const matchesTimeRange = (report, timeStart, timeEnd) => !(timeStart && report.at < timeStart) && !(timeEnd && report.at > timeEnd);
 const matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
-    if (!spatialFilterEnabled || drawnShapes.length === 0) return true;
-    if (!report.lat || !report.lon) return false;
-
+    if (!spatialFilterEnabled || !drawnShapes.length || !report.lat || !report.lon) return true;
     const reportPoint = point([report.lon, report.lat]);
-    for (const shape of drawnShapes)
-        if (booleanPointInPolygon(reportPoint, shape))
-            return true;
-    return false;
+    return drawnShapes.some(shape => booleanPointInPolygon(reportPoint, shape));
 };
-
-const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => {
-    return followedOnlyFilter ? followedPubkeys.map(f => f.pk).includes(report.pk) : true;
-};
+const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => !followedOnlyFilter || followedPubkeys.map(f => f.pk).includes(report.pk);
 
 export const applyAllFilters = () => {
-    const appState = appStore.get();
-    const { reports: allReports, settings, currentFocusTag, drawnShapes, ui, followedPubkeys } = appState;
+    const { reports: allReports, settings, currentFocusTag, drawnShapes, ui, followedPubkeys } = appStore.get();
     const { mute: mutedPubkeys } = settings;
     const { spatialFilterEnabled, followedOnlyFilter, filters } = ui;
     const { q: searchQuery, cat: categoryFilter, auth: authorFilter, tStart: timeStart, tEnd: timeEnd } = filters;
@@ -94,43 +64,42 @@ export const applyAllFilters = () => {
 };
 export const debouncedApplyAllFilters = debounce(applyAllFilters, 350);
 
-const updateFilterState = (key, value) => {
-    appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
-};
+const updateFilterState = (key, value) => appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
 
-const setupSearchInput = filterForm => {
-    $('#search-query-input', filterForm).oninput = e => {
-        updateFilterState('q', e.target.value);
-        debouncedApplyAllFilters();
+const setupFilterInput = (filterForm, id, stateKey, handler = applyAllFilters, debounceInput = false) => {
+    const inputElement = $(`#${id}`, filterForm);
+    if (!inputElement) return;
+    inputElement.oninput = e => {
+        updateFilterState(stateKey, e.target.value.trim());
+        debounceInput ? debouncedApplyAllFilters() : handler();
     };
 };
 
-const setupCategorySelect = filterForm => {
-    $('#filter-category', filterForm).onchange = e => {
-        updateFilterState('cat', e.target.value);
+const setupFilterSelect = (filterForm, id, stateKey, handler = applyAllFilters) => {
+    const selectElement = $(`#${id}`, filterForm);
+    if (!selectElement) return;
+    selectElement.onchange = e => {
+        updateFilterState(stateKey, e.target.value);
+        handler();
+    };
+};
+
+const setupFilterTimeInput = (filterForm, id, stateKey) => {
+    const inputElement = $(`#${id}`, filterForm);
+    if (!inputElement) return;
+    inputElement.onchange = e => {
+        updateFilterState(stateKey, e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
         applyAllFilters();
     };
 };
 
-const setupAuthorInput = filterForm => {
-    $('#filter-author', filterForm).oninput = e => {
-        updateFilterState('auth', e.target.value.trim());
-        debouncedApplyAllFilters();
-    };
-};
+const setupFilterEventListeners = filterForm => {
+    setupFilterInput(filterForm, 'search-query-input', 'q', applyAllFilters, true);
+    setupFilterSelect(filterForm, 'filter-category', 'cat');
+    setupFilterInput(filterForm, 'filter-author', 'auth', applyAllFilters, true);
+    setupFilterTimeInput(filterForm, 'filter-time-start', 'tStart');
+    setupFilterTimeInput(filterForm, 'filter-time-end', 'tEnd');
 
-const setupTimeFilters = filterForm => {
-    $('#filter-time-start', filterForm).onchange = e => {
-        updateFilterState('tStart', e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
-        applyAllFilters();
-    };
-    $('#filter-time-end', filterForm).onchange = e => {
-        updateFilterState('tEnd', e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
-        applyAllFilters();
-    };
-};
-
-const setupApplyResetButtons = filterForm => {
     $('#apply-filters-btn', filterForm).onclick = applyAllFilters;
     $('#reset-filters-btn', filterForm).onclick = () => {
         appStore.set(s => ({
@@ -151,16 +120,12 @@ const setupApplyResetButtons = filterForm => {
             '#filter-time-start': '',
             '#filter-time-end': '',
         };
-        for (const selector in resetFields) {
-            $(selector, filterForm).value = resetFields[selector];
-        }
+        for (const selector in resetFields) $(selector, filterForm).value = resetFields[selector];
         $('#spatial-filter-toggle', filterForm).checked = false;
         $('#followed-only-toggle', filterForm).checked = false;
         applyAllFilters();
     };
-};
 
-const setupSpatialAndFollowedToggles = filterForm => {
     const spatialFilterToggle = $('#spatial-filter-toggle', filterForm);
     spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled;
     spatialFilterToggle.onchange = e => {
@@ -175,20 +140,8 @@ const setupSpatialAndFollowedToggles = filterForm => {
         nostrSvc.refreshSubs();
         applyAllFilters();
     };
-};
 
-const setupClearDrawnShapesButton = filterForm => {
     $('#clear-drawn-shapes-btn', filterForm).onclick = mapSvc.clearAllDrawnShapes;
-};
-
-const setupFilterEventListeners = filterForm => {
-    setupSearchInput(filterForm);
-    setupCategorySelect(filterForm);
-    setupAuthorInput(filterForm);
-    setupTimeFilters(filterForm);
-    setupApplyResetButtons(filterForm);
-    setupSpatialAndFollowedToggles(filterForm);
-    setupClearDrawnShapesButton(filterForm);
 };
 
 export const initFilterControls = () => {
@@ -213,8 +166,5 @@ export const initFilterControls = () => {
     setupFilterEventListeners(filterForm);
 
     const mapDrawControlsDiv = $('#map-draw-controls', filterForm);
-    const drawControl = mapSvc.getDrawControl();
-    if (drawControl) {
-        mapDrawControlsDiv.appendChild(drawControl.onAdd(mapSvc.get()));
-    }
+    mapDrawControlsDiv.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 };

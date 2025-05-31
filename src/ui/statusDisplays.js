@@ -8,22 +8,16 @@ import {showModal} from './modals.js';
 export const updateAuthDisplay = pk => {
     const authButton = $('#auth-button');
     const userPubkeySpan = $('#user-pubkey');
-    if (pk) {
-        authButton.textContent = 'Logout';
-        userPubkeySpan.textContent = `User: ${formatNpubShort(pk)}`;
-        userPubkeySpan.style.display = 'inline';
-    } else {
-        authButton.textContent = 'Connect Nostr';
-        userPubkeySpan.style.display = 'none';
-    }
+    authButton.textContent = pk ? 'Logout' : 'Connect Nostr';
+    userPubkeySpan.textContent = pk ? `User: ${formatNpubShort(pk)}` : '';
+    userPubkeySpan.style.display = pk ? 'inline' : 'none';
 };
 
 export const updateConnectionDisplay = isOnline => {
     const connectionStatusElement = $('#connection-status');
-    if (connectionStatusElement) {
-        connectionStatusElement.textContent = isOnline ? 'Online' : 'Offline';
-        connectionStatusElement.style.color = isOnline ? 'lightgreen' : 'lightcoral';
-    }
+    if (!connectionStatusElement) return;
+    connectionStatusElement.textContent = isOnline ? 'Online' : 'Offline';
+    connectionStatusElement.style.color = isOnline ? 'lightgreen' : 'lightcoral';
 };
 
 export const updateSyncDisplay = async () => {
@@ -31,7 +25,7 @@ export const updateSyncDisplay = async () => {
     if (!syncStatusElement) return;
     try {
         const queue = await dbSvc.getOfflineQ();
-        if (queue.length > 0) {
+        if (queue.length) {
             syncStatusElement.textContent = `Syncing (${queue.length})...`;
             syncStatusElement.style.color = 'orange';
             syncStatusElement.disabled = false;
@@ -51,55 +45,41 @@ export const updateSyncDisplay = async () => {
 };
 
 export const handleReportAndFilterUpdates = (newState, oldState) => {
-    const shouldReapplyFilters =
-        newState.reports !== oldState?.reports ||
-        newState.settings.mute !== oldState?.settings?.mute ||
-        newState.currentFocusTag !== oldState?.currentFocusTag ||
-        newState.drawnShapes !== oldState?.drawnShapes ||
-        newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled ||
-        newState.followedPubkeys !== oldState?.followedPubkeys ||
-        newState.ui.followedOnlyFilter !== oldState?.ui?.followedOnlyFilter ||
-        newState.ui.filters.q !== oldState?.ui?.filters?.q ||
-        newState.ui.filters.cat !== oldState?.ui?.filters?.cat ||
-        newState.ui.filters.auth !== oldState?.ui?.filters?.auth ||
-        newState.ui.filters.tStart !== oldState?.ui?.filters?.tStart ||
-        newState.ui.filters.tEnd !== oldState?.ui?.filters?.tEnd;
+    const filterDependencies = [
+        'reports', 'settings.mute', 'currentFocusTag', 'drawnShapes', 'ui.spatialFilterEnabled',
+        'followedPubkeys', 'ui.followedOnlyFilter', 'ui.filters.q', 'ui.filters.cat',
+        'ui.filters.auth', 'ui.filters.tStart', 'ui.filters.tEnd'
+    ];
+
+    const shouldReapplyFilters = filterDependencies.some(path => {
+        const newVal = path.split('.').reduce((o, i) => o?.[i], newState);
+        const oldVal = path.split('.').reduce((o, i) => o?.[i], oldState);
+        return newVal !== oldVal;
+    });
 
     if (shouldReapplyFilters) {
-        if (newState.currentFocusTag !== oldState?.currentFocusTag) {
-            const focusTagInput = $('#focus-tag-input', $('#filter-controls'));
-            if (focusTagInput) {
-                focusTagInput.value = newState.currentFocusTag;
-            }
-        }
+        const focusTagInput = $('#focus-tag-input', $('#filter-controls'));
+        if (focusTagInput) focusTagInput.value = newState.currentFocusTag;
         applyAllFilters();
     }
 };
 
 export const updateFilterCategories = newCategories => {
     const selectElement = $('#filter-category', $('#filter-controls'));
-    if (selectElement) {
-        selectElement.innerHTML = '<option value="">All</option>';
-        newCategories.forEach(c => selectElement.appendChild(createEl('option', { value: c, textContent: sanitizeHTML(c) })));
-    }
+    if (!selectElement) return;
+    selectElement.innerHTML = '<option value="">All</option>';
+    newCategories.forEach(c => selectElement.appendChild(createEl('option', { value: c, textContent: sanitizeHTML(c) })));
 };
 
 export const handleModalFocus = (newModalId, oldModalId) => {
-    if (newModalId && newModalId !== oldModalId && $(`#${newModalId}`)) {
-        $(`#${newModalId}`).focus();
-    }
+    if (newModalId && newModalId !== oldModalId) $(`#${newModalId}`)?.focus();
 };
 
 export const handleReportViewing = (reportId, reports) => {
-    if (reportId) {
-        const report = reports.find(r => r.id === reportId);
-        if (report) showReportDetails(report);
-    }
+    if (reportId) showReportDetails(reports.find(r => r.id === reportId));
 };
 
 export const updateGlobalLoadingSpinner = isLoading => {
     const globalSpinner = $('#global-loading-spinner');
-    if (globalSpinner) {
-        globalSpinner.style.display = isLoading ? 'flex' : 'none';
-    }
+    if (globalSpinner) globalSpinner.style.display = isLoading ? 'flex' : 'none';
 };

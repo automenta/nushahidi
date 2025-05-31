@@ -1,6 +1,5 @@
 import {
     generateSecretKey as genSk,
-    getEventHash as getEvH,
     getPublicKey as getPk,
     finalizeEvent as signEvNostr
 } from 'nostr-tools/pure';
@@ -25,16 +24,15 @@ export const idSvc = {
             return null;
         }
         const pubkey = await window.nostr.getPublicKey();
-        if (pubkey) {
-            const identity = { pk: pubkey, authM: 'nip07' };
-            await confSvc.saveId(identity);
-            appStore.set({ user: identity });
-            return pubkey;
-        }
-        return null;
+        if (!pubkey) return null;
+
+        const identity = { pk: pubkey, authM: 'nip07' };
+        await confSvc.saveId(identity);
+        appStore.set({ user: identity });
+        return pubkey;
     }, "NIP-07 connected successfully!", "NIP-07 connection error")),
 
-    newProf: withLoading(withToast(async (passphrase) => {
+    newProf: withLoading(withToast(async passphrase => {
         if (!passphrase || passphrase.length < 8) {
             showToast("Passphrase too short (min 8 chars).", 'warning');
             return null;
@@ -79,8 +77,7 @@ export const idSvc = {
         if (_locSk) return _locSk;
 
         const identity = await confSvc.getId();
-        if (!identity?.eSk) return null;
-        if (!promptPassphrase) return null;
+        if (!identity?.eSk || !promptPassphrase) return null;
 
         const passphrase = await showPassphraseModal(
             "Decrypt Private Key",
@@ -100,7 +97,7 @@ export const idSvc = {
 
     chgPass: withLoading(withToast(async (oldPassphrase, newPassphrase) => {
         const identity = await confSvc.getId();
-        if (!identity?.eSk || (identity.authM !== 'local' && identity.authM !== 'import')) {
+        if (!identity?.eSk || !['local', 'import'].includes(identity.authM)) {
             throw new Error("No local key to change passphrase for.");
         }
         const decryptedSk = await decrypt(identity.eSk, oldPassphrase);
@@ -123,13 +120,7 @@ export const idSvc = {
         const user = appStore.get().user;
         if (!user) throw new Error("No Nostr identity connected. Please connect or create one.");
 
-        if (user.authM === 'nip07') {
-            return this.signEventNip07(event);
-        } else if (user.authM === 'local' || user.authM === 'import') {
-            return this.signEventLocal(event, user.pk);
-        } else {
-            throw new Error("Unsupported authentication method.");
-        }
+        return user.authM === 'nip07' ? this.signEventNip07(event) : this.signEventLocal(event, user.pk);
     },
 
     async signEventNip07(event) {
@@ -144,7 +135,6 @@ export const idSvc = {
     async signEventLocal(eventTemplate, pubkey) {
         const sk = await idSvc.getSk(true);
         if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
-        // finalizeEvent (aliased as signEvNostr) automatically adds pubkey, id, and sig
         return signEvNostr(eventTemplate, sk);
     }
 };

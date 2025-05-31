@@ -10,11 +10,8 @@ const getDbStore = async (storeName, mode = 'readonly') => {
             request.onsuccess = e => resolve(e.target.result);
             request.onupgradeneeded = e => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(C.STORE_REPORTS)) db.createObjectStore(C.STORE_REPORTS, { keyPath: 'id' });
-                if (!db.objectStoreNames.contains(C.STORE_PROFILES)) db.createObjectStore(C.STORE_PROFILES, { keyPath: 'pk' });
-                if (!db.objectStoreNames.contains(C.STORE_SETTINGS)) db.createObjectStore(C.STORE_SETTINGS, { keyPath: 'id' });
-                if (!db.objectStoreNames.contains(C.STORE_OFFLINE_QUEUE)) db.createObjectStore(C.STORE_OFFLINE_QUEUE, { autoIncrement: true, keyPath: 'qid' });
-                if (!db.objectStoreNames.contains(C.STORE_DRAWN_SHAPES)) db.createObjectStore(C.STORE_DRAWN_SHAPES, { keyPath: 'id' });
+                [C.STORE_REPORTS, C.STORE_PROFILES, C.STORE_SETTINGS, C.STORE_OFFLINE_QUEUE, C.STORE_DRAWN_SHAPES, C.STORE_FOLLOWED_PUBKEYS]
+                    .forEach(store => { if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: store === C.STORE_OFFLINE_QUEUE ? 'qid' : 'id', autoIncrement: store === C.STORE_OFFLINE_QUEUE }); });
                 if (!db.objectStoreNames.contains(C.STORE_FOLLOWED_PUBKEYS)) db.createObjectStore(C.STORE_FOLLOWED_PUBKEYS, { keyPath: 'pk' });
             };
         });
@@ -22,47 +19,12 @@ const getDbStore = async (storeName, mode = 'readonly') => {
     return _db.transaction(storeName, mode).objectStore(storeName);
 };
 
-const createDbStoreCrud = (storeName) => ({
-    get: async id => {
-        const store = await getDbStore(storeName);
-        return new Promise((resolve, reject) => {
-            const request = store.get(id);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = e => reject(e.target.error);
-        });
-    },
-    getAll: async () => {
-        const store = await getDbStore(storeName);
-        return new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = e => reject(e.target.error);
-        });
-    },
-    add: async item => {
-        const store = await getDbStore(storeName, 'readwrite');
-        return new Promise((resolve, reject) => {
-            const request = store.put(item);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = e => reject(e.target.error);
-        });
-    },
-    rm: async id => {
-        const store = await getDbStore(storeName, 'readwrite');
-        return new Promise((resolve, reject) => {
-            const request = store.delete(id);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = e => reject(e.target.error);
-        });
-    },
-    clear: async () => {
-        const store = await getDbStore(storeName, 'readwrite');
-        return new Promise((resolve, reject) => {
-            const request = store.clear();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = e => reject(e.target.error);
-        });
-    },
+const createDbStoreCrud = storeName => ({
+    get: async id => (await getDbStore(storeName)).get(id),
+    getAll: async () => (await getDbStore(storeName)).getAll(),
+    add: async item => (await getDbStore(storeName, 'readwrite')).put(item),
+    rm: async id => (await getDbStore(storeName, 'readwrite')).delete(id),
+    clear: async () => (await getDbStore(storeName, 'readwrite')).clear(),
 });
 
 export const dbSvc = {
@@ -108,12 +70,9 @@ export const dbSvc = {
 
         const allReports = await this.getAllReps();
         if (allReports.length > C.DB_PRUNE_REPORTS_MAX) {
-            const sortedReports = allReports.sort((a, b) => b.at - a.at);
-            const toDelete = sortedReports.slice(C.DB_PRUNE_REPORTS_MAX);
+            const toDelete = allReports.sort((a, b) => b.at - a.at).slice(C.DB_PRUNE_REPORTS_MAX);
             const store = await getDbStore(C.STORE_REPORTS, 'readwrite');
-            for (const rep of toDelete) {
-                await store.delete(rep.id);
-            }
+            for (const rep of toDelete) await store.delete(rep.id);
             showToast(`Pruned ${toDelete.length} old reports.`, 'info');
         }
 
@@ -126,8 +85,6 @@ export const dbSvc = {
                 profilesDeleted++;
             }
         }
-        if (profilesDeleted > 0) {
-            showToast(`Pruned ${profilesDeleted} old profiles.`, 'info');
-        }
+        if (profilesDeleted > 0) showToast(`Pruned ${profilesDeleted} old profiles.`, 'info');
     }
 };

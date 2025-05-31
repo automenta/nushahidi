@@ -14,51 +14,35 @@ let _drawnItems;
 let _drawControl;
 
 const updateDrawnShapesInStoreAndDb = withToast(async (action, data) => {
-    if (action === 'add') {
-        const layer = data;
+    const processLayer = async layer => {
         const geojson = layer.toGeoJSON();
-        const shapeId = generateUUID();
+        const shapeId = layer.options.id || generateUUID();
         geojson.properties = { ...geojson.properties, id: shapeId };
         layer.options.id = shapeId;
-        _drawnItems.addLayer(layer);
         await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
+    };
+
+    if (action === 'add') {
+        _drawnItems.addLayer(data);
+        await processLayer(data);
     } else if (action === 'edit') {
-        for (const layer of Object.values(data._layers)) {
-            const geojson = layer.toGeoJSON();
-            const shapeId = layer.options.id;
-            geojson.properties = { ...geojson.properties, id: shapeId };
-            await dbSvc.addDrawnShape({ id: shapeId, geojson: geojson });
-        }
+        for (const layer of Object.values(data._layers)) await processLayer(layer);
     } else if (action === 'delete') {
-        for (const layer of Object.values(data._layers)) {
-            const shapeId = layer.options.id;
-            await dbSvc.rmDrawnShape(shapeId);
-        }
+        for (const layer of Object.values(data._layers)) await dbSvc.rmDrawnShape(layer.options.id);
     }
 
-    const updatedShapes = await dbSvc.getAllDrawnShapes();
-    appStore.set({ drawnShapes: updatedShapes.map(s => s.geojson) });
+    appStore.set({ drawnShapes: (await dbSvc.getAllDrawnShapes()).map(s => s.geojson) });
 }, null, "Error updating drawn shapes");
 
-const handleDrawCreated = async e => {
-    await updateDrawnShapesInStoreAndDb('add', e.layer);
-};
-
-const handleDrawEdited = async e => {
-    await updateDrawnShapesInStoreAndDb('edit', e.layers);
-};
-
-const handleDrawDeleted = async e => {
-    await updateDrawnShapesInStoreAndDb('delete', e.layers);
-};
+const handleDrawCreated = e => updateDrawnShapesInStoreAndDb('add', e.layer);
+const handleDrawEdited = e => updateDrawnShapesInStoreAndDb('edit', e.layers);
+const handleDrawDeleted = e => updateDrawnShapesInStoreAndDb('delete', e.layers);
 
 function setupMapEventListeners() {
     _map.on('moveend zoomend', () => {
         const bounds = _map.getBounds();
-        const geohashes = getGhPrefixes(bounds);
-        appStore.set({ mapBnds: bounds, mapGhs: geohashes });
+        appStore.set({ mapBnds: bounds, mapGhs: getGhPrefixes(bounds) });
     });
-
     _map.on(L.Draw.Event.CREATED, handleDrawCreated);
     _map.on(L.Draw.Event.EDITED, handleDrawEdited);
     _map.on(L.Draw.Event.DELETED, handleDrawDeleted);
@@ -66,49 +50,30 @@ function setupMapEventListeners() {
 
 export const mapSvc = {
     init(id = 'map-container') {
-        const tileUrl = confSvc.getTileServer();
         _map = L.map(id).setView([20, 0], 3);
-        _mapTileLyr = L.tileLayer(tileUrl, { attribution: '&copy; OSM & NM', maxZoom: 19 }).addTo(_map);
+        _mapTileLyr = L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM & NM', maxZoom: 19 }).addTo(_map);
 
-        _mapRepsLyr = L.markerClusterGroup();
-        _map.addLayer(_mapRepsLyr);
-
-        _drawnItems = new L.FeatureGroup();
-        _map.addLayer(_drawnItems);
+        _mapRepsLyr = L.markerClusterGroup().addTo(_map);
+        _drawnItems = new L.FeatureGroup().addTo(_map);
 
         _drawControl = new L.Control.Draw({
-            edit: {
-                featureGroup: _drawnItems,
-                poly: {
-                    allowIntersection: false
-                }
-            },
+            edit: { featureGroup: _drawnItems, poly: { allowIntersection: false } },
             draw: {
-                polygon: {
-                    allowIntersection: false,
-                    showArea: true
-                },
-                polyline: false,
-                rectangle: true,
-                circle: true,
-                marker: false,
-                circlemarker: false
+                polygon: { allowIntersection: false, showArea: true },
+                polyline: false, rectangle: true, circle: true, marker: false, circlemarker: false
             }
         });
 
         appStore.set({ map: _map });
-
         setupMapEventListeners();
         this.loadDrawnShapes();
-
         return _map;
     },
 
     async loadDrawnShapes() {
-        const storedShapes = await dbSvc.getAllDrawnShapes();
         _drawnItems.clearLayers();
         const geojsonShapes = [];
-        storedShapes.forEach(s => {
+        (await dbSvc.getAllDrawnShapes()).forEach(s => {
             const layer = L.GeoJSON.geometryToLayer(s.geojson);
             layer.options.id = s.id;
             _drawnItems.addLayer(layer);
@@ -117,7 +82,7 @@ export const mapSvc = {
         appStore.set({ drawnShapes: geojsonShapes });
     },
 
-    async clearAllDrawnShapes() {
+    clearAllDrawnShapes() {
         showConfirmModal(
             "Clear All Drawn Shapes",
             "Are you sure you want to clear ALL drawn shapes from the map and database? This action cannot be undone.",
@@ -132,12 +97,8 @@ export const mapSvc = {
     },
 
     getDrawControl: () => _drawControl,
-
     getDrawnItems: () => _drawnItems,
-
-    updTile(url) {
-        if (_mapTileLyr) _mapTileLyr.setUrl(url);
-    },
+    updTile(url) { _mapTileLyr?.setUrl(url); },
 
     updReps(reports) {
         if (!_map) return;
@@ -146,18 +107,14 @@ export const mapSvc = {
             if (report.lat && report.lon) {
                 const marker = L.marker([report.lat, report.lon]);
                 marker.bindPopup(`<b>${report.title || 'Report'}</b><br>${report.sum || report.ct.substring(0, 50) + '...'}`, { maxWidth: 250 });
-                marker.on('click', () => {
-                    appStore.set(s => ({ ...s, ui: { ...s.ui, viewingReport: report.id } }));
-                });
+                marker.on('click', () => appStore.set(s => ({ ...s, ui: { ...s.ui, viewingReport: report.id } })));
                 _mapRepsLyr.addLayer(marker);
             }
         });
     },
 
     ctrUser() {
-        if (!_map || !navigator.geolocation) {
-            return showToast("Geolocation not supported by your browser.", 'warning');
-        }
+        if (!_map || !navigator.geolocation) return showToast("Geolocation not supported by your browser.", 'warning');
         navigator.geolocation.getCurrentPosition(
             position => {
                 const latlng = [position.coords.latitude, position.coords.longitude];
@@ -198,8 +155,8 @@ export const mapSvc = {
     },
 
     disPickLoc: () => {
-        if ($('#map-container')) $('#map-container').style.cursor = '';
-        if (_map) _map.off('click');
+        $('#map-container')?.style.cursor = '';
+        _map?.off('click');
     },
 
     get: () => _map,

@@ -20,18 +20,15 @@ import {
 
 const setupOnboardingModal = () => {
     const onboardingModal = $('#onboarding-info');
-    if (onboardingModal) {
-        const closeBtn = $('.close-btn', onboardingModal);
-        const gotItBtn = $('button', onboardingModal);
+    if (!onboardingModal) return;
 
-        const hideOnboarding = () => {
-            localStorage.setItem(C.ONBOARDING_KEY, 'true');
-            hideModal('onboarding-info');
-        };
+    const hideOnboarding = () => {
+        localStorage.setItem(C.ONBOARDING_KEY, 'true');
+        hideModal('onboarding-info');
+    };
 
-        if (closeBtn) closeBtn.onclick = hideOnboarding;
-        if (gotItBtn) gotItBtn.onclick = hideOnboarding;
-    }
+    $('.close-btn', onboardingModal)?.onclick = hideOnboarding;
+    $('button', onboardingModal)?.onclick = hideOnboarding;
 };
 
 const initGlobalButtons = () => {
@@ -42,18 +39,13 @@ const initGlobalButtons = () => {
     };
 
     $('#auth-button').onclick = () => {
-        if (appStore.get().user) {
-            showConfirmModal(
-                "Logout Confirmation",
-                "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.",
-                () => idSvc.logout(),
-                () => {}
-            );
-        } else {
-            $('#auth-modal').innerHTML = '';
-            $('#auth-modal').appendChild(AuthModalComp());
-            showModal('auth-modal', 'conn-nip07-btn');
-        }
+        appStore.get().user ?
+            showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout(), () => {}) :
+            (() => {
+                $('#auth-modal').innerHTML = '';
+                $('#auth-modal').appendChild(AuthModalComp());
+                showModal('auth-modal', 'conn-nip07-btn');
+            })();
     };
 
     $('#settings-btn').onclick = () => {
@@ -65,35 +57,14 @@ const initGlobalButtons = () => {
 
 const setupAppStoreListeners = () => {
     appStore.on((newState, oldState) => {
-        if (newState.user?.pk !== oldState?.user?.pk) {
-            updateAuthDisplay(newState.user?.pk); // Corrected function call
-        }
-
-        if (newState.online !== oldState?.online) {
-            updateConnectionDisplay(newState.online); // Corrected function call
-        }
-
-        if (newState.online !== oldState?.online || newState.reports !== oldState?.reports) {
-            updateSyncDisplay(); // Corrected function call
-        }
-
+        if (newState.user?.pk !== oldState?.user?.pk) updateAuthDisplay(newState.user?.pk);
+        if (newState.online !== oldState?.online) updateConnectionDisplay(newState.online);
+        if (newState.online !== oldState?.online || newState.reports !== oldState?.reports) updateSyncDisplay();
         handleReportAndFilterUpdates(newState, oldState);
-
-        if (newState.settings.cats !== oldState?.settings?.cats) {
-            updateFilterCategories(newState.settings.cats);
-        }
-
-        if (newState.ui.modalOpen !== oldState?.ui?.modalOpen) {
-            handleModalFocus(newState.ui.modalOpen, oldState?.ui?.modalOpen);
-        }
-
-        if (newState.ui.viewingReport !== oldState?.ui?.viewingReport) {
-            handleReportViewing(newState.ui.viewingReport, newState.reports);
-        }
-
-        if (newState.ui.loading !== oldState?.ui?.loading) {
-            updateGlobalLoadingSpinner(newState.ui.loading);
-        }
+        if (newState.settings.cats !== oldState?.settings?.cats) updateFilterCategories(newState.settings.cats);
+        if (newState.ui.modalOpen !== oldState?.ui?.modalOpen) handleModalFocus(newState.ui.modalOpen, oldState?.ui?.modalOpen);
+        if (newState.ui.viewingReport !== oldState?.ui?.viewingReport) handleReportViewing(newState.ui.viewingReport, newState.reports);
+        if (newState.ui.loading !== oldState?.ui?.loading) updateGlobalLoadingSpinner(newState.ui.loading);
     });
 };
 
@@ -103,7 +74,5 @@ export function initUI() {
     setupAppStoreListeners();
     setupOnboardingModal();
 
-    if (!localStorage.getItem(C.ONBOARDING_KEY)) {
-        showModal('onboarding-info');
-    }
+    if (!localStorage.getItem(C.ONBOARDING_KEY)) showModal('onboarding-info');
 }

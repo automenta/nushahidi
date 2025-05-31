@@ -4,27 +4,22 @@ import {settingsSections} from './settingsConfig.js';
 import {renderConfigurableListSetting} from './settingsUtils.js';
 import {renderOfflineQueue} from './settings/offlineQueue.js';
 
-
 const settingsContentRenderer = modalRoot => {
     const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
 
     settingsSections.forEach(section => {
+        const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
         if (section.type === 'list') {
             renderConfigurableListSetting(settingsSectionsWrapper, section);
         } else if (section.type === 'section') {
-            const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
-            const renderedContent = section.renderer(settingsSectionsWrapper); // Capture the returned value
-            if (renderedContent) { // Check if it's a valid Node before appending
-                sectionEl.appendChild(renderedContent);
-            }
+            const renderedContent = section.renderer(settingsSectionsWrapper);
+            if (renderedContent) sectionEl.appendChild(renderedContent);
             settingsSectionsWrapper.appendChild(sectionEl);
             settingsSectionsWrapper.appendChild(createEl('hr'));
         } else if (section.type === 'offline-queue') {
-            settingsSectionsWrapper.appendChild(createEl('section', {}, [
-                createEl('h3', { textContent: section.title }),
-                createEl('p', { textContent: 'Events waiting to be published when online.' }),
-                createEl('div', { id: section.listId })
-            ]));
+            sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
+            sectionEl.appendChild(createEl('div', { id: section.listId }));
+            settingsSectionsWrapper.appendChild(sectionEl);
             settingsSectionsWrapper.appendChild(createEl('hr'));
             renderOfflineQueue(settingsSectionsWrapper);
         }
@@ -35,8 +30,6 @@ const settingsContentRenderer = modalRoot => {
 
 export function SettPanComp() {
     const modalContent = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
-
     modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
-
     return modalContent;
 }

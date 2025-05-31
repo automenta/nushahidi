@@ -4,7 +4,7 @@ import {$, C, createEl, isValidUrl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export const renderImageHostSection = (modalContent) => {
+export const renderImageHostSection = modalContent => {
     const appState = appStore.get();
 
     const imageHostFormFields = [
@@ -36,32 +36,15 @@ export const renderImageHostSection = (modalContent) => {
     modalContent.appendChild(form);
     modalContent.appendChild(createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' }));
 
-    setupImageHostListeners(modalContent);
-    return form;
-};
-
-const setupImageHostListeners = (modalContent) => {
     const imgHostSel = $('#img-host-sel', modalContent);
     const nip96Fields = $('#nip96-fields', modalContent);
     const nip96UrlIn = $('#nip96-url-in', modalContent);
     const nip96TokenIn = $('#nip96-token-in', modalContent);
-    const appState = appStore.get();
 
-    // Set initial display based on current settings
-    if (appState.settings.nip96Host) {
-        imgHostSel.value = 'nip96';
-        nip96Fields.style.display = '';
-    } else {
-        imgHostSel.value = appState.settings.imgHost || C.IMG_UPLOAD_NOSTR_BUILD;
-        nip96Fields.style.display = 'none';
-    }
+    nip96Fields.style.display = appState.settings.nip96Host ? '' : 'none';
 
     imgHostSel.onchange = () => {
-        if (imgHostSel.value === 'nip96') {
-            nip96Fields.style.display = '';
-        } else {
-            nip96Fields.style.display = 'none';
-        }
+        nip96Fields.style.display = imgHostSel.value === 'nip96' ? '' : 'none';
     };
 
     $('#save-img-host-btn', modalContent).onclick = withToast(async () => {
@@ -69,12 +52,12 @@ const setupImageHostListeners = (modalContent) => {
         if (selectedHost === 'nip96') {
             const nip96Url = nip96UrlIn.value.trim();
             const nip96Token = nip96TokenIn.value.trim();
-            if (!isValidUrl(nip96Url)) {
-                throw new Error("Invalid NIP-96 server URL.");
-            }
+            if (!isValidUrl(nip96Url)) throw new Error("Invalid NIP-96 server URL.");
             await confSvc.setImgHost(nip96Url, true, nip96Token);
         } else {
             await confSvc.setImgHost(selectedHost, false);
         }
     }, "Image host settings saved.", "Error saving image host settings");
+
+    return form;
 };

@@ -1,5 +1,5 @@
 import {nip11} from 'nostr-tools';
-import {SimplePool} from 'nostr-tools/pool'; // Reverted to direct named import
+import {SimplePool} from 'nostr-tools/pool';
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
@@ -10,27 +10,20 @@ let _pool = null;
 let _activeSubs = new Map();
 
 const updRlyStore = (url, status, nip11Doc = null) => {
-    appStore.set(s => {
-        const updatedRelays = s.relays.map(r => {
-            if (r.url === url) {
-                return { ...r, status, nip11: nip11Doc || r.nip11 };
-            }
-            return r;
-        });
-        return { relays: updatedRelays };
-    });
+    appStore.set(s => ({
+        relays: s.relays.map(r => r.url === url ? { ...r, status, nip11: nip11Doc || r.nip11 } : r)
+    }));
 };
 
-const addReportToStoreAndDb = async (signedEvent) => {
+const addReportToStoreAndDb = async signedEvent => {
     const report = parseReport(signedEvent);
     await dbSvc.addRep(report);
 
-    const existingReportInDb = await dbSvc.getRep(report.id);
-    report.interactions = existingReportInDb?.interactions || [];
+    report.interactions = (await dbSvc.getRep(report.id))?.interactions || [];
 
     appStore.set(s => {
         const index = s.reports.findIndex(rp => rp.id === report.id);
-        const updatedReports = (index > -1) ?
+        const updatedReports = index > -1 ?
             [...s.reports.slice(0, index), report, ...s.reports.slice(index + 1)] :
             [...s.reports, report];
         return { reports: updatedReports.sort((a, b) => b.at - a.at) };
@@ -43,27 +36,20 @@ const buildReportFilter = (appState, mapGeohashes) => {
 
     const filter = { kinds: [C.NOSTR_KIND_REPORT] };
 
-    if (focusTag && focusTag !== C.FOCUS_TAG_DEFAULT) {
-        filter['#t'] = [focusTag.substring(1)];
-    }
+    if (focusTag && focusTag !== C.FOCUS_TAG_DEFAULT) filter['#t'] = [focusTag.substring(1)];
+    if (appState.ui.followedOnlyFilter && followedPubkeys.length) filter.authors = followedPubkeys;
+    if (mapGeohashes?.length) filter['#g'] = mapGeohashes;
 
-    if (appState.ui.followedOnlyFilter && followedPubkeys.length > 0) {
-        filter.authors = followedPubkeys;
-    }
-
-    if (mapGeohashes?.length > 0) {
-        filter['#g'] = mapGeohashes;
-    }
     return filter;
 };
 
-const handleSubscriptionEvent = async (event) => {
+const handleSubscriptionEvent = async event => {
     const report = parseReport(event);
     if (appStore.get().settings.mute.includes(report.pk)) return;
     await addReportToStoreAndDb(event);
 };
 
-const publishEventOnline = async (signedEvent) => {
+const publishEventOnline = async signedEvent => {
     try {
         const response = await fetch('/api/publishNostrEvent', {
             method: 'POST',
@@ -86,63 +72,54 @@ const publishEventOnline = async (signedEvent) => {
     }
 };
 
-const queueEventOffline = async (signedEvent) => {
+const queueEventOffline = async signedEvent => {
     await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
     showToast("Offline. Event added to queue for later publishing.", 'info');
 };
 
-const fetchProfileLogic = async (pubkey) => {
+const fetchProfileLogic = async pubkey => {
     let profile = await dbSvc.getProf(pubkey);
     if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile;
 
     const filter = { kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 };
     const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
 
-    if (relaysToQuery.length === 0) {
-        throw new Error("No connected relays to fetch profiles from.");
-    }
+    if (!relaysToQuery.length) throw new Error("No connected relays to fetch profiles from.");
 
     const event = await _pool.get(relaysToQuery, filter);
-    if (event) {
-        try {
-            const parsedContent = JSON.parse(event.content);
-            profile = {
-                pk: pubkey,
-                name: parsedContent.name || '',
-                nip05: parsedContent.nip05 || '',
-                picture: parsedContent.picture || '',
-                about: parsedContent.about || '',
-                fetchedAt: Date.now(),
-                ...parsedContent
-            };
-            await dbSvc.addProf(profile);
-            return profile;
-        } catch (e) {
-            console.error("Error parsing profile content:", e);
-            throw new Error("Error parsing profile content.");
-        }
+    if (!event) return profile;
+
+    try {
+        const parsedContent = JSON.parse(event.content);
+        profile = {
+            pk: pubkey,
+            name: parsedContent.name || '',
+            nip05: parsedContent.nip05 || '',
+            picture: parsedContent.picture || '',
+            about: parsedContent.about || '',
+            fetchedAt: Date.now(),
+            ...parsedContent
+        };
+        await dbSvc.addProf(profile);
+        return profile;
+    } catch (e) {
+        console.error("Error parsing profile content:", e);
+        throw new Error("Error parsing profile content.");
     }
-    return profile;
 };
 
-const fetchInteractionsLogic = async (reportId) => {
+const fetchInteractionsLogic = async reportId => {
     const filters = [
         { kinds: [C.NOSTR_KIND_REACTION], "#e": [reportId] },
         { kinds: [C.NOSTR_KIND_NOTE], "#e": [reportId] }
     ];
     const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
-    if (relaysToQuery.length === 0) {
-        throw new Error("No connected relays to fetch interactions from.");
-    }
+    if (!relaysToQuery.length) throw new Error("No connected relays to fetch interactions from.");
 
     const events = await _pool.list(relaysToQuery, filters);
     const uniqueEvents = new Map();
 
-    events.forEach(ev => {
-        if (!uniqueEvents.has(ev.id)) {
-            uniqueEvents.set(ev.id, ev);
-        }
-    });
+    events.forEach(ev => uniqueEvents.set(ev.id, ev));
 
     return Array.from(uniqueEvents.values()).map(ev => ({
         id: ev.id,
@@ -155,7 +132,7 @@ const fetchInteractionsLogic = async (reportId) => {
     })).sort((a, b) => a.created_at - b.created_at);
 };
 
-const publishContactsLogic = async (contacts) => {
+const publishContactsLogic = async contacts => {
     const user = appStore.get().user;
     if (!user) throw new Error("No Nostr identity connected to publish contacts.");
 
@@ -166,13 +143,7 @@ const publishContactsLogic = async (contacts) => {
         return tag;
     });
 
-    const eventData = {
-        kind: C.NOSTR_KIND_CONTACTS,
-        content: '',
-        tags: tags
-    };
-
-    return nostrSvc.pubEv(eventData);
+    return nostrSvc.pubEv({ kind: C.NOSTR_KIND_CONTACTS, content: '', tags });
 };
 
 const fetchContactsLogic = async () => {
@@ -182,51 +153,34 @@ const fetchContactsLogic = async () => {
     const filter = { kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 };
     const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
 
-    if (relaysToQuery.length === 0) {
-        throw new Error("No connected relays to fetch contacts from.");
-    }
+    if (!relaysToQuery.length) throw new Error("No connected relays to fetch contacts from.");
 
     const event = await _pool.get(relaysToQuery, filter);
-    if (event) {
-        const latestContactsEvent = event;
-        return latestContactsEvent.tags
-            .filter(tag => tag[0] === 'p' && tag[1])
-            .map(tag => ({
-                pubkey: tag[1],
-                relay: tag[2] || '',
-                petname: tag[3] || ''
-            }));
-    }
-    return [];
+    return event?.tags.filter(tag => tag[0] === 'p' && tag[1]).map(tag => ({
+        pubkey: tag[1],
+        relay: tag[2] || '',
+        petname: tag[3] || ''
+    })) || [];
 };
 
 export const nostrSvc = {
     async connRlys() {
-        // Only re-initialize if _pool is not a valid SimplePool instance
         if (!_pool || typeof _pool.on !== 'function') {
             try {
                 _pool = new SimplePool();
             } catch (e) {
                 console.error("Error initializing Nostr SimplePool:", e);
-                _pool = null; // Ensure _pool is null if initialization failed
+                _pool = null;
                 showToast(`Critical Nostr error: ${e.message}. Please refresh.`, 'error', 0);
-                throw e; // Re-throw to stop further execution if pool init fails
+                throw e;
             }
         }
-
-        // The SimplePool handles connections implicitly when sub/pub is called.
-        // No need to manually iterate and call _pool.subscribe here.
-        // The `subToReps` function will pass the list of relays to _pool.sub.
     },
 
     discAllRlys() {
-        if (_pool) {
-            _pool.close();
-            _pool = null;
-        }
-        _activeSubs.forEach(s => {
-            try { s.sub.unsub(); } catch (e) { console.warn(`Error unsubscribing:`, e); }
-        });
+        _pool?.close();
+        _pool = null;
+        _activeSubs.forEach(s => { try { s.sub.unsub(); } catch (e) { console.warn(`Error unsubscribing:`, e); } });
         _activeSubs.clear();
         appStore.set(s => ({ relays: s.relays.map(r => ({ ...r, status: 'disconnected' })) }));
         showToast("All relays disconnected.", 'info');
@@ -236,27 +190,19 @@ export const nostrSvc = {
         this.unsubAllReps();
 
         const appState = appStore.get();
-        const mapGeohashes = appState.mapGhs;
-
         const relaysToQuery = appState.relays.filter(r => r.read).map(r => r.url);
 
-        if (relaysToQuery.length === 0) {
+        if (!relaysToQuery.length) {
             showToast("No read-enabled relays configured for subscription.", 'warning');
             return;
         }
 
-        // Ensure _pool is connected and valid before subscribing
         await this.connRlys();
 
-        const currentFilter = buildReportFilter(appState, mapGeohashes);
-
+        const currentFilter = buildReportFilter(appState, appState.mapGhs);
         const subscriptionId = `reps-${Date.now()}`;
         try {
-            const sub = _pool.subscribe(relaysToQuery, [currentFilter], {
-                onevent: handleSubscriptionEvent,
-                oneose: () => {}
-            });
-
+            const sub = _pool.subscribe(relaysToQuery, [currentFilter], { onevent: handleSubscriptionEvent, oneose: () => {} });
             _activeSubs.set(subscriptionId, { sub, rUs: relaysToQuery, filt: currentFilter, type: 'reports' });
         } catch (e) {
             console.error(`Subscription Error:`, e);
@@ -274,9 +220,6 @@ export const nostrSvc = {
     },
 
     async refreshSubs() {
-        // This function now primarily orchestrates, ensuring connRlys is awaited
-        // and then subToReps is called. The internal checks in connRlys and subToReps
-        // handle the _pool initialization.
         await this.connRlys();
         await this.subToReps();
     },
@@ -284,28 +227,16 @@ export const nostrSvc = {
     async pubEv(eventData) {
         const signedEvent = await idSvc.signEv(eventData);
 
-        if (signedEvent.kind === C.NOSTR_KIND_REPORT) {
-            await addReportToStoreAndDb(signedEvent);
-        }
+        if (signedEvent.kind === C.NOSTR_KIND_REPORT) await addReportToStoreAndDb(signedEvent);
 
-        if (appStore.get().online) {
-            await publishEventOnline(signedEvent);
-        } else {
-            await queueEventOffline(signedEvent);
-        }
+        appStore.get().online ? await publishEventOnline(signedEvent) : await queueEventOffline(signedEvent);
         return signedEvent;
     },
 
-    deleteEv: withLoading(withToast(async (eventIdToDelete) => {
-        const user = appStore.get().user;
-        if (!user) throw new Error("No Nostr identity connected to delete events.");
+    deleteEv: withLoading(withToast(async eventIdToDelete => {
+        if (!appStore.get().user) throw new Error("No Nostr identity connected to delete events.");
 
-        const eventData = {
-            kind: 5,
-            content: "Reason for deletion (optional)",
-            tags: [['e', eventIdToDelete]]
-        };
-
+        const eventData = { kind: 5, content: "Reason for deletion (optional)", tags: [['e', eventIdToDelete]] };
         const signedDeletionEvent = await nostrSvc.pubEv(eventData);
 
         appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventIdToDelete) }));
@@ -314,10 +245,7 @@ export const nostrSvc = {
     }, "Report deletion event sent (NIP-09).", "Failed to delete report")),
 
     fetchProf: withLoading(withToast(fetchProfileLogic, null, "Error fetching profile")),
-
     fetchInteractions: withLoading(withToast(fetchInteractionsLogic, null, "Error fetching interactions")),
-
     pubContacts: withLoading(withToast(publishContactsLogic, "NIP-02 contact list published!", "Error publishing contacts")),
-
     fetchContacts: withLoading(withToast(fetchContactsLogic, null, "Error fetching contacts"))
 };

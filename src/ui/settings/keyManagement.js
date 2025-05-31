@@ -5,11 +5,9 @@ import {$, showToast} from '../../utils.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export const renderKeyManagementSection = (modalContent) => {
+export const renderKeyManagementSection = modalContent => {
     const appState = appStore.get();
-    if (!appState.user || (appState.user.authM !== 'local' && appState.user.authM !== 'import')) {
-        return null;
-    }
+    if (!appState.user || !['local', 'import'].includes(appState.user.authM)) return null;
 
     const keyManagementFormFields = [
         { type: 'button', id: 'exp-sk-btn', label: 'Export Private Key' },
@@ -21,42 +19,28 @@ export const renderKeyManagementSection = (modalContent) => {
     const form = renderForm(keyManagementFormFields, {}, { id: 'key-management-form' });
     modalContent.appendChild(form);
 
-    setupKeyManagementListeners(form);
+    $('#exp-sk-btn', form).onclick = withLoading(withToast(async () => {
+        if (!appStore.get().user) throw new Error("No Nostr identity connected.");
+        if (appStore.get().user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
+
+        const sk = await idSvc.getSk(true);
+        if (!sk) throw new Error("Private key not available for export.");
+        showToast(
+            "Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.",
+            'critical-warning',
+            0,
+            nip19.nsecEncode(sk)
+        );
+    }, null, "Export failed"));
+
+    $('#chg-pass-btn', form).onclick = withLoading(withToast(async () => {
+        const oldPass = $('#chg-pass-old', form).value;
+        const newPass = $('#chg-pass-new', form).value;
+        if (!oldPass || !newPass || newPass.length < 8) throw new Error("Both passphrases are required, new must be min 8 chars.");
+        await idSvc.chgPass(oldPass, newPass);
+        $('#chg-pass-old', form).value = '';
+        $('#chg-pass-new', form).value = '';
+    }, null, "Passphrase change failed"));
+
     return form;
-};
-
-const setupKeyManagementListeners = (formRoot) => {
-    const expSkBtn = $('#exp-sk-btn', formRoot);
-    if (expSkBtn) {
-        expSkBtn.onclick = withLoading(withToast(async () => {
-            if (!appStore.get().user) throw new Error("No Nostr identity connected.");
-            if (appStore.get().user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
-
-            const sk = await idSvc.getSk(true);
-            if (sk) {
-                showToast(
-                    "Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.",
-                    'critical-warning',
-                    0,
-                    nip19.nsecEncode(sk)
-                );
-            } else {
-                throw new Error("Private key not available for export.");
-            }
-        }, null, "Export failed"));
-    }
-
-    const chgPassBtn = $('#chg-pass-btn', formRoot);
-    if (chgPassBtn) {
-        chgPassBtn.onclick = withLoading(withToast(async () => {
-            const oldPass = $('#chg-pass-old', formRoot).value;
-            const newPass = $('#chg-pass-new', formRoot).value;
-            if (!oldPass || !newPass || newPass.length < 8) {
-                throw new Error("Both passphrases are required, new must be min 8 chars.");
-            }
-            await idSvc.chgPass(oldPass, newPass);
-            $('#chg-pass-old', formRoot).value = '';
-            $('#chg-pass-new', formRoot).value = '';
-        }, null, "Passphrase change failed"));
-    }
 };

@@ -40,33 +40,22 @@ export function createEl(tagName, attributes = {}, children = []) {
     const element = document.createElement(tagName);
 
     Object.entries(attributes).forEach(([key, value]) => {
-        if (key.startsWith('on') && typeof value === 'function') {
-            element.addEventListener(key.substring(2).toLowerCase(), value);
-        } else if (typeof value === 'boolean') {
-            value ? element.setAttribute(key, '') : element.removeAttribute(key);
-        } else if (key === 'textContent') {
-            element.textContent = value;
-        } else if (key === 'innerHTML') {
-            element.innerHTML = value;
-        } else {
-            element.setAttribute(key, value);
-        }
+        if (key.startsWith('on') && typeof value === 'function') element.addEventListener(key.substring(2).toLowerCase(), value);
+        else if (typeof value === 'boolean') value ? element.setAttribute(key, '') : element.removeAttribute(key);
+        else if (key === 'textContent') element.textContent = value;
+        else if (key === 'innerHTML') element.innerHTML = value;
+        else element.setAttribute(key, value);
     });
 
     (Array.isArray(children) ? children : [children]).forEach(child => {
-        if (typeof child === 'string') {
-            element.appendChild(document.createTextNode(child));
-        } else if (child instanceof Node) {
-            element.appendChild(child);
-        }
+        if (typeof child === 'string') element.appendChild(document.createTextNode(child));
+        else if (child instanceof Node) element.appendChild(child);
     });
 
     return element;
 }
 
-export const sanitizeHTML = s => (s == null ? '' : String(s).replace(/[&<>"']/g, m => {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-}));
+export const sanitizeHTML = s => (s == null ? '' : String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])));
 
 const CRYPTO = { ALG: 'AES-GCM', IV_L: 12, SALT_L: 16, ITER: 1e5 };
 
@@ -167,9 +156,7 @@ export const getGhPrefixes = (bounds, minPrecision = 4, maxPrecision = 6) => {
     if (!bounds) return [];
     const center = bounds.getCenter();
     const prefixes = new Set();
-    for (let i = minPrecision; i <= maxPrecision; i++) {
-        prefixes.add(ngeohash.encode(center.lat, center.lng, i));
-    }
+    for (let i = minPrecision; i <= maxPrecision; i++) prefixes.add(ngeohash.encode(center.lat, center.lng, i));
     return Array.from(prefixes);
 };
 
@@ -202,10 +189,7 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
     toast.appendChild(createEl('span', { textContent: message }));
 
     if (valueToCopy) {
-        const copyButton = createEl('button', {
-            class: 'copy-button',
-            textContent: 'Copy'
-        });
+        const copyButton = createEl('button', { class: 'copy-button', textContent: 'Copy' });
         copyButton.onclick = async () => {
             try {
                 await navigator.clipboard.writeText(valueToCopy);
@@ -228,32 +212,18 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
     }, duration);
 }
 
-export const isValidUrl = (string) => {
-    try {
-        new URL(string);
-        return true;
-    } catch (e) {
-        return false;
-    }
+export const isValidUrl = string => {
+    try { new URL(string); return true; } catch { return false; }
 };
 
-export const generateUUID = () => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-};
+export const generateUUID = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+});
 
-export const processImageFile = async (file) => {
-    if (!file.type.startsWith('image/')) {
-        throw new Error('Invalid file type. Only images are allowed.');
-    }
-    if (file.size > C.IMG_SIZE_LIMIT_BYTES) {
-        throw new Error(`File too large (max ${C.IMG_SIZE_LIMIT_BYTES / 1024 / 1024}MB).`);
-    }
+export const processImageFile = async file => {
+    if (!file.type.startsWith('image/')) throw new Error('Invalid file type. Only images are allowed.');
+    if (file.size > C.IMG_SIZE_LIMIT_BYTES) throw new Error(`File too large (max ${C.IMG_SIZE_LIMIT_BYTES / 1024 / 1024}MB).`);
 
     const buffer = await file.arrayBuffer();
     const hash = await sha256(buffer);

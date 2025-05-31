@@ -4,7 +4,7 @@ import {$, C, isValidUrl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export const renderMapTilesSection = (modalContent) => {
+export const renderMapTilesSection = modalContent => {
     const appState = appStore.get();
 
     const mapTilesFormFields = [
@@ -23,35 +23,25 @@ export const renderMapTilesSection = (modalContent) => {
     const form = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
     modalContent.appendChild(form);
 
-    setupMapTilesListeners(form);
-    return form;
-};
-
-const setupMapTilesListeners = (formRoot) => {
-    const tilePresetSel = $('#tile-preset-sel', formRoot);
-    const tileUrlIn = $('#tile-url-in', formRoot);
-    const appState = appStore.get();
+    const tilePresetSel = $('#tile-preset-sel', form);
+    const tileUrlIn = $('#tile-url-in', form);
 
     tilePresetSel.value = appState.settings.tilePreset;
 
     tilePresetSel.onchange = () => {
         const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === tilePresetSel.value);
-        if (selectedPreset) {
-            tileUrlIn.value = selectedPreset.url;
-        } else {
-            tileUrlIn.value = '';
-        }
+        tileUrlIn.value = selectedPreset?.url || '';
     };
 
-    $('#save-tile-btn', formRoot).onclick = withToast(async () => {
+    $('#save-tile-btn', form).onclick = withToast(async () => {
         const selectedPresetName = tilePresetSel.value;
         const customUrl = tileUrlIn.value.trim();
 
-        if (!isValidUrl(customUrl)) {
-            throw new Error("Invalid tile URL.");
-        }
+        if (!isValidUrl(customUrl)) throw new Error("Invalid tile URL.");
 
         await confSvc.setTilePreset(selectedPresetName, customUrl);
         mapSvc.updTile(customUrl);
     }, "Map tile settings saved.", "Error saving map tile settings");
+
+    return form;
 };

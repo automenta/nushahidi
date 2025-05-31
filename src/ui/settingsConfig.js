@@ -14,7 +14,7 @@ const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, war
         return false;
     }
     try {
-        if (itemExistsChecker && itemExistsChecker(inputValue)) {
+        if (itemExistsChecker?.(inputValue)) {
             showToast(warningMsg || "Item already exists.", 'info');
             return false;
         }
@@ -45,8 +45,8 @@ const addCategoryLogic = createAddLogicHandler(
 
 const addFocusTagLogic = createAddLogicHandler(
     async tag => {
-        if (!tag.startsWith('#')) tag = '#' + tag;
-        await await confSvc.setFocusTags([...appStore.get().focusTags, {tag, active: false}]);
+        tag = tag.startsWith('#') ? tag : '#' + tag;
+        await confSvc.setFocusTags([...appStore.get().focusTags, {tag, active: false}]);
     },
     tag => appStore.get().focusTags.some(t => t.tag === (tag.startsWith('#') ? tag : '#' + tag)),
     "Focus tag added.",
@@ -145,10 +145,10 @@ export const settingsSections = [
             onClick: t => {
                 const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
                 confSvc.setFocusTags(updatedTags);
-                if (t.active && updatedTags.length > 0) {
+                if (t.active && updatedTags.length) {
                     confSvc.setCurrentFocusTag(updatedTags[0].tag);
                     updatedTags[0].active = true;
-                } else if (updatedTags.length === 0) {
+                } else if (!updatedTags.length) {
                     confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
                     confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
                 }
@@ -176,10 +176,7 @@ export const settingsSections = [
         actionsConfig: [{
             label: 'Remove',
             className: 'remove-category-btn',
-            onClick: c => {
-                const updatedCats = appStore.get().settings.cats.filter(cat => cat !== c);
-                confSvc.setCats(updatedCats);
-            },
+            onClick: c => confSvc.setCats(appStore.get().settings.cats.filter(cat => cat !== c)),
             confirm: { title: 'Remove Category', message: 'Are you sure you want to remove this category?' }
         }],
         itemWrapperClass: 'category-entry',

@@ -1,21 +1,19 @@
 import {appStore} from './store.js';
 import {confSvc, dbSvc, idSvc, mapSvc, nostrSvc, offSvc} from './services.js';
 import {initUI} from './ui.js';
-import {$} from './utils.js'; // Added $ import
+import {$} from './utils.js';
 
 async function setupServiceWorker() {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js', { type: 'module' }) // Added { type: 'module' }
+            navigator.serviceWorker.register('/sw.js', { type: 'module' })
                 .then(registration => {
                     registration.onupdatefound = () => {
                         const installingWorker = registration.installing;
                         if (installingWorker) {
                             installingWorker.onstatechange = () => {
                                 if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    if (confirm("New version available. Refresh?")) {
-                                        window.location.reload();
-                                    }
+                                    if (confirm("New version available. Refresh?")) window.location.reload();
                                 }
                             };
                         }
@@ -32,14 +30,11 @@ async function initializeApplication() {
         await confSvc.load();
         await idSvc.init();
 
-        if (!mapSvc.init('map-container')) {
-            $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
-        }
+        if (!mapSvc.init('map-container')) $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
 
         initUI();
 
-        const cachedReports = await dbSvc.getAllReps();
-        appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
+        appStore.set({ reports: (await dbSvc.getAllReps()).sort((a, b) => b.at - a.at) });
 
         nostrSvc.refreshSubs();
         offSvc.setupSyncLs();
