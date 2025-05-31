@@ -50,7 +50,7 @@ export function FilterControls(containerElement) {
             type: 'select',
             id: 'filter-category',
             name: 'filterCategory',
-            options: [{ value: '', label: 'All' }, ...appStore.get().settings.cats.map(cat => ({ value: cat, label: cat }))]
+            options: [{ value: '', label: 'All' }, ...(appStore.get().settings?.cats || []).map(cat => ({ value: cat, label: cat }))]
         },
         { label: 'Author (npub/hex):', type: 'text', id: 'filter-author', name: 'filterAuthor', placeholder: 'Author pubkey' },
         { label: 'From:', type: 'datetime-local', id: 'filter-time-start', name: 'filterTimeStart' },
@@ -107,7 +107,7 @@ export function FilterControls(containerElement) {
         followedOnlyFilter: appState.ui.followedOnlyFilter
     };
 
-    containerElement.innerHTML = ''; // Clear existing content
+    containerElement.innerHTML = '';
     const filterForm = renderForm(filterFormFields, initialFilterData, { id: 'filter-form' });
     containerElement.appendChild(filterForm);
 
