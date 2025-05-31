@@ -1,6 +1,3 @@
-import {appStore} from './store.js';
-import {showToast} from './utils.js';
-
 export const withLoading = fn => async (...args) => {
     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
     try {

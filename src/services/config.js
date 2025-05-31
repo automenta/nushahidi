@@ -1,9 +1,9 @@
-import {appStore} from '../store.js';
-import {C} from '../utils.js';
-import {dbSvc} from './db.js';
+import { appStore } from '../store.js';
+import { dbSvc } from './db.js';
+import { C } from '../utils.js';
 
 const getInitialSettings = () => ({
-    rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),
+    rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?' })),
     tileUrl: C.TILE_SERVER_DEFAULT,
     tilePreset: 'OpenStreetMap',
     focusTags: [{ tag: C.FOCUS_TAG_DEFAULT, active: true }],
@@ -16,7 +16,7 @@ const getInitialSettings = () => ({
 });
 
 const migrateRelaySettings = currentSettings => {
-    currentSettings.rls = currentSettings.rls || C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null }));
+    currentSettings.rls = currentSettings.rls || C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?' }));
     currentSettings.rls.forEach(r => {
         r.status = r.status ?? '?';
         r.nip11 = r.nip11 ?? null;
@@ -42,7 +42,7 @@ const migrateTileSettings = currentSettings => {
 
 const updateFollowedPubkeysInDb = async newFollowed => {
     const currentFollowed = await dbSvc.getFollowedPubkeys();
-    for (const fp of newFollowed) if (!currentFollowed.some(cf => cf.pk === fp.pk)) await dbSvc.addFollowedPubkey(fp.pk);
+    for (const fp of newFollowed) if (!currentFollowed.some(cf => cf.pk === fp.pk)) await dbSvc.addFollowedPubkey(fp);
     for (const cfp of currentFollowed) if (!newFollowed.some(nfp => nfp.pk === cfp.pk)) await dbSvc.rmFollowedPubkey(cfp.pk);
 };
 
@@ -56,18 +56,20 @@ const applySettingsToStore = (settings, followedPubkeys) => {
         relays: updatedRelays,
         focusTags: updatedFocusTags,
         currentFocusTag,
-        followedPubkeys: followedPubkeys || [],
         settings: {
             ...s.settings,
+            rls: updatedRelays,
+            focusTags: updatedFocusTags,
             tileUrl,
             tilePreset,
-            cats: settings.cats,
-            mute: settings.mute,
-            imgHost: settings.imgH,
-            nip96Host: settings.nip96H,
-            nip96Token: settings.nip96T
+            cats: settings.cats || getInitialSettings().cats,
+            mute: settings.mute || getInitialSettings().mute,
+            id: settings.id || getInitialSettings().id,
+            imgH: settings.imgH || getInitialSettings().imgH,
+            nip96H: settings.nip96H || getInitialSettings().nip96H,
+            nip96T: settings.nip96T || getInitialSettings().nip96T
         },
-        user: settings.id ? { pk: settings.id.pk, authM: settings.id.authM } : null
+        followedPubkeys: followedPubkeys || []
     }));
 };
 
@@ -94,11 +96,7 @@ export const confSvc = {
         const m = appStore.get().settings.mute;
         if (!m.includes(pk)) confSvc.save({ mute: [...m, pk] });
     },
-    rmMute: pk => confSvc.save({ mute: appStore.get().settings.mute.filter(p => p !== pk) }),
-    saveId: id => confSvc.save({ id }),
-    getId: async () => (await dbSvc.loadSetts())?.id,
-    clearId: () => confSvc.save({ id: null }),
-    setTileUrl: url => confSvc.save({ tileUrl: url, tilePreset: 'Custom' }),
+    rmMute: pk => confSvc.save({ mute: appStore.get().settings.mute.filter(mpk => mpk !== pk) }),
     setTilePreset: (preset, url) => confSvc.save({ tilePreset: preset, tileUrl: url }),
     getTileServer: () => appStore.get().settings.tileUrl,
     getCurrentFocusTag: () => appStore.get().currentFocusTag,
@@ -109,4 +107,7 @@ export const confSvc = {
     },
     rmFollowed: pk => confSvc.save({ followedPubkeys: appStore.get().followedPubkeys.filter(fp => fp.pk !== pk) }),
     setFollowedPubkeys: f => confSvc.save({ followedPubkeys: f }),
+    getId: () => appStore.get().settings.id,
+    setId: id => confSvc.save({ id }),
+    clearId: () => confSvc.save({ id: null })
 };

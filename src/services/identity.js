@@ -1,14 +1,9 @@
-import {
-    generateSecretKey as genSk,
-    getPublicKey as getPk,
-    finalizeEvent as signEvNostr
-} from 'nostr-tools/pure';
-import { nip19 } from 'nostr-tools';
-import {appStore} from '../store.js';
-import {decrypt, encrypt, isNostrId, nsecToHex, showToast} from '../utils.js';
-import {showPassphraseModal} from '../ui/modals.js';
-import {withLoading, withToast} from '../decorators.js';
-import {confSvc} from './config.js';
+import { SimplePool, generatePrivateKey, getPublicKey, signEvent as signEvNostr } from 'nostr-tools';
+import { encrypt, decrypt, nsecToHex, npubToHex, showToast } from '../utils.js';
+import { appStore } from '../store.js';
+import { confSvc } from './config.js';
+import { withLoading, withToast } from '../decorators.js';
+import { showPassphraseModal } from '../ui/modals.js';
 
 let _locSk = null;
 
@@ -22,84 +17,76 @@ export const idSvc = {
         if (!pubkey) return null;
 
         const identity = { pk: pubkey, authM: 'nip07' };
-        await confSvc.saveId(identity);
         appStore.set({ user: identity });
-        return pubkey;
-    }, "NIP-07 connected successfully!", "NIP-07 connection error")),
+        confSvc.setId(identity);
+        showToast("NIP-07 connected!", 'success');
+        return identity;
+    }, null, "NIP-07 connection failed")),
 
-    newProf: withLoading(withToast(async passphrase => {
-        if (passphrase?.length < 8) {
-            showToast("Passphrase too short (min 8 chars).", 'warning');
-            return null;
-        }
-        const sk = genSk();
-        const pk = getPk(sk);
-        const encryptedSk = await encrypt(sk, passphrase);
-        const identity = { pk, authM: 'local', eSk: encryptedSk };
-        await confSvc.saveId(identity);
-        appStore.set({ user: { pk, authM: 'local' } });
+    async newProf(passphrase) {
+        const sk = generatePrivateKey();
+        const pk = getPublicKey(sk);
+        const eSk = await encrypt(sk, passphrase);
+        const identity = { pk, eSk, authM: 'local' };
+        appStore.set({ user: identity });
+        confSvc.setId(identity);
         _locSk = sk;
-        showToast(`Profile created! Pubkey: ${nip19.npubEncode(pk)}.`, 'success');
-        showToast(`CRITICAL: Backup your private key (nsec)!`, 'warning', 0, nip19.nsecEncode(sk));
-        return { pk, sk };
-    }, null, "Profile creation error")),
+        showToast("New profile created! Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.", 'critical-warning', 0, nip19.nsecEncode(sk));
+        return identity;
+    },
 
-    impSk: withLoading(withToast(async (skInput, passphrase) => {
-        if (passphrase?.length < 8) {
-            showToast("Passphrase too short (min 8 chars).", 'warning');
-            return null;
-        }
-        const skHex = nsecToHex(skInput);
-        if (!isNostrId(skHex)) throw new Error("Invalid Nostr private key format.");
+    async impSk(privateKey, passphrase) {
+        const sk = nsecToHex(privateKey);
+        const pk = getPublicKey(sk);
+        const eSk = await encrypt(sk, passphrase);
+        const identity = { pk, eSk, authM: 'import' };
+        appStore.set({ user: identity });
+        confSvc.setId(identity);
+        _locSk = sk;
+        showToast("Private key imported successfully!", 'success');
+        return identity;
+    },
 
-        const pk = getPk(skHex);
-        const encryptedSk = await encrypt(skHex, passphrase);
-        const identity = { pk, authM: 'import', eSk: encryptedSk };
-        await confSvc.saveId(identity);
-        appStore.set({ user: { pk, authM: 'import' } });
-        _locSk = skHex;
-        return { pk, sk: skHex };
-    }, "Private key imported successfully.", "Key import error")),
-
-    async getSk(promptPassphrase = true) {
+    async getSk(promptPassphrase = true, passphrase = null) {
         const user = appStore.get().user;
         if (!user || user.authM === 'nip07') return null;
         if (_locSk) return _locSk;
 
         const identity = await confSvc.getId();
-        if (!identity?.eSk || !promptPassphrase) return null;
+        if (!identity?.eSk) return null;
 
-        const passphrase = await showPassphraseModal("Decrypt Private Key", "Enter your passphrase to decrypt your private key:");
-        if (!passphrase) {
-            showToast("Decryption cancelled.", 'info');
+        let currentPassphrase = passphrase;
+        if (!currentPassphrase && promptPassphrase) {
+            currentPassphrase = await showPassphraseModal("Decrypt Private Key", "Enter your passphrase to decrypt your private key.");
+        }
+        if (!currentPassphrase) return null;
+
+        try {
+            _locSk = await decrypt(identity.eSk, currentPassphrase);
+            showToast("Private key decrypted.", 'info');
+            return _locSk;
+        } catch (e) {
+            showToast("Incorrect passphrase.", 'error');
             return null;
         }
-        return withToast(async () => {
-            const decryptedSk = await decrypt(identity.eSk, passphrase);
-            _locSk = decryptedSk;
-            return decryptedSk;
-        }, null, "Decryption failed. Incorrect passphrase?")();
     },
 
-    chgPass: withLoading(withToast(async (oldPassphrase, newPassphrase) => {
-        const identity = await confSvc.getId();
-        if (!identity?.eSk || !['local', 'import'].includes(identity.authM)) throw new Error("No local key to change passphrase for.");
-        
-        const decryptedSk = await decrypt(identity.eSk, oldPassphrase);
-        if (!decryptedSk) throw new Error("Old passphrase incorrect.");
-
-        const newEncryptedSk = await encrypt(decryptedSk, newPassphrase);
-        await confSvc.saveId({ ...identity, eSk: newEncryptedSk });
-        _locSk = decryptedSk;
-    }, "Passphrase changed successfully.", "Passphrase change failed")),
+    async chgPass(oldPassphrase, newPassphrase) {
+        const user = appStore.get().user;
+        if (!user || user.authM === 'nip07') throw new Error("Cannot change passphrase for NIP-07 identity.");
+        const sk = await this.getSk(false, oldPassphrase);
+        if (!sk) throw new Error("Incorrect old passphrase or private key not available.");
+        const eSk = await encrypt(sk, newPassphrase);
+        await confSvc.setId({ ...user, eSk });
+        showToast("Passphrase changed successfully!", 'success');
+    },
 
     logout() {
         _locSk = null;
         confSvc.clearId();
+        appStore.set({ user: null });
         showToast("Logged out successfully.", 'info');
     },
-
-    currU: () => appStore.get().user,
 
     async signEv(event) {
         const user = appStore.get().user;
@@ -120,10 +107,5 @@ export const idSvc = {
         const sk = await idSvc.getSk(true);
         if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
         return signEvNostr(eventTemplate, sk);
-    },
-
-    async init() {
-        const id = await confSvc.getId();
-        if (id) appStore.set({ user: { pk: id.pk, authM: id.authM } });
-    },
+    }
 };

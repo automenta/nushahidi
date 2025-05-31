@@ -1,4 +1,4 @@
-import {C, showToast} from '../utils.js';
+import { C } from '../utils.js';
 
 let _db;
 
@@ -18,8 +18,11 @@ const getDbStore = async (storeName, mode = 'readonly') => {
                     [C.STORE_DRAWN_SHAPES]: { keyPath: 'id' },
                     [C.STORE_FOLLOWED_PUBKEYS]: { keyPath: 'pk' }
                 };
-                for (const store of Object.keys(storeConfigs)) {
-                    if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, storeConfigs[store]);
+
+                for (const storeName in storeConfigs) {
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        db.createObjectStore(storeName, storeConfigs[storeName]);
+                    }
                 }
             };
         });
@@ -45,19 +48,13 @@ export const dbSvc = {
     getProf: createDbStoreCrud(C.STORE_PROFILES).get,
     getAllProfiles: createDbStoreCrud(C.STORE_PROFILES).getAll,
     addProf: createDbStoreCrud(C.STORE_PROFILES).add,
-    rmProf: createDbStoreCrud(C.STORE_PROFILES).rm,
-    clearProfiles: createDbStoreCrud(C.STORE_PROFILES).clear,
 
-    getSettings: createDbStoreCrud(C.STORE_SETTINGS).get,
-    getAllSettings: createDbStoreCrud(C.STORE_SETTINGS).getAll,
-    addSettings: createDbStoreCrud(C.STORE_SETTINGS).add,
-    rmSettings: createDbStoreCrud(C.STORE_SETTINGS).rm,
-    clearSettings: createDbStoreCrud(C.STORE_SETTINGS).clear,
+    saveSetts: async s => (await getDbStore(C.STORE_SETTINGS, 'readwrite')).put({ id: 'appSettings', ...s }),
+    loadSetts: async () => (await getDbStore(C.STORE_SETTINGS)).get('appSettings'),
 
     getOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).getAll,
     addOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).add,
     rmOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).rm,
-    clearOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).clear,
 
     getDrawnShape: createDbStoreCrud(C.STORE_DRAWN_SHAPES).get,
     getAllDrawnShapes: createDbStoreCrud(C.STORE_DRAWN_SHAPES).getAll,
@@ -69,31 +66,4 @@ export const dbSvc = {
     addFollowedPubkey: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).add,
     rmFollowedPubkey: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).rm,
     clearFollowedPubkeys: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).clear,
-
-    saveSetts: async s => (await getDbStore(C.STORE_SETTINGS, 'readwrite')).put({ id: 'appSettings', ...s }),
-    loadSetts: async () => (await getDbStore(C.STORE_SETTINGS)).get('appSettings'),
-
-    async pruneDb() {
-        const now = Date.now();
-
-        const allReports = await this.getAllReps();
-        if (allReports.length > C.DB_PRUNE_REPORTS_MAX) {
-            const toDelete = allReports.sort((a, b) => b.at - a.at).slice(C.DB_PRUNE_REPORTS_MAX);
-            const store = await getDbStore(C.STORE_REPORTS, 'readwrite');
-            for (const rep of toDelete) await store.delete(rep.id);
-            showToast(`Pruned ${toDelete.length} old reports.`, 'info');
-        }
-
-        const rawProfiles = await this.getAllProfiles();
-        const allProfiles = Array.isArray(rawProfiles) ? rawProfiles : [];
-        const profileStore = await getDbStore(C.STORE_PROFILES, 'readwrite');
-        let profilesDeleted = 0;
-        for (const prof of allProfiles) {
-            if (prof.fetchedAt && (now - prof.fetchedAt) > (C.DB_PRUNE_PROFILES_MAX_AGE_DAYS * 24 * 60 * 60 * 1000)) {
-                await profileStore.delete(prof.pk);
-                profilesDeleted++;
-            }
-        }
-        if (profilesDeleted > 0) showToast(`Pruned ${profilesDeleted} old profiles.`, 'info');
-    }
 };
