@@ -1,6 +1,5 @@
-import { appStore } from '../store.js';
-import { $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
-import { showReportDetails } from './reportDetails.js';
+import {$, createEl, formatNpubShort, sanitizeHTML} from '../utils.js';
+import {showReportDetails} from './reportDetails.js';
 
 const renderReportCard = report => {
     const summary = report.sum || (report.ct ? report.ct.substring(0, 100) + '...' : 'N/A');

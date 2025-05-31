@@ -1,9 +1,9 @@
-import { appStore } from '../store.js';
-import { mapSvc, imgSvc, nostrSvc } from '../services.js';
-import { C, $, createEl, sanitizeHTML, geohashEncode, showToast, generateUUID, processImageFile } from '../utils.js';
-import { renderForm, renderList } from './forms.js';
-import { createModalWrapper, showModal, hideModal } from './modals.js';
-import { withLoading, withToast } from '../decorators.js';
+import {appStore} from '../store.js';
+import {imgSvc, mapSvc, nostrSvc} from '../services.js';
+import {$, C, createEl, generateUUID, geohashEncode, processImageFile, sanitizeHTML, showToast} from '../utils.js';
+import {renderForm, renderList} from './forms.js';
+import {createModalWrapper, hideModal, showModal} from './modals.js';
+import {withLoading, withToast} from '../decorators.js';
 
 const REPORT_FORM_FIELDS = (categories, initialFormData, updateImagePreview, updateLocationDisplay) => [
     { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },

@@ -1,6 +1,6 @@
-import { appStore } from '../store.js';
-import { showToast } from '../utils.js';
-import { dbSvc } from './db.js';
+import {appStore} from '../store.js';
+import {showToast} from '../utils.js';
+import {dbSvc} from './db.js';
 
 export const offSvc = {
     async procQ() {

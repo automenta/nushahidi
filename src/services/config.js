@@ -1,6 +1,6 @@
-import { appStore } from '../store.js';
-import { C } from '../utils.js';
-import { dbSvc } from './db.js';
+import {appStore} from '../store.js';
+import {C} from '../utils.js';
+import {dbSvc} from './db.js';
 
 const getInitialSettings = () => ({
     rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),

@@ -1,9 +1,9 @@
-import { nip19 } from 'nostr-tools';
-import { appStore } from '../../store.js';
-import { idSvc } from '../../services.js';
-import { $, showToast } from '../../utils.js';
-import { withLoading, withToast } from '../../decorators.js';
-import { renderForm } from '../forms.js';
+import {nip19} from 'nostr-tools';
+import {appStore} from '../../store.js';
+import {idSvc} from '../../services.js';
+import {$, showToast} from '../../utils.js';
+import {withLoading, withToast} from '../../decorators.js';
+import {renderForm} from '../forms.js';
 
 export const renderKeyManagementSection = (modalContent) => {
     const appState = appStore.get();

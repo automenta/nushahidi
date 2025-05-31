@@ -1,5 +1,4 @@
-import { appStore } from '../store.js';
-import { C, showToast } from '../utils.js';
+import {C, showToast} from '../utils.js';
 
 let _db;
 

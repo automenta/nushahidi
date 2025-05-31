@@ -1,9 +1,9 @@
-import { point, booleanPointInPolygon } from '@turf/turf';
-import { appStore } from '../store.js';
-import { mapSvc, nostrSvc } from '../services.js';
-import { C, $, createEl, sanitizeHTML, debounce, npubToHex } from '../utils.js';
-import { renderForm } from './forms.js';
-import { renderReportList } from './reportList.js';
+import {booleanPointInPolygon, point} from '@turf/turf';
+import {appStore} from '../store.js';
+import {mapSvc, nostrSvc} from '../services.js';
+import {$, C, debounce, npubToHex} from '../utils.js';
+import {renderForm} from './forms.js';
+import {renderReportList} from './reportList.js';
 
 const filterFormFields = [
     { type: 'h4', content: ['Filter Reports'] },
@@ -45,20 +45,15 @@ const matchesSearchQuery = (report, searchQuery) => {
 };
 
 const matchesCategory = (report, categoryFilter) => {
-    if (!categoryFilter) return true;
-    return report.cat.includes(categoryFilter);
+    return categoryFilter ? report.cat.includes(categoryFilter) : true;
 };
 
 const matchesAuthor = (report, authorFilter) => {
-    if (!authorFilter) return true;
-    const authorHex = npubToHex(authorFilter);
-    return report.pk === authorHex;
+    return authorFilter ? report.pk === npubToHex(authorFilter) : true;
 };
 
 const matchesTimeRange = (report, timeStart, timeEnd) => {
-    if (timeStart && report.at < timeStart) return false;
-    if (timeEnd && report.at > timeEnd) return false;
-    return true;
+    return !(timeStart && report.at < timeStart) ? !(timeEnd && report.at > timeEnd) : false;
 };
 
 const matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
@@ -66,17 +61,14 @@ const matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
     if (!report.lat || !report.lon) return false;
 
     const reportPoint = point([report.lon, report.lat]);
-    for (const shape of drawnShapes) {
-        if (booleanPointInPolygon(reportPoint, shape)) {
+    for (const shape of drawnShapes)
+        if (booleanPointInPolygon(reportPoint, shape))
             return true;
-        }
-    }
     return false;
 };
 
 const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => {
-    if (!followedOnlyFilter) return true;
-    return followedPubkeys.map(f => f.pk).includes(report.pk);
+    return followedOnlyFilter ? followedPubkeys.map(f => f.pk).includes(report.pk) : true;
 };
 
 export const applyAllFilters = () => {

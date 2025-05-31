@@ -1,8 +1,7 @@
-import { C, createEl, sanitizeHTML, showToast } from '../../utils.js';
-import { appStore } from '../../store.js';
-import { dbSvc, nostrSvc } from '../../services.js';
-import { withLoading, withToast } from '../../decorators.js';
-import { renderList } from '../forms.js';
+import {C, createEl, sanitizeHTML} from '../../utils.js';
+import {dbSvc, nostrSvc} from '../../services.js';
+import {withLoading, withToast} from '../../decorators.js';
+import {renderList} from '../forms.js';
 
 export const getOfflineQueueEventType = kind => {
     switch (kind) {
@@ -31,7 +30,7 @@ export const offlineQueueActionsConfig = modalContent => [
         onClick: withLoading(withToast(async item => {
             await nostrSvc.pubEv(item.event);
             await dbSvc.rmOfflineQ(item.qid);
-            renderOfflineQueue(modalContent);
+            await renderOfflineQueue(modalContent);
         }, null, "Error retrying event")),
     },
     {
@@ -39,7 +38,7 @@ export const offlineQueueActionsConfig = modalContent => [
         className: 'remove-offline-q-btn',
         onClick: withLoading(withToast(async item => {
             await dbSvc.rmOfflineQ(item.qid);
-            renderOfflineQueue(modalContent);
+            await renderOfflineQueue(modalContent);
         }, null, "Error deleting event")),
     }
 ];

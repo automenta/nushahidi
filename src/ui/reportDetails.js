@@ -1,13 +1,13 @@
-import { marked } from 'marked';
-import { appStore } from '../store.js';
-import { nostrSvc, confSvc, mapSvc } from '../services.js';
-import { C, $, $$, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast } from '../utils.js';
-import { showConfirmModal, hideModal } from './modals.js';
-import { renderForm } from './forms.js';
-import { RepFormComp } from './reportForm.js';
-import { applyAllFilters } from './filters.js';
-import { nip19 } from 'nostr-tools';
-import { withLoading, withToast } from '../decorators.js';
+import {marked} from 'marked';
+import {appStore} from '../store.js';
+import {confSvc, nostrSvc} from '../services.js';
+import {$, $$, C, createEl, formatNpubShort, sanitizeHTML, showToast} from '../utils.js';
+import {hideModal, showConfirmModal} from './modals.js';
+import {renderForm} from './forms.js';
+import {RepFormComp} from './reportForm.js';
+import {applyAllFilters} from './filters.js';
+import {nip19} from 'nostr-tools';
+import {withLoading, withToast} from '../decorators.js';
 
 
 async function handleReactionSubmit(event) {
@@ -28,7 +28,7 @@ async function handleReactionSubmit(event) {
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
         const report = appStore.get().reports.find(r => r.id === reportId);
-        if (report) showReportDetails(report);
+        if (report) await showReportDetails(report);
     }, "Reaction sent!", "Error sending reaction", () => {
         btn.disabled = false;
     }))();
@@ -59,7 +59,7 @@ async function handleCommentSubmit(event) {
         });
         form.reset();
         const report = appStore.get().reports.find(r => r.id === reportId);
-        if (report) showReportDetails(report);
+        if (report) await showReportDetails(report);
     }, "Comment sent!", "Error sending comment", () => {
         submitBtn.disabled = false;
     }))();
@@ -149,7 +149,7 @@ async function handleFollowToggle(event) {
     await withLoading(withToast(async () => {
         btn.disabled = true;
         if (isCurrentlyFollowed) {
-            confSvc.rmFollowed(pubkeyToToggle);
+            await confSvc.rmFollowed(pubkeyToToggle);
             return `Unfollowed ${formatNpubShort(pubkeyToToggle)}.`;
         } else {
             confSvc.addFollowed(pubkeyToToggle);
@@ -160,7 +160,7 @@ async function handleFollowToggle(event) {
     }))();
 
     const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
-    if (report) showReportDetails(report);
+    if (report) await showReportDetails(report);
 }
 
 function renderInteractionItem(interaction) {
@@ -276,5 +276,5 @@ export const showReportDetails = async report => {
 
     setupReportDetailEventListeners(report, isAuthor, canFollow, detailContainer, listContainer);
     initializeMiniMap(report);
-    loadAndDisplayInteractions(report.id, report.pk, $(`#interactions-for-${report.id}`, detailContainer));
+    await loadAndDisplayInteractions(report.id, report.pk, $(`#interactions-for-${report.id}`, detailContainer));
 };

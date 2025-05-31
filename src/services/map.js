@@ -1,11 +1,11 @@
 import L from 'leaflet';
 import 'ali.leaflet.markercluster';
 import 'leaflet-draw'; // Imported as a module
-import { appStore } from '../store.js';
-import { C, $, showToast, generateUUID, getGhPrefixes } from '../utils.js';
-import { showConfirmModal } from '../ui/modals.js';
-import { dbSvc } from './db.js';
-import { confSvc } from './config.js';
+import {appStore} from '../store.js';
+import {$, generateUUID, getGhPrefixes, showToast} from '../utils.js';
+import {showConfirmModal} from '../ui/modals.js';
+import {dbSvc} from './db.js';
+import {confSvc} from './config.js';
 
 let _map, _mapRepsLyr = L.layerGroup();
 let _mapTileLyr;

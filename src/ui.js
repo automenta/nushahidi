@@ -1,21 +1,21 @@
-import { appStore } from './store.js';
-import { idSvc, confSvc, mapSvc } from './services.js';
-import { C, $ } from './utils.js';
+import {appStore} from './store.js';
+import {idSvc} from './services.js';
+import {$, C} from './utils.js';
 
-import { showModal, showConfirmModal, hideModal } from './modals.js';
-import { RepFormComp } from './ui/reportForm.js';
-import { AuthModalComp } from './ui/authModal.js';
-import { SettPanComp } from './ui/settingsPanel.js';
-import { initFilterControls } from './ui/filters.js';
+import {hideModal, showConfirmModal, showModal} from './ui/modals.js';
+import {RepFormComp} from './ui/reportForm.js';
+import {AuthModalComp} from './ui/authModal.js';
+import {SettPanComp} from './ui/settingsPanel.js';
+import {initFilterControls} from './ui/filters.js';
 import {
+    handleModalFocus,
+    handleReportAndFilterUpdates,
+    handleReportViewing,
     updateAuthDisplay,
     updateConnectionDisplay,
-    updateSyncDisplay,
-    handleReportAndFilterUpdates,
     updateFilterCategories,
-    handleModalFocus,
-    handleReportViewing,
-    updateGlobalLoadingSpinner
+    updateGlobalLoadingSpinner,
+    updateSyncDisplay
 } from './ui/statusDisplays.js';
 
 const setupOnboardingModal = () => {

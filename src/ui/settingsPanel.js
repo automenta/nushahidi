@@ -1,8 +1,8 @@
-import { createEl } from '../utils.js';
-import { createModalWrapper, hideModal } from './modals.js';
-import { settingsSections } from './settingsConfig.js';
-import { renderConfigurableListSetting } from './settingsUtils.js';
-import { renderOfflineQueue } from './settings/offlineQueue.js';
+import {createEl} from '../utils.js';
+import {createModalWrapper, hideModal} from './modals.js';
+import {settingsSections} from './settingsConfig.js';
+import {renderConfigurableListSetting} from './settingsUtils.js';
+import {renderOfflineQueue} from './settings/offlineQueue.js';
 
 
 const settingsContentRenderer = modalRoot => {

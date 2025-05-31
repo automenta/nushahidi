@@ -1,14 +1,12 @@
-import { C, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast } from '../utils.js';
-import { appStore } from '../store.js';
-import { confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
-import { withLoading, withToast } from '../decorators.js';
-import { showConfirmModal } from './modals.js';
-import { renderKeyManagementSection } from './settings/keyManagement.js';
-import { renderMapTilesSection } from './settings/mapTiles.js';
-import { renderImageHostSection } from './settings/imageHost.js';
-import { setupFollowedListUniqueListeners } from './settingsUtils.js';
-import { renderDataManagementSection } from './settings/dataManagement.js';
-import { offlineQueueItemRenderer, offlineQueueActionsConfig, renderOfflineQueue } from './settings/offlineQueue.js';
+import {C, createEl, formatNpubShort, npubToHex, sanitizeHTML, showToast} from '../utils.js';
+import {appStore} from '../store.js';
+import {confSvc, nostrSvc} from '../services.js';
+import {renderKeyManagementSection} from './settings/keyManagement.js';
+import {renderMapTilesSection} from './settings/mapTiles.js';
+import {renderImageHostSection} from './settings/imageHost.js';
+import {setupFollowedListUniqueListeners} from './settingsUtils.js';
+import {renderDataManagementSection} from './settings/dataManagement.js';
+import {offlineQueueActionsConfig, offlineQueueItemRenderer, renderOfflineQueue} from './settings/offlineQueue.js';
 
 const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async inputValue => {
     if (!inputValue) {
@@ -48,7 +46,7 @@ const addCategoryLogic = createAddLogicHandler(
 const addFocusTagLogic = createAddLogicHandler(
     async tag => {
         if (!tag.startsWith('#')) tag = '#' + tag;
-        confSvc.setFocusTags([...appStore.get().focusTags, { tag, active: false }]);
+        await await confSvc.setFocusTags([...appStore.get().focusTags, {tag, active: false}]);
     },
     tag => appStore.get().focusTags.some(t => t.tag === (tag.startsWith('#') ? tag : '#' + tag)),
     "Focus tag added.",

@@ -1,9 +1,15 @@
-import { nip19, getEventHash as getEvH, signEvent as signEvNostr, generatePrivateKey as genSk, getPublicKey as getPk } from 'nostr-tools';
-import { appStore } from '../store.js';
-import { C, encrypt, decrypt, nsecToHex, isNostrId, showToast } from '../utils.js';
-import { showPassphraseModal } from '../ui/modals.js';
-import { withLoading, withToast } from '../decorators.js';
-import { confSvc } from './config.js';
+import {
+    generateSecretKey as genSk,
+    getEventHash as getEvH,
+    getPublicKey as getPk,
+    nip19,
+    finalizeEvent as signEvNostr
+} from 'nostr-tools';
+import {appStore} from '../store.js';
+import {decrypt, encrypt, isNostrId, nsecToHex, showToast} from '../utils.js';
+import {showPassphraseModal} from '../ui/modals.js';
+import {withLoading, withToast} from '../decorators.js';
+import {confSvc} from './config.js';
 
 let _locSk = null;
 

@@ -1,9 +1,9 @@
-import { appStore } from '../store.js';
-import { confSvc, nostrSvc, dbSvc } from '../services.js';
-import { C, createEl, showToast, npubToHex, formatNpubShort, sanitizeHTML } from '../utils.js';
-import { renderForm, renderList, setupAddRemoveListSection } from '../forms.js';
-import { showConfirmModal } from './modals.js';
-import { withLoading, withToast } from '../decorators.js';
+import {appStore} from '../store.js';
+import {confSvc, nostrSvc} from '../services.js';
+import {createEl, showToast} from '../utils.js';
+import {renderForm, renderList, setupAddRemoveListSection} from './forms.js';
+import {showConfirmModal} from './modals.js';
+import {withLoading, withToast} from '../decorators.js';
 
 export function renderConfigurableListSetting(wrapper, config) {
     wrapper.appendChild(createEl('section', {}, [
@@ -63,7 +63,7 @@ export const setupFollowedListUniqueListeners = (modalContent) => {
             const currentFollowed = appStore.get().followedPubkeys.map(f => f.pk);
             const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({ pk: c.pubkey, followedAt: Date.now() }));
             if (newFollowed.length > 0) {
-                confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
+                await confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
                 return `Imported ${newFollowed.length} contacts from Nostr.`;
             } else {
                 return "No new contacts found to import.";

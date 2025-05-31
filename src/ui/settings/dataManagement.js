@@ -1,9 +1,9 @@
-import { appStore } from '../../store.js';
-import { dbSvc, confSvc } from '../../services.js';
-import { $, showToast } from '../../utils.js';
-import { withLoading, withToast } from '../../decorators.js';
-import { renderForm } from '../forms.js';
-import { showConfirmModal } from '../modals.js';
+import {appStore} from '../../store.js';
+import {confSvc, dbSvc} from '../../services.js';
+import {$, showToast} from '../../utils.js';
+import {withLoading, withToast} from '../../decorators.js';
+import {renderForm} from '../forms.js';
+import {showConfirmModal} from '../modals.js';
 
 export const renderDataManagementSection = (modalContent) => {
     const dataManagementFormFields = [

@@ -1,9 +1,9 @@
-import { relayInit, nip11 } from 'nostr-tools';
-import { appStore } from '../store.js';
-import { C, parseReport, showToast } from '../utils.js';
-import { withLoading, withToast } from '../decorators.js';
-import { dbSvc } from './db.js';
-import { idSvc } from './identity.js';
+import {nip11, relayInit} from 'nostr-tools';
+import {appStore} from '../store.js';
+import {C, parseReport, showToast} from '../utils.js';
+import {withLoading, withToast} from '../decorators.js';
+import {dbSvc} from './db.js';
+import {idSvc} from './identity.js';
 
 let _nostrRlys = new Map(),
     _nostrSubs = new Map();
@@ -39,7 +39,7 @@ const connectRelay = async (url, attempt = 1) => {
             const nip11Doc = await nip11.fetchRelayInformation(relay.url).catch(() => null);
             updRlyStore(relay.url, 'connected', nip11Doc);
             showToast(`Connected to ${url}`, 'success', 2000);
-            nostrSvc.subToReps(relay);
+            await nostrSvc.subToReps(relay);
         });
         relay.on('disconnect', () => {
             updRlyStore(relay.url, 'disconnected');
@@ -247,7 +247,7 @@ export const nostrSvc = {
         appStore.get().relays.forEach(async rConf => {
             if (_nostrRlys.has(rConf.url) && _nostrRlys.get(rConf.url).status === 1) return;
             if (!rConf.read && !rConf.write) return;
-            connectRelay(rConf.url);
+            await connectRelay(rConf.url);
         });
     },
 

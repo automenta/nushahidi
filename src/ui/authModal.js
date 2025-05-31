@@ -1,9 +1,9 @@
-import { appStore } from '../store.js';
-import { idSvc } from '../services.js';
-import { $, createEl, showToast } from '../utils.js';
-import { createModalWrapper, showConfirmModal, hideModal } from './modals.js';
-import { renderForm } from './forms.js';
-import { withLoading } from '../decorators.js';
+import {appStore} from '../store.js';
+import {idSvc} from '../services.js';
+import {$, createEl, showToast} from '../utils.js';
+import {createModalWrapper, hideModal, showConfirmModal} from './modals.js';
+import {renderForm} from './forms.js';
+import {withLoading} from '../decorators.js';
 
 const handleConnectNip07 = withLoading(async () => {
     await idSvc.nip07();
@@ -72,11 +72,10 @@ function setupAuthModalListeners(form) {
 }
 
 export function AuthModalComp() {
-    const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', root => {
-        const form = renderForm(authFormFields, {}, { id: 'auth-form' });
+    return createModalWrapper('auth-modal', 'Nostr Identity', root => {
+        const form = renderForm(authFormFields, {}, {id: 'auth-form'});
         root.appendChild(form);
         setupAuthModalListeners(form);
         return form;
     });
-    return modalContent;
 }

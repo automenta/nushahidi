@@ -1,8 +1,8 @@
-import { appStore } from '../../store.js';
-import { confSvc, mapSvc } from '../../services.js';
-import { C, $, showToast, isValidUrl } from '../../utils.js';
-import { withToast } from '../../decorators.js';
-import { renderForm } from '../forms.js';
+import {appStore} from '../../store.js';
+import {confSvc, mapSvc} from '../../services.js';
+import {$, C, isValidUrl} from '../../utils.js';
+import {withToast} from '../../decorators.js';
+import {renderForm} from '../forms.js';
 
 export const renderMapTilesSection = (modalContent) => {
     const appState = appStore.get();
@@ -51,7 +51,7 @@ const setupMapTilesListeners = (formRoot) => {
             throw new Error("Invalid tile URL.");
         }
 
-        confSvc.setTilePreset(selectedPresetName, customUrl);
+        await confSvc.setTilePreset(selectedPresetName, customUrl);
         mapSvc.updTile(customUrl);
     }, "Map tile settings saved.", "Error saving map tile settings");
 };

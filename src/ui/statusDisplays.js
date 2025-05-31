@@ -1,9 +1,9 @@
-import { appStore } from '../store.js';
-import { dbSvc } from '../services.js';
-import { $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
-import { showReportDetails } from './reportDetails.js';
-import { applyAllFilters } from './filters.js';
-import { showModal } from './modals.js';
+import {appStore} from '../store.js';
+import {dbSvc} from '../services.js';
+import {$, createEl, formatNpubShort, sanitizeHTML} from '../utils.js';
+import {showReportDetails} from './reportDetails.js';
+import {applyAllFilters} from './filters.js';
+import {showModal} from './modals.js';
 
 export const updateAuthDisplay = pk => {
     const authButton = $('#auth-button');

@@ -1,8 +1,8 @@
-import { appStore } from '../../store.js';
-import { confSvc } from '../../services.js';
-import {C, $, showToast, isValidUrl, createEl} from '../../utils.js';
-import { withToast } from '../../decorators.js';
-import { renderForm } from '../forms.js';
+import {appStore} from '../../store.js';
+import {confSvc} from '../../services.js';
+import {$, C, createEl, isValidUrl} from '../../utils.js';
+import {withToast} from '../../decorators.js';
+import {renderForm} from '../forms.js';
 
 export const renderImageHostSection = (modalContent) => {
     const appState = appStore.get();
@@ -71,9 +71,9 @@ const setupImageHostListeners = (modalContent) => {
             if (!isValidUrl(nip96Url)) {
                 throw new Error("Invalid NIP-96 server URL.");
             }
-            confSvc.setImgHost(nip96Url, true, nip96Token);
+            await confSvc.setImgHost(nip96Url, true, nip96Token);
         } else {
-            confSvc.setImgHost(selectedHost, false);
+            await confSvc.setImgHost(selectedHost, false);
         }
     }, "Image host settings saved.", "Error saving image host settings");
 };

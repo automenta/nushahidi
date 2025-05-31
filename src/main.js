@@ -1,7 +1,7 @@
-import { appStore } from './store.js';
-import { confSvc, idSvc, nostrSvc, mapSvc, dbSvc, offSvc } from './services.js';
-import { initUI } from './ui.js';
-import { showToast } from './utils.js';
+import {appStore} from './store.js';
+import {confSvc, dbSvc, idSvc, mapSvc, nostrSvc, offSvc} from './services.js';
+import {initUI} from './ui.js';
+import {showToast} from './utils.js';
 
 async function setupServiceWorker() {
     if ('serviceWorker' in navigator) {

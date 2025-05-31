@@ -1,6 +1,5 @@
-import { createEl, $, sanitizeHTML } from '../utils.js';
-import { showConfirmModal } from './modals.js';
-import { showToast } from '../utils.js';
+import {$, createEl, sanitizeHTML, showToast} from '../utils.js';
+import {showConfirmModal} from './modals.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     const form = createEl('form', { id: formOptions.id || 'dynamic-form' });
