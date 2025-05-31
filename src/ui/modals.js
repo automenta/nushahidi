@@ -59,7 +59,7 @@ export const showModal = (id, focusElId) => {
     const modal = $(`#${id}`);
     if (modal) {
         modal.style.display = 'block';
-        modal.setAttribute('aria-hidden', 'false');
+        modal.removeAttribute('inert'); // Remove inert when showing
         $(focusElId, modal)?.focus();
     }
     appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: id } }));
@@ -69,7 +69,7 @@ export const hideModal = id => {
     const modal = $(`#${id}`);
     if (modal) {
         modal.style.display = 'none';
-        modal.setAttribute('aria-hidden', 'true');
+        modal.setAttribute('inert', ''); // Add inert when hiding
     }
     appStore.set(s => ({ ...s.ui, modalOpen: null }));
 };
