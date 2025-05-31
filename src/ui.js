@@ -1,7 +1,7 @@
 import { marked } from 'marked';
 import { appStore } from './store.js';
 import { mapSvc, idSvc, confSvc, nostrSvc, imgSvc, dbSvc } from './services.js';
-import { C, $, $$, createEl, showModal, hideModal, sanitizeHTML, debounce, geohashEncode, sha256, getImgDims, formatNpubShort, npubToHex, showToast, isValidUrl } from './utils.js';
+import { C, $, $$, createEl, showModal, hideModal, sanitizeHTML, debounce, geohashEncode, sha256, getImgDims, formatNpubShort, npubToHex, showToast, isValidUrl, generateUUID } from './utils.js';
 
 const gE = (id, p = document) => $(id, p); /* gE: getElement */
 const cE = (t, a, c) => createEl(t, a, c); /* cE: createElement */
@@ -251,7 +251,7 @@ async function handleCommentSubmit(event) {
 // ReportForm
 let _repFormRoot, _pFLoc, _uIMeta = []; /* pFLoc: pickedFileLocation, uIMeta: uploadedImageMetadata */
 
-function RepFormComp() {
+function RepFormComp(reportToEdit = null) {
     _repFormRoot = cE('div', { class: 'modal-content' });
     const categories = appStore.get().settings.cats;
 
@@ -259,16 +259,16 @@ function RepFormComp() {
     const createReportFormStructure = () => {
         return [
             cE('span', { class: 'close-btn', innerHTML: '&times;', 'data-modal-id': 'report-form-modal', onclick: () => hideModal('report-form-modal') }),
-            cE('h2', { id: 'report-form-heading', textContent: 'New Report' }),
+            cE('h2', { id: 'report-form-heading', textContent: reportToEdit ? 'Edit Report' : 'New Report' }),
             cE('form', { id: 'nstr-rep-form' }, [
                 cE('label', { for: 'rep-title', textContent: 'Title:' }),
-                cE('input', { type: 'text', id: 'rep-title', name: 'title' }),
+                cE('input', { type: 'text', id: 'rep-title', name: 'title', value: reportToEdit?.title || '' }),
 
                 cE('label', { for: 'rep-sum', textContent: 'Summary:' }),
-                cE('input', { type: 'text', id: 'rep-sum', name: 'summary', required: true }),
+                cE('input', { type: 'text', id: 'rep-sum', name: 'summary', required: true, value: reportToEdit?.sum || '' }),
 
                 cE('label', { for: 'rep-desc', textContent: 'Description (MD):' }),
-                cE('textarea', { id: 'rep-desc', name: 'description', required: true, rows: 3 }),
+                cE('textarea', { id: 'rep-desc', name: 'description', required: true, rows: 3, textContent: reportToEdit?.ct || '' }),
 
                 cE('label', { textContent: 'Location:' }),
                 cE('div', { id: 'map-pick-area' }, ['Selected: ', cE('span', { id: 'pFLoc-coords', textContent: 'None' })]),
@@ -280,29 +280,51 @@ function RepFormComp() {
                 cE('button', { type: 'button', id: 'geocode-address-btn', textContent: 'Geocode Address' }),
 
                 cE('label', { textContent: 'Categories:' }),
-                cE('div', { id: 'cats-cont-form' }, categories.map(cat => cE('label', {}, [cE('input', { type: 'checkbox', name: 'category', value: cat }), ` ${sH(cat)}`]))),
+                cE('div', { id: 'cats-cont-form' }, categories.map(cat => cE('label', {}, [cE('input', { type: 'checkbox', name: 'category', value: cat, checked: reportToEdit?.cat?.includes(cat) || false }), ` ${sH(cat)}`]))),
 
                 cE('label', { for: 'rep-ftags', textContent: 'Add. Tags (comma-sep):' }),
-                cE('input', { type: 'text', id: 'rep-ftags', name: 'freeTags' }),
+                cE('input', { type: 'text', id: 'rep-ftags', name: 'freeTags', value: reportToEdit?.fTags?.join(', ') || '' }),
 
                 cE('label', { for: 'rep-evType', textContent: 'Event Type:' }),
-                cE('select', { id: 'rep-evType', name: 'eventType' }, ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => cE('option', { value: type.toLowerCase(), textContent: type }))),
+                cE('select', { id: 'rep-evType', name: 'eventType' }, ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => cE('option', { value: type.toLowerCase(), textContent: type, selected: reportToEdit?.evType === type.toLowerCase() }))),
 
                 cE('label', { for: 'rep-stat', textContent: 'Status:' }),
-                cE('select', { id: 'rep-stat', name: 'status' }, ['New', 'Active', 'Needs Verification'].map(status => cE('option', { value: status.toLowerCase().replace(' ', '_'), textContent: status }))),
+                cE('select', { id: 'rep-stat', name: 'status' }, ['New', 'Active', 'Needs Verification'].map(status => cE('option', { value: status.toLowerCase().replace(' ', '_'), textContent: status, selected: reportToEdit?.stat === status.toLowerCase().replace(' ', '_') }))),
 
                 cE('label', { for: 'rep-photos', textContent: 'Photos (max 5MB each):' }),
                 cE('input', { type: 'file', id: 'rep-photos', multiple: true, accept: 'image/*' }),
                 cE('div', { id: 'upld-photos-preview' }),
 
                 cE('p', { class: 'warning', textContent: 'Reports are public on Nostr.' }),
-                cE('button', { type: 'submit', textContent: 'Submit' }),
+                cE('button', { type: 'submit', textContent: reportToEdit ? 'Update Report' : 'Submit' }),
                 cE('button', { type: 'button', class: 'secondary', textContent: 'Cancel', onclick: () => hideModal('report-form-modal') })
             ])
         ];
     };
 
     createReportFormStructure().forEach(el => _repFormRoot.appendChild(el));
+
+    // Pre-fill location and images if editing
+    if (reportToEdit) {
+        if (reportToEdit.lat && reportToEdit.lon) {
+            _pFLoc = { lat: reportToEdit.lat, lng: reportToEdit.lon };
+            gE('#pFLoc-coords', _repFormRoot).textContent = `${_pFLoc.lat.toFixed(5)},${_pFLoc.lng.toFixed(5)}`;
+        }
+        if (reportToEdit.imgs && reportToEdit.imgs.length > 0) {
+            _uIMeta = [...reportToEdit.imgs];
+            const previewElement = gE('#upld-photos-preview', _repFormRoot);
+            previewElement.innerHTML = '';
+            _uIMeta.forEach(img => {
+                previewElement.innerHTML += `<p>${sH(img.url.substring(img.url.lastIndexOf('/') + 1))} (existing)</p>`;
+            });
+        }
+    } else {
+        _pFLoc = null;
+        _uIMeta = [];
+        if (gE('#pFLoc-coords', _repFormRoot)) gE('#pFLoc-coords', _repFormRoot).textContent = 'None';
+        if (gE('#upld-photos-preview', _repFormRoot)) gE('#upld-photos-preview', _repFormRoot).innerHTML = '';
+    }
+
 
     // Helper to set up location-related event handlers
     const setupReportFormLocationHandlers = () => {
@@ -355,7 +377,8 @@ function RepFormComp() {
             const files = e.target.files;
             const previewElement = gE('#upld-photos-preview', _repFormRoot);
             previewElement.innerHTML = 'Processing...';
-            _uIMeta = [];
+            // Keep existing images if editing, otherwise clear
+            _uIMeta = reportToEdit ? [...reportToEdit.imgs] : [];
             appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading for image upload
             try {
                 for (const file of files) {
@@ -399,6 +422,7 @@ function RepFormComp() {
                 const lon = _pFLoc.lng;
                 const geohash = geohashEncode(lat, lon);
                 const focusTag = appStore.get().currentFocusTag.substring(1); // Remove '#' prefix
+
                 const tags = [['g', geohash]];
 
                 if (data.title) tags.push(['title', data.title]);
@@ -424,6 +448,11 @@ function RepFormComp() {
 
                 _uIMeta.forEach(img => tags.push(['image', img.url, img.type, img.dim, `ox${img.hHex}`]));
 
+                // NIP-33 d-tag for parameterized replaceable events
+                // If editing, retain the original d-tag. If new, generate a UUID.
+                const dTagValue = reportToEdit?.d || generateUUID();
+                tags.push(['d', dTagValue]);
+
                 const eventData = { kind: C.NOSTR_KIND_REPORT, content: data.description, tags };
 
                 await nostrSvc.pubEv(eventData);
@@ -447,12 +476,6 @@ function RepFormComp() {
     setupReportFormLocationHandlers();
     setupReportFormImageUpload();
     setupReportFormSubmission();
-
-    _pFLoc = null;
-    _uIMeta = [];
-    if (gE('#pFLoc-coords', _repFormRoot)) gE('#pFLoc-coords', _repFormRoot).textContent = 'None';
-    if (gE('#upld-photos-preview', _repFormRoot)) gE('#upld-photos-preview', _repFormRoot).innerHTML = '';
-    if (gE('form', _repFormRoot)) gE('form', _repFormRoot).reset();
 
     return _repFormRoot;
 }
@@ -633,7 +656,7 @@ function SettPanComp() {
                 cE('input', { type: 'file', id: 'imp-setts-file', accept: '.json' })
             ]),
             cE('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' })
-        );
+        ];
         return sections;
     };
 
@@ -1051,7 +1074,12 @@ const showReportDetails = async report => {
     const profile = await nostrSvc.fetchProf(report.pk);
     const authorDisplay = profile?.nip05 ? sH(profile.nip05) : formatNpubShort(report.pk);
 
-    detailContainer.innerHTML = `<button id="back-to-list-btn" class="small-button">&lt; List</button><h2 id="detail-title">${sH(report.title || 'Report')}</h2>
+    const currentUserPk = appStore.get().user?.pk;
+    const isAuthor = currentUserPk && currentUserPk === report.pk;
+
+    detailContainer.innerHTML = `<button id="back-to-list-btn" class="small-button">&lt; List</button>
+    ${isAuthor ? `<button id="edit-report-btn" class="small-button" data-report-id="${sH(report.id)}" style="float:right;">Edit Report</button>` : ''}
+    <h2 id="detail-title">${sH(report.title || 'Report')}</h2>
     <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(report.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a></p>
     <p><strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}</p>
     <p><strong>Summary:</strong> ${sH(report.sum || 'N/A')}</p>
@@ -1064,6 +1092,14 @@ const showReportDetails = async report => {
     detailContainer.style.display = 'block';
     detailContainer.focus();
     gE('#back-to-list-btn', detailContainer).onclick = () => { detailContainer.style.display = 'none'; listContainer.style.display = 'block' };
+
+    if (isAuthor) {
+        gE('#edit-report-btn', detailContainer).onclick = () => {
+            gE('#report-form-modal').innerHTML = '';
+            gE('#report-form-modal').appendChild(RepFormComp(report)); // Pass the report for editing
+            showModal('report-form-modal', 'rep-title');
+        };
+    }
 
     if (report.lat && report.lon && typeof L !== 'undefined') {
         const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);
@@ -1150,7 +1186,7 @@ export function initUI() {
     const initGlobalButtons = () => {
         gE('#create-report-btn').onclick = () => {
             gE('#report-form-modal').innerHTML = '';
-            gE('#report-form-modal').appendChild(RepFormComp());
+            gE('#report-form-modal').appendChild(RepFormComp()); // No report passed for new creation
             showModal('report-form-modal', 'rep-title');
         };
 

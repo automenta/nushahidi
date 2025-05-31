@@ -36,7 +36,7 @@ export const nsecToHex=s=>s.startsWith('nsec')?nip19.decode(s).data:s;
 export const npubToHex=p=>p.startsWith('npub')?nip19.decode(p).data:p;
 export const geohashEncode=(lat,lon,prec=7)=>ngeohash.encode(lat,lon,prec);
 export const geohashDecode=gStr=>ngeohash.decode(gStr);
-export function parseReport(e){const t={id:e.id,pk:e.pubkey,at:e.created_at,tags:e.tags,ct:e.content,title:e.tags.find(t=>t[0]==='title')?.[1]||'',sum:e.tags.find(t=>t[0]==='summary')?.[1]||'',gh:e.tags.find(t=>t[0]==='g')?.[1],cat:e.tags.filter(t=>t[0]==='l'&&t[2]==='report-category').map(t=>t[1]),fTags:e.tags.filter(t=>t[0]==='t').map(t=>t[1]),imgs:e.tags.filter(t=>t[0]==='image').map(tg=>({url:tg[1],type:tg[2],dim:tg[3],hash:tg[4]})),evType:e.tags.find(t=>t[0]==='event_type')?.[1],stat:e.tags.find(t=>t[0]==='status')?.[1]||'new',lat:null,lon:null,interactions:[]};if(t.gh){const{latitude,longitude}=geohashDecode(t.gh);t.lat=latitude;t.lon=longitude}return t}
+export function parseReport(e){const t={id:e.id,pk:e.pubkey,at:e.created_at,tags:e.tags,ct:e.content,title:e.tags.find(t=>t[0]==='title')?.[1]||'',sum:e.tags.find(t=>t[0]==='summary')?.[1]||'',gh:e.tags.find(t=>t[0]==='g')?.[1],cat:e.tags.filter(t=>t[0]==='l'&&t[2]==='report-category').map(t=>t[1]),fTags:e.tags.filter(t=>t[0]==='t').map(t=>t[1]),imgs:e.tags.filter(t=>t[0]==='image').map(tg=>({url:tg[1],type:tg[2],dim:tg[3],hash:tg[4]})),evType:e.tags.find(t=>t[0]==='event_type')?.[1],stat:e.tags.find(t=>t[0]==='status')?.[1]||'new',lat:null,lon:null,interactions:[],d:e.tags.find(t=>t[0]==='d')?.[1]||null};if(t.gh){const{latitude,longitude}=geohashDecode(t.gh);t.lat=latitude;t.lon=longitude}return t}
 export const getGhPrefixes=(b,minP=4,maxP=6)=>{if(!b)return[];const c=b.getCenter(),p=new Set();for(let i=minP;i<=maxP;i++)p.add(ngeohash.encode(c.lat,c.lng,i));return Array.from(p)}
 export const debounce=(fn,dl)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),dl)}};
 export const getImgDims=f=>new Promise((rs,rj)=>{const i=new Image();i.onload=()=>rs({w:i.width,h:i.height});i.onerror=rj;i.src=URL.createObjectURL(f)});
@@ -91,4 +91,16 @@ export const isValidUrl = (string) => {
     } catch (e) {
         return false;
     }
+};
+
+// New: UUID generator for NIP-33 d-tag
+export const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // Fallback for environments without crypto.randomUUID
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 };
