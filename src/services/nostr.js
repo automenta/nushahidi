@@ -32,7 +32,7 @@ const addReportToStoreAndDb = async signedEvent => {
 
 const buildReportFilter = (appState, mapGeohashes) => {
     const focusTag = appState.currentFocusTag;
-    const followedPubkeys = appState.followedPubkeys.map(f => f.pk);
+    const followedPubkeys = Array.isArray(appState.followedPubkeys) ? appState.followedPubkeys.map(f => f.pk) : [];
 
     const filter = { kinds: [C.NOSTR_KIND_REPORT] };
 
