@@ -2,56 +2,71 @@ import { appStore } from '../store.js';
 import { C } from '../utils.js';
 import { dbSvc } from './db.js';
 
+const _getInitialSettings = () => ({
+    rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),
+    tileUrl: C.TILE_SERVER_DEFAULT,
+    tilePreset: 'OpenStreetMap',
+    focusTags: [{ tag: C.FOCUS_TAG_DEFAULT, active: true }],
+    cats: ['Incident', 'Observation', 'Aid'],
+    mute: [],
+    id: null,
+    imgH: C.IMG_UPLOAD_NOSTR_BUILD,
+    nip96H: '',
+    nip96T: ''
+});
+
+const _migrateRelaySettings = (currentSettings) => {
+    currentSettings.rls = currentSettings.rls || C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null }));
+    currentSettings.rls.forEach(r => {
+        if (r.status === undefined) r.status = '?';
+        if (r.nip11 === undefined) r.nip11 = null;
+    });
+    return currentSettings.rls;
+};
+
+const _migrateFocusTags = (currentSettings) => {
+    if (typeof currentSettings.focus === 'string') {
+        const tags = [{ tag: currentSettings.focus, active: true }];
+        delete currentSettings.focus;
+        return tags;
+    } else if (!currentSettings.focusTags || currentSettings.focusTags.length === 0) {
+        return [{ tag: C.FOCUS_TAG_DEFAULT, active: true }];
+    }
+    return currentSettings.focusTags;
+};
+
+const _migrateTileSettings = (currentSettings) => {
+    const tileUrl = currentSettings.tileUrl || currentSettings.tile || C.TILE_SERVER_DEFAULT;
+    const tilePreset = currentSettings.tilePreset || (currentSettings.tile === C.TILE_SERVER_DEFAULT ? 'OpenStreetMap' : 'Custom');
+    delete currentSettings.tile;
+    return { tileUrl, tilePreset };
+};
+
+const _updateFollowedPubkeysInDb = async (newFollowed) => {
+    const currentFollowed = await dbSvc.getFollowedPubkeys();
+
+    for (const fp of newFollowed) {
+        if (!currentFollowed.some(cf => cf.pk === fp.pk)) {
+            await dbSvc.addFollowedPubkey(fp.pk);
+        }
+    }
+    for (const cfp of currentFollowed) {
+        if (!newFollowed.some(nfp => nfp.pk === cfp.pk)) {
+            await dbSvc.rmFollowedPubkey(cfp.pk);
+        }
+    }
+};
+
 export const confSvc = {
     async load() {
         let settings = await dbSvc.loadSetts();
         let followedPubkeys = await dbSvc.getFollowedPubkeys();
 
-        const initializeSettingsDefaults = () => ({
-            rls: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),
-            tileUrl: C.TILE_SERVER_DEFAULT,
-            tilePreset: 'OpenStreetMap',
-            focusTags: [{ tag: C.FOCUS_TAG_DEFAULT, active: true }],
-            cats: ['Incident', 'Observation', 'Aid'],
-            mute: [],
-            id: null,
-            imgH: C.IMG_UPLOAD_NOSTR_BUILD,
-            nip96H: '',
-            nip96T: ''
-        });
+        settings = settings || _getInitialSettings();
 
-        const migrateRelaySettings = (currentSettings) => {
-            currentSettings.rls = currentSettings.rls || C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null }));
-            currentSettings.rls.forEach(r => {
-                if (r.status === undefined) r.status = '?';
-                if (r.nip11 === undefined) r.nip11 = null;
-            });
-            return currentSettings.rls;
-        };
-
-        const migrateFocusTags = (currentSettings) => {
-            if (typeof currentSettings.focus === 'string') {
-                const tags = [{ tag: currentSettings.focus, active: true }];
-                delete currentSettings.focus;
-                return tags;
-            } else if (!currentSettings.focusTags || currentSettings.focusTags.length === 0) {
-                return [{ tag: C.FOCUS_TAG_DEFAULT, active: true }];
-            }
-            return currentSettings.focusTags;
-        };
-
-        const migrateTileSettings = (currentSettings) => {
-            const tileUrl = currentSettings.tileUrl || currentSettings.tile || C.TILE_SERVER_DEFAULT;
-            const tilePreset = currentSettings.tilePreset || (currentSettings.tile === C.TILE_SERVER_DEFAULT ? 'OpenStreetMap' : 'Custom');
-            delete currentSettings.tile;
-            return { tileUrl, tilePreset };
-        };
-
-        settings = settings || initializeSettingsDefaults();
-
-        const updatedRelays = migrateRelaySettings(settings);
-        const updatedFocusTags = migrateFocusTags(settings);
-        const { tileUrl, tilePreset } = migrateTileSettings(settings);
+        const updatedRelays = _migrateRelaySettings(settings);
+        const updatedFocusTags = _migrateFocusTags(settings);
+        const { tileUrl, tilePreset } = _migrateTileSettings(settings);
         const currentFocusTag = updatedFocusTags.find(t => t.active)?.tag || C.FOCUS_TAG_DEFAULT;
 
         followedPubkeys = followedPubkeys || [];
@@ -82,19 +97,7 @@ export const confSvc = {
         await dbSvc.saveSetts(updatedSettings);
 
         if (partialSettings.followedPubkeys !== undefined) {
-            const currentFollowed = await dbSvc.getFollowedPubkeys();
-            const newFollowed = partialSettings.followedPubkeys;
-
-            for (const fp of newFollowed) {
-                if (!currentFollowed.some(cf => cf.pk === fp.pk)) {
-                    await dbSvc.addFollowedPubkey(fp.pk);
-                }
-            }
-            for (const cfp of currentFollowed) {
-                if (!newFollowed.some(nfp => nfp.pk === cfp.pk)) {
-                    await dbSvc.rmFollowedPubkey(cfp.pk);
-                }
-            }
+            await _updateFollowedPubkeysInDb(partialSettings.followedPubkeys);
         }
 
         const appStoreUpdate = {

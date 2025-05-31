@@ -63,6 +63,185 @@ const _connectRelay = async (url, attempt = 1) => {
     }
 };
 
+const _buildReportFilter = (appState, relayConfig, mapGeohashes) => {
+    const focusTag = appState.currentFocusTag;
+    const followedPubkeys = appState.followedPubkeys.map(f => f.pk);
+
+    const filter = { kinds: [C.NOSTR_KIND_REPORT] };
+
+    if (focusTag && focusTag !== C.FOCUS_TAG_DEFAULT) {
+        filter['#t'] = [focusTag.substring(1)];
+    }
+
+    if (appState.ui.followedOnlyFilter && followedPubkeys.length > 0) {
+        filter.authors = followedPubkeys;
+    }
+
+    if (mapGeohashes?.length > 0) {
+        if (relayConfig.nip11?.supported_nips?.includes(52)) {
+            filter['#g'] = mapGeohashes;
+        } else {
+            filter['#g'] = [mapGeohashes[0]];
+        }
+    }
+    return filter;
+};
+
+const _handleSubscriptionEvent = async (event) => {
+    const report = parseReport(event);
+    if (appStore.get().settings.mute.includes(report.pk)) return;
+    await addReportToStoreAndDb(event);
+};
+
+const _publishEventOnline = async (signedEvent) => {
+    try {
+        const response = await fetch('/api/publishNostrEvent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(signedEvent)
+        });
+
+        if (!response.ok && response.status !== 503) {
+            console.error("Publish Error (SW Proxy):", response.statusText);
+            showToast(`Publish failed: ${response.statusText}`, 'error');
+        } else if (response.status === 503) {
+            console.log("Publish deferred by Service Worker (offline or network issue).");
+            showToast("Publish deferred (offline or network issue).", 'info');
+        } else {
+            showToast("Event published successfully!", 'success');
+        }
+    } catch (e) {
+        console.warn("Publish Network Error, Service Worker should handle:", e);
+        showToast(`Network error during publish: ${e.message}. Will retry offline.`, 'warning');
+    }
+};
+
+const _queueEventOffline = async (signedEvent) => {
+    await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
+    showToast("Offline. Event added to queue for later publishing.", 'info');
+};
+
+const _fetchProfileLogic = async (pubkey) => {
+    let profile = await dbSvc.getProf(pubkey);
+    if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile;
+
+    const filter = { kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 };
+    const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1);
+
+    if (relaysToQuery.length === 0) {
+        throw new Error("No connected relays to fetch profiles from.");
+    }
+
+    const events = await relaysToQuery[0].list([filter]);
+    if (events?.length > 0) {
+        const latestProfileEvent = events.sort((a, b) => b.at - a.at)[0];
+        try {
+            const parsedContent = JSON.parse(latestProfileEvent.content);
+            profile = {
+                pk: pubkey,
+                name: parsedContent.name || '',
+                nip05: parsedContent.nip05 || '',
+                picture: parsedContent.picture || '',
+                about: parsedContent.about || '',
+                fetchedAt: Date.now(),
+                ...parsedContent
+            };
+            await dbSvc.addProf(profile);
+            return profile;
+        } catch (e) {
+            console.error("Error parsing profile content:", e);
+            throw new Error("Error parsing profile content.");
+        }
+    }
+    return profile;
+};
+
+const _fetchInteractionsLogic = async (reportId) => {
+    const filters = [
+        { kinds: [C.NOSTR_KIND_REACTION], "#e": [reportId] },
+        { kinds: [C.NOSTR_KIND_NOTE], "#e": [reportId] }
+    ];
+    const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
+    if (relaysToQuery.length === 0) {
+        throw new Error("No connected relays to fetch interactions from.");
+    }
+
+    const fetchPromises = relaysToQuery.map(r =>
+        r.list(filters).catch(e => {
+            console.warn(`Error fetching interactions from ${r.url}: ${e.message}`);
+            return [];
+        })
+    );
+
+    const results = await Promise.allSettled(fetchPromises);
+    const uniqueEvents = new Map();
+
+    results.forEach(result => {
+        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+            result.value.forEach(ev => {
+                if (!uniqueEvents.has(ev.id)) {
+                    uniqueEvents.set(ev.id, ev);
+                }
+            });
+        }
+    });
+
+    return Array.from(uniqueEvents.values()).map(ev => ({
+        id: ev.id,
+        kind: ev.kind,
+        content: ev.content,
+        pubkey: ev.pubkey,
+        created_at: ev.created_at,
+        tags: ev.tags,
+        reportId: reportId
+    })).sort((a, b) => a.created_at - b.created_at);
+};
+
+const _publishContactsLogic = async (contacts) => {
+    const user = appStore.get().user;
+    if (!user) throw new Error("No Nostr identity connected to publish contacts.");
+
+    const tags = contacts.map(c => {
+        const tag = ['p', c.pubkey];
+        if (c.relay) tag.push(c.relay);
+        if (c.petname) tag.push(c.petname);
+        return tag;
+    });
+
+    const eventData = {
+        kind: C.NOSTR_KIND_CONTACTS,
+        content: '',
+        tags: tags
+    };
+
+    return nostrSvc.pubEv(eventData);
+};
+
+const _fetchContactsLogic = async () => {
+    const user = appStore.get().user;
+    if (!user) return [];
+
+    const filter = { kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 };
+    const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
+
+    if (relaysToQuery.length === 0) {
+        throw new Error("No connected relays to fetch contacts from.");
+    }
+
+    const events = await relaysToQuery[0].list([filter]);
+    if (events?.length > 0) {
+        const latestContactsEvent = events.sort((a, b) => b.created_at - a.created_at)[0];
+        return latestContactsEvent.tags
+            .filter(tag => tag[0] === 'p' && tag[1])
+            .map(tag => ({
+                pubkey: tag[1],
+                relay: tag[2] || '',
+                petname: tag[3] || ''
+            }));
+    }
+    return [];
+};
+
 export const nostrSvc = {
     async connRlys() {
         appStore.get().relays.forEach(async rConf => {
@@ -85,19 +264,7 @@ export const nostrSvc = {
         this.unsubAllReps();
 
         const appState = appStore.get();
-        const focusTag = appState.currentFocusTag;
         const mapGeohashes = appState.mapGhs;
-        const followedPubkeys = appState.followedPubkeys.map(f => f.pk);
-
-        const baseFilter = { kinds: [C.NOSTR_KIND_REPORT] };
-
-        if (focusTag && focusTag !== C.FOCUS_TAG_DEFAULT) {
-            baseFilter['#t'] = [focusTag.substring(1)];
-        }
-
-        if (appState.ui.followedOnlyFilter && followedPubkeys.length > 0) {
-            baseFilter.authors = followedPubkeys;
-        }
 
         const relaysToQuery = specificRelay ? [specificRelay] : Array.from(_nostrRlys.values());
 
@@ -105,29 +272,13 @@ export const nostrSvc = {
             const relayConfig = appStore.get().relays.find(rc => rc.url === relay.url);
             if (relay.status !== 1 || !relayConfig?.read) return;
 
-            let currentFilter = { ...baseFilter };
-
-            if (mapGeohashes?.length > 0) {
-                if (relayConfig.nip11?.supported_nips?.includes(52)) {
-                    currentFilter['#g'] = mapGeohashes;
-                } else {
-                    currentFilter['#g'] = [mapGeohashes[0]];
-                }
-            }
-
+            const currentFilter = _buildReportFilter(appState, relayConfig, mapGeohashes);
             const subscriptionId = `reps-${relay.url}-${Date.now()}`;
             try {
                 const sub = relay.sub([currentFilter]);
 
-                sub.on('event', async event => {
-                    const report = parseReport(event);
-                    if (appStore.get().settings.mute.includes(report.pk)) return;
-
-                    await addReportToStoreAndDb(event);
-                });
-
-                sub.on('eose', () => {
-                });
+                sub.on('event', _handleSubscriptionEvent);
+                sub.on('eose', () => {});
 
                 _nostrSubs.set(subscriptionId, { sub, rU: relay.url, filt: currentFilter, type: 'reports' });
             } catch (e) {
@@ -147,7 +298,6 @@ export const nostrSvc = {
     },
 
     refreshSubs() {
-        this.unsubAllReps();
         const connectedCount = Array.from(_nostrRlys.values()).filter(r => r.status === 1).length;
         if (connectedCount === 0) {
             this.connRlys();
@@ -164,31 +314,10 @@ export const nostrSvc = {
         }
 
         if (appStore.get().online) {
-            try {
-                const response = await fetch('/api/publishNostrEvent', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(signedEvent)
-                });
-
-                if (!response.ok && response.status !== 503) {
-                    console.error("Publish Error (SW Proxy):", response.statusText);
-                    showToast(`Publish failed: ${response.statusText}`, 'error');
-                } else if (response.status === 503) {
-                    console.log("Publish deferred by Service Worker (offline or network issue).");
-                    showToast("Publish deferred (offline or network issue).", 'info');
-                } else {
-                    showToast("Event published successfully!", 'success');
-                }
-            } catch (e) {
-                console.warn("Publish Network Error, Service Worker should handle:", e);
-                showToast(`Network error during publish: ${e.message}. Will retry offline.`, 'warning');
-            }
+            await _publishEventOnline(signedEvent);
         } else {
-            await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
-            showToast("Offline. Event added to queue for later publishing.", 'info');
+            await _queueEventOffline(signedEvent);
         }
-
         return signedEvent;
     },
 
@@ -209,128 +338,11 @@ export const nostrSvc = {
         return signedDeletionEvent;
     }, "Report deletion event sent (NIP-09).", "Failed to delete report")),
 
-    fetchProf: withLoading(withToast(async (pubkey) => {
-        let profile = await dbSvc.getProf(pubkey);
-        if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile;
+    fetchProf: withLoading(withToast(_fetchProfileLogic, null, "Error fetching profile")),
 
-        const filter = { kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 };
-        const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1);
+    fetchInteractions: withLoading(withToast(_fetchInteractionsLogic, null, "Error fetching interactions")),
 
-        if (relaysToQuery.length === 0) {
-            showToast("No connected relays to fetch profiles from.", 'warning');
-            return profile;
-        }
+    pubContacts: withLoading(withToast(_publishContactsLogic, "NIP-02 contact list published!", "Error publishing contacts")),
 
-        const events = await relaysToQuery[0].list([filter]);
-        if (events?.length > 0) {
-            const latestProfileEvent = events.sort((a, b) => b.at - a.at)[0];
-            try {
-                const parsedContent = JSON.parse(latestProfileEvent.content);
-                profile = {
-                    pk: pubkey,
-                    name: parsedContent.name || '',
-                    nip05: parsedContent.nip05 || '',
-                    picture: parsedContent.picture || '',
-                    about: parsedContent.about || '',
-                    fetchedAt: Date.now(),
-                    ...parsedContent
-                };
-                await dbSvc.addProf(profile);
-                return profile;
-            } catch (e) {
-                console.error("Error parsing profile content:", e);
-                throw new Error("Error parsing profile content.");
-            }
-        }
-        return profile;
-    }, null, "Error fetching profile")),
-
-    fetchInteractions: withLoading(withToast(async (reportId, reportPk) => {
-        const filters = [
-            { kinds: [C.NOSTR_KIND_REACTION], "#e": [reportId] },
-            { kinds: [C.NOSTR_KIND_NOTE], "#e": [reportId] }
-        ];
-        let allInteractions = [];
-        const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
-        if (relaysToQuery.length === 0) {
-            throw new Error("No connected relays to fetch interactions from.");
-        }
-
-        const fetchPromises = relaysToQuery.map(r =>
-            r.list(filters).catch(e => {
-                console.warn(`Error fetching interactions from ${r.url}: ${e.message}`);
-                return [];
-            })
-        );
-
-        const results = await Promise.allSettled(fetchPromises);
-        const uniqueEvents = new Map();
-
-        results.forEach(result => {
-            if (result.status === 'fulfilled' && Array.isArray(result.value)) {
-                result.value.forEach(ev => {
-                    if (!uniqueEvents.has(ev.id)) {
-                        uniqueEvents.set(ev.id, ev);
-                    }
-                });
-            }
-        });
-
-        allInteractions = Array.from(uniqueEvents.values()).map(ev => ({
-            id: ev.id,
-            kind: ev.kind,
-            content: ev.content,
-            pubkey: ev.pubkey,
-            created_at: ev.created_at,
-            tags: ev.tags,
-            reportId: reportId
-        }));
-
-        return allInteractions.sort((a, b) => a.created_at - b.created_at);
-    }, null, "Error fetching interactions")),
-
-    pubContacts: withLoading(withToast(async (contacts) => {
-        const user = appStore.get().user;
-        if (!user) throw new Error("No Nostr identity connected to publish contacts.");
-
-        const tags = contacts.map(c => {
-            const tag = ['p', c.pubkey];
-            if (c.relay) tag.push(c.relay);
-            if (c.petname) tag.push(c.petname);
-            return tag;
-        });
-
-        const eventData = {
-            kind: C.NOSTR_KIND_CONTACTS,
-            content: '',
-            tags: tags
-        };
-
-        return nostrSvc.pubEv(eventData);
-    }, "NIP-02 contact list published!", "Error publishing contacts")),
-
-    fetchContacts: withLoading(withToast(async () => {
-        const user = appStore.get().user;
-        if (!user) return [];
-
-        const filter = { kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 };
-        const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
-
-        if (relaysToQuery.length === 0) {
-            throw new Error("No connected relays to fetch contacts from.");
-        }
-
-        const events = await relaysToQuery[0].list([filter]);
-        if (events?.length > 0) {
-            const latestContactsEvent = events.sort((a, b) => b.created_at - a.created_at)[0];
-            return latestContactsEvent.tags
-                .filter(tag => tag[0] === 'p' && tag[1])
-                .map(tag => ({
-                    pubkey: tag[1],
-                    relay: tag[2] || '',
-                    petname: tag[3] || ''
-                }));
-        }
-        return [];
-    }, null, "Error fetching contacts"))
+    fetchContacts: withLoading(withToast(_fetchContactsLogic, null, "Error fetching contacts"))
 };

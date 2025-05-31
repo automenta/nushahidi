@@ -5,6 +5,43 @@ import { createModalWrapper, showConfirmModal, hideModal } from './modals.js';
 import { renderForm } from './forms.js';
 import { withLoading } from '../decorators.js';
 
+const handleConnectNip07 = withLoading(async () => {
+    await idSvc.nip07();
+    if (appStore.get().user) hideModal('auth-modal');
+});
+
+const handleCreateProfile = async (passphrase) => {
+    if (!passphrase || passphrase.length < 8) {
+        showToast("Passphrase too short (min 8 chars).", 'warning');
+        return;
+    }
+    showConfirmModal(
+        "Backup Private Key?",
+        "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
+        withLoading(async () => {
+            const result = await idSvc.newProf(passphrase);
+            if (result) hideModal('auth-modal');
+        }),
+        () => showToast("New profile creation cancelled.", 'info')
+    );
+};
+
+const handleImportKey = async (privateKey, passphrase) => {
+    if (!privateKey || !passphrase || passphrase.length < 8) {
+        showToast("Private key and passphrase (min 8 chars) are required.", 'warning');
+        return;
+    }
+    showConfirmModal(
+        "Import Private Key?",
+        "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
+        withLoading(async () => {
+            const result = await idSvc.impSk(privateKey, passphrase);
+            if (result) hideModal('auth-modal');
+        }),
+        (() => showToast("Private key import cancelled.", 'info'))
+    );
+};
+
 export function AuthModalComp() {
     const authFormFields = [
         { type: 'paragraph', content: [createEl('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)'] },
@@ -24,44 +61,17 @@ export function AuthModalComp() {
         const form = renderForm(authFormFields, {}, { id: 'auth-form' });
         root.appendChild(form);
 
-        $('#conn-nip07-btn', form).onclick = withLoading(async () => {
-            await idSvc.nip07();
-            if (appStore.get().user) hideModal('auth-modal');
-        });
+        $('#conn-nip07-btn', form).onclick = handleConnectNip07;
 
-        $('#create-prof-btn', form).onclick = async () => {
+        $('#create-prof-btn', form).onclick = () => {
             const passphrase = $('#auth-pass', form).value;
-            if (!passphrase || passphrase.length < 8) {
-                showToast("Passphrase too short (min 8 chars).", 'warning');
-                return;
-            }
-            showConfirmModal(
-                "Backup Private Key?",
-                "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
-                withLoading(async () => {
-                    const result = await idSvc.newProf(passphrase);
-                    if (result) hideModal('auth-modal');
-                }),
-                () => showToast("New profile creation cancelled.", 'info')
-            );
+            handleCreateProfile(passphrase);
         };
 
-        $('#import-sk-btn', form).onclick = async () => {
+        $('#import-sk-btn', form).onclick = () => {
             const privateKey = $('#auth-sk', form).value;
             const passphrase = $('#auth-pass', form).value;
-            if (!privateKey || !passphrase || passphrase.length < 8) {
-                showToast("Private key and passphrase (min 8 chars) are required.", 'warning');
-                return;
-            }
-            showConfirmModal(
-                "Import Private Key?",
-                "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
-                withLoading(async () => {
-                    const result = await idSvc.impSk(privateKey, passphrase);
-                    if (result) hideModal('auth-modal');
-                }),
-                (() => showToast("Private key import cancelled.", 'info'))
-            );
+            handleImportKey(privateKey, passphrase);
         };
         return form;
     });

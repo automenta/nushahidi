@@ -5,6 +5,56 @@ import { C, $, createEl, sanitizeHTML, debounce, npubToHex } from '../utils.js';
 import { renderForm } from './forms.js';
 import { rendRepList } from './reportList.js';
 
+const _isMuted = (report, mutedPubkeys) => !mutedPubkeys.includes(report.pk);
+
+const _matchesFocusTag = (report, currentFocusTag) => {
+    const focusTagMatch = currentFocusTag?.startsWith('#') ? currentFocusTag.substring(1) : currentFocusTag;
+    return focusTagMatch === 'NostrMapper_Global' || report.fTags.includes(focusTagMatch);
+};
+
+const _matchesSearchQuery = (report, searchQuery) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return report.title?.toLowerCase().includes(query) ||
+           report.sum?.toLowerCase().includes(query) ||
+           report.ct?.toLowerCase().includes(query);
+};
+
+const _matchesCategory = (report, categoryFilter) => {
+    if (!categoryFilter) return true;
+    return report.cat.includes(categoryFilter);
+};
+
+const _matchesAuthor = (report, authorFilter) => {
+    if (!authorFilter) return true;
+    const authorHex = npubToHex(authorFilter);
+    return report.pk === authorHex;
+};
+
+const _matchesTimeRange = (report, timeStart, timeEnd) => {
+    if (timeStart && report.at < timeStart) return false;
+    if (timeEnd && report.at > timeEnd) return false;
+    return true;
+};
+
+const _matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
+    if (!spatialFilterEnabled || drawnShapes.length === 0) return true;
+    if (!report.lat || !report.lon) return false;
+
+    const reportPoint = point([report.lon, report.lat]);
+    for (const shape of drawnShapes) {
+        if (booleanPointInPolygon(reportPoint, shape)) {
+            return true;
+        }
+    }
+    return false;
+};
+
+const _matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => {
+    if (!followedOnlyFilter) return true;
+    return followedPubkeys.map(f => f.pk).includes(report.pk);
+};
+
 export const applyAllFilters = () => {
     const appState = appStore.get();
     const { reports: allReports, settings, currentFocusTag, drawnShapes, ui, followedPubkeys } = appState;
@@ -12,52 +62,16 @@ export const applyAllFilters = () => {
     const { spatialFilterEnabled, followedOnlyFilter, filters } = ui;
     const { q: searchQuery, cat: categoryFilter, auth: authorFilter, tStart: timeStart, tEnd: timeEnd } = filters;
 
-    const filteredReports = allReports.filter(report => {
-        if (mutedPubkeys.includes(report.pk)) return false;
-
-        const focusTagMatch = currentFocusTag?.startsWith('#') ? currentFocusTag.substring(1) : currentFocusTag;
-        if (focusTagMatch && focusTagMatch !== 'NostrMapper_Global' && !report.fTags.includes(focusTagMatch)) {
-            return false;
-        }
-
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            if (!(report.title?.toLowerCase().includes(query) ||
-                    report.sum?.toLowerCase().includes(query) ||
-                    report.ct?.toLowerCase().includes(query))) {
-                return false;
-            }
-        }
-
-        if (categoryFilter && !report.cat.includes(categoryFilter)) return false;
-
-        if (authorFilter) {
-            const authorHex = npubToHex(authorFilter);
-            if (report.pk !== authorHex) return false;
-        }
-
-        if (timeStart && report.at < timeStart) return false;
-        if (timeEnd && report.at > timeEnd) return false;
-
-        if (spatialFilterEnabled && drawnShapes.length > 0) {
-            if (!report.lat || !report.lon) return false;
-            const reportPoint = point([report.lon, report.lat]);
-            let isInDrawnShape = false;
-            for (const shape of drawnShapes) {
-                if (booleanPointInPolygon(reportPoint, shape)) {
-                    isInDrawnShape = true;
-                    break;
-                }
-            }
-            if (!isInDrawnShape) return false;
-        }
-
-        if (followedOnlyFilter && !followedPubkeys.map(f => f.pk).includes(report.pk)) {
-            return false;
-        }
-
-        return true;
-    }).sort((a, b) => b.at - a.at);
+    const filteredReports = allReports.filter(report =>
+        _isMuted(report, mutedPubkeys) &&
+        _matchesFocusTag(report, currentFocusTag) &&
+        _matchesSearchQuery(report, searchQuery) &&
+        _matchesCategory(report, categoryFilter) &&
+        _matchesAuthor(report, authorFilter) &&
+        _matchesTimeRange(report, timeStart, timeEnd) &&
+        _matchesSpatialFilter(report, spatialFilterEnabled, drawnShapes) &&
+        _matchesFollowedOnly(report, followedOnlyFilter, followedPubkeys)
+    ).sort((a, b) => b.at - a.at);
 
     rendRepList(filteredReports);
     mapSvc.updReps(filteredReports);
@@ -68,19 +82,28 @@ const updateFilterState = (key, value) => {
     appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
 };
 
-const setupFilterEventListeners = (filterForm) => {
+const setupSearchInput = (filterForm) => {
     $('#search-query-input', filterForm).oninput = e => {
         updateFilterState('q', e.target.value);
         debAppAllFilt();
     };
+};
+
+const setupCategorySelect = (filterForm) => {
     $('#filter-category', filterForm).onchange = e => {
         updateFilterState('cat', e.target.value);
         applyAllFilters();
     };
+};
+
+const setupAuthorInput = (filterForm) => {
     $('#filter-author', filterForm).oninput = e => {
         updateFilterState('auth', e.target.value.trim());
         debAppAllFilt();
     };
+};
+
+const setupTimeFilters = (filterForm) => {
     $('#filter-time-start', filterForm).onchange = e => {
         updateFilterState('tStart', e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
         applyAllFilters();
@@ -89,8 +112,10 @@ const setupFilterEventListeners = (filterForm) => {
         updateFilterState('tEnd', e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
         applyAllFilters();
     };
-    $('#apply-filters-btn', filterForm).onclick = applyAllFilters;
+};
 
+const setupApplyResetButtons = (filterForm) => {
+    $('#apply-filters-btn', filterForm).onclick = applyAllFilters;
     $('#reset-filters-btn', filterForm).onclick = () => {
         appStore.set(s => ({
             ui: {
@@ -111,7 +136,9 @@ const setupFilterEventListeners = (filterForm) => {
         $('#followed-only-toggle', filterForm).checked = false;
         applyAllFilters();
     };
+};
 
+const setupSpatialAndFollowedToggles = (filterForm) => {
     const spatialFilterToggle = $('#spatial-filter-toggle', filterForm);
     spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled;
     spatialFilterToggle.onchange = e => {
@@ -126,8 +153,20 @@ const setupFilterEventListeners = (filterForm) => {
         nostrSvc.refreshSubs();
         applyAllFilters();
     };
+};
 
+const setupClearDrawnShapesButton = (filterForm) => {
     $('#clear-drawn-shapes-btn', filterForm).onclick = mapSvc.clearAllDrawnShapes;
+};
+
+const setupFilterEventListeners = (filterForm) => {
+    setupSearchInput(filterForm);
+    setupCategorySelect(filterForm);
+    setupAuthorInput(filterForm);
+    setupTimeFilters(filterForm);
+    setupApplyResetButtons(filterForm);
+    setupSpatialAndFollowedToggles(filterForm);
+    setupClearDrawnShapesButton(filterForm);
 };
 
 export const initFilterControls = () => {

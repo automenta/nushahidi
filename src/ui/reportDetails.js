@@ -10,78 +10,6 @@ import { nip19 } from 'nostr-tools';
 import { withLoading, withToast } from '../decorators.js';
 import { mapSvc } from '../services/map.js';
 
-async function loadAndDisplayInteractions(reportId, reportPk, container) {
-    container.innerHTML = '<h4>Interactions</h4><div class="spinner"></div>';
-    await withLoading(withToast(async () => {
-        const interactions = await nostrSvc.fetchInteractions(reportId, reportPk);
-
-        const fragment = document.createDocumentFragment();
-        fragment.appendChild(createEl('h4', { textContent: 'Interactions' }));
-
-        if (interactions.length === 0) {
-            fragment.appendChild(createEl('p', { textContent: 'No interactions yet.' }));
-        } else {
-            interactions.forEach(i => {
-                const interactionUser = formatNpubShort(i.pubkey);
-                const interactionTime = new Date(i.created_at * 1000).toLocaleString();
-                let interactionItemContent;
-
-                if (i.kind === C.NOSTR_KIND_REACTION) {
-                    interactionItemContent = createEl('div', {
-                        innerHTML: `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(i.content)} <small>(${interactionTime})</small>`
-                    });
-                } else if (i.kind === C.NOSTR_KIND_NOTE) {
-                    const markdownContent = createEl('div', { class: 'markdown-content', innerHTML: marked.parse(sanitizeHTML(i.content)) });
-                    interactionItemContent = createEl('div', {}, [
-                        createEl('strong', { textContent: interactionUser }),
-                        document.createTextNode(' commented: '),
-                        markdownContent,
-                        createEl('small', { textContent: `(${interactionTime})` })
-                    ]);
-                }
-                if (interactionItemContent) {
-                    interactionItemContent.classList.add('interaction-item');
-                    fragment.appendChild(interactionItemContent);
-                }
-            });
-        }
-
-        const reactionButtonsDiv = createEl('div', { class: 'reaction-buttons', style: 'margin-top:0.5rem;' });
-        reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '+', textContent: '👍 Like' }));
-        reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '-', textContent: '👎 Dislike' }));
-
-        const commentFormFields = [
-            { type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true },
-            { type: 'button', buttonType: 'submit', label: 'Post Comment' }
-        ];
-
-        const commentForm = renderForm(commentFormFields, {}, {
-            id: 'comment-form',
-            onSubmit: handleCommentSubmit,
-            'data-report-id': sanitizeHTML(reportId),
-            'data-report-pk': sanitizeHTML(reportPk),
-            style: 'margin-top:0.5rem;'
-        });
-
-        container.innerHTML = '';
-        container.appendChild(fragment);
-        container.appendChild(reactionButtonsDiv);
-        container.appendChild(commentForm);
-
-        $$('.reaction-buttons button', container).forEach(btn => btn.onclick = handleReactionSubmit);
-
-        appStore.set(s => {
-            const reportIndex = s.reports.findIndex(rep => rep.id === reportId);
-            if (reportIndex > -1) {
-                const updatedReports = [...s.reports];
-                updatedReports[reportIndex] = { ...updatedReports[reportIndex], interactions: interactions };
-                return { reports: updatedReports };
-            }
-            return {};
-        });
-    }, null, "Error loading interactions"))();
-}
-
 async function handleReactionSubmit(event) {
     const btn = event.target;
     const reportId = btn.dataset.reportId;
@@ -189,6 +117,117 @@ const setupReportDetailEventListeners = (report, isAuthor, canFollow, detailCont
     }
 };
 
+async function handleFollowToggle(event) {
+    const btn = event.target;
+    const pubkeyToToggle = btn.dataset.pubkey;
+    const isCurrentlyFollowed = appStore.get().followedPubkeys.some(f => f.pk === pubkeyToToggle);
+
+    if (!appStore.get().user) {
+        showToast("Please connect your Nostr identity to follow users.", 'warning');
+        return;
+    }
+
+    await withLoading(withToast(async () => {
+        btn.disabled = true;
+        if (isCurrentlyFollowed) {
+            confSvc.rmFollowed(pubkeyToToggle);
+            return `Unfollowed ${formatNpubShort(pubkeyToToggle)}.`;
+        } else {
+            confSvc.addFollowed(pubkeyToToggle);
+            return `Followed ${formatNpubShort(pubkeyToToggle)}!`;
+        }
+    }, null, "Error toggling follow status", () => {
+        btn.disabled = false;
+    }))();
+
+    const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
+    if (report) showReportDetails(report);
+}
+
+function renderInteractionItem(i) {
+    const interactionUser = formatNpubShort(i.pubkey);
+    const interactionTime = new Date(i.created_at * 1000).toLocaleString();
+    let interactionItemContent;
+
+    if (i.kind === C.NOSTR_KIND_REACTION) {
+        interactionItemContent = createEl('div', {
+            innerHTML: `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(i.content)} <small>(${interactionTime})</small>`
+        });
+    } else if (i.kind === C.NOSTR_KIND_NOTE) {
+        const markdownContent = createEl('div', { class: 'markdown-content', innerHTML: marked.parse(sanitizeHTML(i.content)) });
+        interactionItemContent = createEl('div', {}, [
+            createEl('strong', { textContent: interactionUser }),
+            document.createTextNode(' commented: '),
+            markdownContent,
+            createEl('small', { textContent: `(${interactionTime})` })
+        ]);
+    }
+    if (interactionItemContent) {
+        interactionItemContent.classList.add('interaction-item');
+    }
+    return interactionItemContent;
+}
+
+function renderInteractionsContent(interactions) {
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(createEl('h4', { textContent: 'Interactions' }));
+
+    if (interactions.length === 0) {
+        fragment.appendChild(createEl('p', { textContent: 'No interactions yet.' }));
+    } else {
+        interactions.forEach(i => {
+            const item = renderInteractionItem(i);
+            if (item) fragment.appendChild(item);
+        });
+    }
+    return fragment;
+}
+
+function setupInteractionControls(reportId, reportPk, container) {
+    const reactionButtonsDiv = createEl('div', { class: 'reaction-buttons', style: 'margin-top:0.5rem;' });
+    reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '+', textContent: '👍 Like' }));
+    reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '-', textContent: '👎 Dislike' }));
+
+    const commentFormFields = [
+        { type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true },
+        { type: 'button', buttonType: 'submit', label: 'Post Comment' }
+    ];
+
+    const commentForm = renderForm(commentFormFields, {}, {
+        id: 'comment-form',
+        onSubmit: handleCommentSubmit,
+        'data-report-id': sanitizeHTML(reportId),
+        'data-report-pk': sanitizeHTML(reportPk),
+        style: 'margin-top:0.5rem;'
+    });
+
+    container.appendChild(reactionButtonsDiv);
+    container.appendChild(commentForm);
+
+    $$('.reaction-buttons button', container).forEach(btn => btn.onclick = handleReactionSubmit);
+}
+
+async function loadAndDisplayInteractions(reportId, reportPk, container) {
+    container.innerHTML = '<h4>Interactions</h4><div class="spinner"></div>';
+    await withLoading(withToast(async () => {
+        const interactions = await nostrSvc.fetchInteractions(reportId, reportPk);
+
+        container.innerHTML = '';
+        container.appendChild(renderInteractionsContent(interactions));
+        setupInteractionControls(reportId, reportPk, container);
+
+        appStore.set(s => {
+            const reportIndex = s.reports.findIndex(rep => rep.id === reportId);
+            if (reportIndex > -1) {
+                const updatedReports = [...s.reports];
+                updatedReports[reportIndex] = { ...updatedReports[reportIndex], interactions: interactions };
+                return { reports: updatedReports };
+            }
+            return {};
+        });
+    }, null, "Error loading interactions"))();
+}
+
 export const showReportDetails = async report => {
     const detailContainer = $('#report-detail-container');
     const listContainer = $('#report-list-container');
@@ -217,30 +256,3 @@ export const showReportDetails = async report => {
     }
     loadAndDisplayInteractions(report.id, report.pk, $(`#interactions-for-${report.id}`, detailContainer));
 };
-
-async function handleFollowToggle(event) {
-    const btn = event.target;
-    const pubkeyToToggle = btn.dataset.pubkey;
-    const isCurrentlyFollowed = appStore.get().followedPubkeys.some(f => f.pk === pubkeyToToggle);
-
-    if (!appStore.get().user) {
-        showToast("Please connect your Nostr identity to follow users.", 'warning');
-        return;
-    }
-
-    await withLoading(withToast(async () => {
-        btn.disabled = true;
-        if (isCurrentlyFollowed) {
-            confSvc.rmFollowed(pubkeyToToggle);
-            return `Unfollowed ${formatNpubShort(pubkeyToToggle)}.`;
-        } else {
-            confSvc.addFollowed(pubkeyToToggle);
-            return `Followed ${formatNpubShort(pubkeyToToggle)}!`;
-        }
-    }, null, "Error toggling follow status", () => {
-        btn.disabled = false;
-    }))();
-
-    const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
-    if (report) showReportDetails(report);
-}
