@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>NostrMapper</title><meta name="description" content="Decentralized geographic reporting on Nostr.">
+    <link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#3367D6">
+    <link rel="apple-touch-icon" href="/assets/icons/icon-192x192.png">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>NostrMapper</h1>
+            <div class="status-indicators"><span id="connection-status">Offline</span><span id="sync-status"></span></div>
+            <div class="user-actions"><button id="auth-button">Connect Nostr</button><span id="user-pubkey" style="display:none;"></span></div>
+        </header>
+        <main>
+            <div id="map-container" aria-label="Interactive Map"></div>
+            <div id="sidebar">
+                <div class="controls"><button id="create-report-btn">New Report</button><button id="settings-btn">Settings</button></div>
+                <div id="filter-controls">
+                    <h4>Filter Reports</h4>
+                    <input type="search" id="search-query-input" placeholder="Search reports..." aria-label="Search reports text">
+                    <label for="focus-tag-input">Focus Tag:</label><input type="text" id="focus-tag-input" placeholder="#MyEvent" aria-label="Focus Tag filter"><button id="set-focus-tag-btn">Set</button>
+                    <label for="filter-category">Category:</label><select id="filter-category" aria-label="Filter by category"><option value="">All</option></select>
+                    <label for="filter-author">Author (npub/hex):</label><input type="text" id="filter-author" placeholder="Author pubkey" aria-label="Filter by author pubkey">
+                    <label for="filter-time-start">From:</label><input type="datetime-local" id="filter-time-start" aria-label="Filter start date">
+                    <label for="filter-time-end">To:</label><input type="datetime-local" id="filter-time-end" aria-label="Filter end date">
+                    <button id="apply-filters-btn">Apply</button><button id="reset-filters-btn">Reset</button>
+                </div>
+                <div id="report-list-container" role="region" aria-labelledby="report-list-heading">
+                    <h2 id="report-list-heading">Reports</h2><div id="report-list"></div>
+                </div>
+                <div id="report-detail-container" style="display:none;" role="article"></div>
+            </div>
+        </main>
+        <footer><p>&copy; NostrMapper Community</p></footer>
+    </div>
+    <div id="report-form-modal" class="modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="report-form-heading"></div>
+    <div id="auth-modal" class="modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="auth-modal-heading"></div>
+    <div id="settings-modal" class="modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="settings-modal-heading"></div>
+    <div id="onboarding-info" class="modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="onboarding-heading">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('onboarding-info').style.display='none'">&times;</span>
+            <h2 id="onboarding-heading">Welcome to NostrMapper!</h2>
+            <p>NostrMapper lets you create and view geo-tagged reports on the decentralized Nostr protocol.</p>
+            <p><strong>Key Concepts:</strong></p>
+            <ul>
+                <li><strong>Identity:</strong> Use a NIP-07 browser extension (like Alby) or manage keys locally (backup your private key!).</li>
+                <li><strong>Relays:</strong> Data is published to and read from Nostr relays. Configure your preferred relays in Settings.</li>
+                <li><strong>Focus Tags:</strong> Reports are grouped by a primary "#focus_tag" (e.g., #MyEvent). Set this to scope your view and new reports.</li>
+                <li><strong>Public Data:</strong> Everything you publish to Nostr is public. Be mindful of what you share.</li>
+            </ul>
+            <p>Explore, report, and discover!</p>
+            <button onclick="localStorage.setItem('nostrmapper_onboarded', 'true'); document.getElementById('onboarding-info').style.display='none'">Got it!</button>
+        </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
