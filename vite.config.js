@@ -5,12 +5,12 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        // manualChunks: undefined, // This is Vite's default behavior, can be removed
+        // manualChunks: undefined,
       },
     },
   },
   optimizeDeps: {
-    // Removed exclude for 'nostr-tools/relay' to allow Vite to handle it by default
+    include: ['nostr-tools'],
   },
-  // publicDir: 'public' // This is Vite's default behavior, can be removed
+  // publicDir: 'public'
 });
