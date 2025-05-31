@@ -1,5 +1,4 @@
-import { nip11 } from 'nostr-tools';
-import { relayInit } from 'nostr-tools/relay'; // Changed back to named import
+import { nip11, relayInit } from 'nostr-tools'; // Corrected import: relayInit from main package
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
