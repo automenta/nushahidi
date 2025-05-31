@@ -21,6 +21,6 @@ if(cReps?.length>0){
 } else if(appStore.get().reports.length===0){appStore.set({reports:[]})}
 nostrSvc.refreshSubs();
 offSvc.setupSyncLs();
-console.log("NostrMapper Initialized (vFinal Compact). Focus Tag:", appStore.get().focusTag);
+console.log("NostrMapper Initialized (vFinal Compact). Focus Tag:", appStore.get().currentFocusTag); // Updated to currentFocusTag
 }
 document.addEventListener('DOMContentLoaded',main);

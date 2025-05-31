@@ -18,7 +18,7 @@ let _s={
     map:null,
     mapBnds:null,
     mapGhs:[],
-    ui:{modal:null,loading:!1,syncMsg:''}
+    ui:{modalOpen:null,loading:!1,syncMsg:''} // Changed 'modal' to 'modalOpen' for consistency
 }; /* s: state */
 const _l=new Set(); /* l: listeners */
 export const appStore={
