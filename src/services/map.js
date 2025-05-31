@@ -73,7 +73,10 @@ export const mapSvc = {
     async loadDrawnShapes() {
         _drawnItems.clearLayers();
         const geojsonShapes = [];
-        const drawnShapes = await dbSvc.getAllDrawnShapes() || [];
+        let drawnShapes = await dbSvc.getAllDrawnShapes();
+        if (!Array.isArray(drawnShapes)) {
+            drawnShapes = [];
+        }
         drawnShapes.forEach(s => {
             const layer = L.GeoJSON.geometryToLayer(s.geojson);
             layer.options.id = s.id;
