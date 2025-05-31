@@ -1,4 +1,4 @@
-import {nip19} from 'nostr-tools';
+import {nip19} from 'nostr-tools/nip19';
 import {appStore} from '../../store.js';
 import {idSvc} from '../../services.js';
 import {$, showToast} from '../../utils.js';

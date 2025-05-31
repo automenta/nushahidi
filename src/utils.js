@@ -1,4 +1,4 @@
-import {nip19} from 'nostr-tools';
+import {nip19} from 'nostr-tools/nip19';
 import ngeohash from 'ngeohash';
 
 export const C = {
