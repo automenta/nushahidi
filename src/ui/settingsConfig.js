@@ -6,7 +6,7 @@ import { showConfirmModal } from './modals.js';
 import { renderKeyManagementSection } from './settings/keyManagement.js';
 import { renderMapTilesSection } from './settings/mapTiles.js';
 import { renderImageHostSection } from './settings/imageHost.js';
-import { setupFollowedListUniqueListeners } from './settingsUtils.js'; // Updated import path
+import { setupFollowedListUniqueListeners } from './settingsUtils.js';
 import { renderDataManagementSection } from './settings/dataManagement.js';
 import { offlineQueueItemRenderer, offlineQueueActionsConfig, renderOfflineQueue } from './settings/offlineQueue.js';
 

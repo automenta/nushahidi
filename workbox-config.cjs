@@ -22,6 +22,5 @@ module.exports = {
         networkTimeoutSeconds: 10,
       }
     }
-    // Removed map-tiles runtime caching as it's handled directly in sw.js
   ]
 };

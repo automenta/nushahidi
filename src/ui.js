@@ -2,7 +2,7 @@ import { appStore } from './store.js';
 import { idSvc, confSvc, mapSvc } from './services.js';
 import { C, $ } from './utils.js';
 
-import { showModal, showConfirmModal, hideModal } from './ui/modals.js';
+import { showModal, showConfirmModal, hideModal } from './modals.js';
 import { RepFormComp } from './ui/reportForm.js';
 import { AuthModalComp } from './ui/authModal.js';
 import { SettPanComp } from './ui/settingsPanel.js';

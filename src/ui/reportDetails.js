@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 import { appStore } from '../store.js';
-import { nostrSvc, confSvc } from '../services.js';
+import { nostrSvc, confSvc, mapSvc } from '../services.js';
 import { C, $, $$, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast } from '../utils.js';
 import { showConfirmModal, hideModal } from './modals.js';
 import { renderForm } from './forms.js';
@@ -8,7 +8,7 @@ import { RepFormComp } from './reportForm.js';
 import { applyAllFilters } from './filters.js';
 import { nip19 } from 'nostr-tools';
 import { withLoading, withToast } from '../decorators.js';
-import { mapSvc } from '../services/map.js';
+
 
 async function handleReactionSubmit(event) {
     const btn = event.target;

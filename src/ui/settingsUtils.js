@@ -2,7 +2,7 @@ import { appStore } from '../store.js';
 import { confSvc, nostrSvc, dbSvc } from '../services.js';
 import { C, createEl, showToast, npubToHex, formatNpubShort, sanitizeHTML } from '../utils.js';
 import { renderForm, renderList, setupAddRemoveListSection } from '../forms.js';
-import { showConfirmModal } from '../modals.js';
+import { showConfirmModal } from './modals.js';
 import { withLoading, withToast } from '../decorators.js';
 
 export function renderConfigurableListSetting(wrapper, config) {
