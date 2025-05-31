@@ -7,6 +7,7 @@ import { C, parseReport, showToast } from '../utils.js';
 let _pool = null;
 const _activeSubs = new Map();
 const _relayStatus = new Map();
+const _connectedRelays = new Set();
 
 const updateRelayStatus = (url, status) => {
     _relayStatus.set(url, status);
@@ -88,13 +89,9 @@ const publishEventOnline = async signedEvent => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(signedEvent)
         });
-        if (!response.ok && response.status !== 503) {
+        if (!response.ok) {
             console.error("Publish Error (SW Proxy):", response.statusText);
-            showToast(`Publish failed: ${response.statusText}`, 'error');
             throw new Error(response.statusText);
-        } else if (response.status === 503) {
-            showToast("Service Worker offline. Event queued.", 'info');
-            throw new Error("Service Worker offline");
         }
     } catch (e) {
         console.error("Publish Error:", e);
@@ -102,13 +99,8 @@ const publishEventOnline = async signedEvent => {
     }
 };
 
-const queueEventOffline = async signedEvent => {
-    await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
-    showToast("Offline. Event added to queue for later publishing.", 'info');
-};
-
 export const nostrSvc = {
-    async connRlys() {
+    async updateRelayConnections() {
         if (!_pool) {
             try {
                 _pool = new SimplePool();
@@ -120,17 +112,25 @@ export const nostrSvc = {
             }
         }
 
-        const relaysToConnect = appStore.get().relays.filter(r => r.read || r.write);
-        for (const r of relaysToConnect) {
-            if (_relayStatus.get(r.url) !== 'connected') {
-                updateRelayStatus(r.url, 'connecting');
-                try {
-                    await _pool.ensureRelay(r.url);
-                    updateRelayStatus(r.url, 'connected');
-                } catch (e) {
-                    console.error(`Failed to connect to relay ${r.url}:`, e);
-                    updateRelayStatus(r.url, 'failed');
-                }
+        const desiredRelays = new Set(appStore.get().relays.filter(r => r.read || r.write).map(r => r.url));
+        const relaysToDisconnect = new Set([..._connectedRelays].filter(url => !desiredRelays.has(url)));
+        const relaysToConnect = new Set([...desiredRelays].filter(url => !_connectedRelays.has(url)));
+
+        for (const url of relaysToDisconnect) {
+            _pool.removeRelay(url);
+            _connectedRelays.delete(url);
+            updateRelayStatus(url, 'disconnected');
+        }
+
+        for (const url of relaysToConnect) {
+            updateRelayStatus(url, 'connecting');
+            try {
+                await _pool.ensureRelay(url);
+                _connectedRelays.add(url);
+                updateRelayStatus(url, 'connected');
+            } catch (e) {
+                console.error(`Failed to connect to relay ${url}:`, e);
+                updateRelayStatus(url, 'failed');
             }
         }
     },
@@ -140,6 +140,7 @@ export const nostrSvc = {
         _pool = null;
         _activeSubs.forEach(s => s.sub.unsub());
         _activeSubs.clear();
+        _connectedRelays.clear();
         appStore.set(s => ({ relays: s.relays.map(r => ({ ...r, status: 'disconnected' })) }));
         showToast("All relays disconnected.", 'info');
     },
@@ -173,14 +174,14 @@ export const nostrSvc = {
     },
 
     async refreshSubs() {
-        await this.connRlys();
+        await this.updateRelayConnections();
         await this.subToReps();
     },
 
     async pubEv(eventData) {
         const signedEvent = await idSvc.signEv(eventData);
         if (signedEvent.kind === C.NOSTR_KIND_REPORT) await addReportToStoreAndDb(signedEvent);
-        appStore.get().online ? await publishEventOnline(signedEvent) : await queueEventOffline(signedEvent);
+        await publishEventOnline(signedEvent);
         return signedEvent;
     },
 
@@ -192,7 +193,7 @@ export const nostrSvc = {
             content: 'Event deleted'
         };
         const signedEvent = await idSvc.signEv(eventTemplate);
-        appStore.get().online ? await publishEventOnline(signedEvent) : await queueEventOffline(signedEvent);
+        await publishEventOnline(signedEvent);
         await dbSvc.rmRep(eventId);
         appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventId) }));
         showToast("Report deletion event published.", 'success');
@@ -245,7 +246,7 @@ export const nostrSvc = {
             content: ''
         };
         const signedEvent = await idSvc.signEv(eventTemplate);
-        appStore.get().online ? await publishEventOnline(signedEvent) : await queueEventOffline(signedEvent);
+        await publishEventOnline(signedEvent);
         showToast("NIP-02 contact list published!", 'success');
     },
 

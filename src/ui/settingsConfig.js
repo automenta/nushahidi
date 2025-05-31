@@ -32,8 +32,7 @@ const addRelayLogic = createAddLogicHandler(
 const handleRelayRemove = r => {
     const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
     confSvc.setRlys(updatedRelays);
-    nostrSvc.discAllRlys();
-    nostrSvc.connRlys();
+    nostrSvc.updateRelayConnections(); // Use the new intelligent update
 };
 
 const addCategoryLogic = createAddLogicHandler(
@@ -81,9 +80,9 @@ const addFollowedPubkeyLogic = createAddLogicHandler(
 
 const handleFollowedPubkeyRemove = f => confSvc.rmFollowed(f.pk);
 
-const reconnectRelays = () => {
-    nostrSvc.discAllRlys();
-    nostrSvc.connRlys();
+const updateRelaysAndRefreshSubs = () => {
+    nostrSvc.updateRelayConnections(); // Use the new intelligent update
+    nostrSvc.refreshSubs();
 };
 
 const removeActionConfig = (title, message, onClickHandler) => ({
@@ -144,7 +143,7 @@ export const settingsSections = [
         actionsConfig: [removeActionConfig('Remove Relay', 'Are you sure you want to remove this relay?', handleRelayRemove)],
         itemWrapperClass: 'relay-entry',
         saveBtnRef: 'saveRelaysBtn',
-        onSaveCallback: reconnectRelays,
+        onSaveCallback: updateRelaysAndRefreshSubs, // Use the new intelligent update
         getItems: () => appStore.get().relays,
         addSuccessMsg: "Relay added.",
         addErrorMsg: "Error adding relay",

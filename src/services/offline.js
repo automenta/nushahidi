@@ -4,37 +4,33 @@ import {dbSvc} from './db.js';
 
 export const offSvc = {
     async procQ() {
-        if (!appStore.get().online) return;
-        const items = await dbSvc.getOfflineQ();
-        if (!items.length) return;
-
-        for (const item of items) {
-            try {
-                const response = await fetch('/api/publishNostrEvent', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(item.event)
-                });
-                if (response.ok || response.status === 503) await dbSvc.rmOfflineQ(item.qid);
-            } catch (e) {
-                console.error("Error processing offline queue item:", e);
-                showToast(`Failed to sync offline event: ${e.message}`, 'error');
-            }
+        // This function is now primarily triggered by the service worker's sync event.
+        // The actual fetching and re-queuing logic is handled by Workbox's BackgroundSyncPlugin.
+        // This function can be used for any additional client-side processing needed after a sync.
+        const offlineQueueCount = (await dbSvc.getOfflineQ()).length;
+        appStore.set(s => ({offlineQueueCount}));
+        if (offlineQueueCount > 0) {
+            showToast("Offline queue processing initiated by service worker.", 'info');
         }
     },
 
     setupSyncLs() {
+        // The 'online' event listener is still useful for immediate UI feedback,
+        // but the core queue processing is now handled by the SW.
         window.addEventListener('online', () => this.procQ());
 
         if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
             navigator.serviceWorker.ready.then(registration => {
                 if ('sync' in registration) {
+                    // This listener ensures that the client-side procQ is called when the SW syncs.
+                    // The SW itself handles the actual network requests and re-queuing.
                     registration.addEventListener('sync', event => {
                         if (event.tag === 'nostrPublishQueue') event.waitUntil(this.procQ());
                     });
                 }
             });
         }
+        // Initial check for queue status
         this.procQ();
     },
 };

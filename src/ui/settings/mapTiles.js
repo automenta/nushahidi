@@ -13,16 +13,18 @@ export class MapTilesSection {
         this.tileUrlIn = null;
         this.saveTileBtn = null;
 
-        this.render(appStore.get());
+        // Initial render
+        this.createFormElements(appStore.get());
+        this.sectionEl.appendChild(this.form);
 
         this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.settings.tilePreset !== oldState?.settings?.tilePreset || newState.settings.tileUrl !== oldState?.settings?.tileUrl) {
-                this.render(newState);
+                this.updateFormElements(newState); // Granular update
             }
         });
     }
 
-    render(appState) {
+    createFormElements(appState) {
         const mapTilesFormFields = [
             {
                 label: 'Tile Server Preset:',
@@ -37,15 +39,7 @@ export class MapTilesSection {
         ];
 
         const {form, fields} = renderForm(mapTilesFormFields, {}, {class: 'map-tiles-form'});
-
-        if (!this.form) {
-            this.form = form;
-            this.sectionEl.appendChild(this.form);
-        } else {
-            this.form.replaceWith(form);
-            this.form = form;
-        }
-
+        this.form = form;
         this.tilePresetSel = fields.tilePresetSelect;
         this.tileUrlIn = fields.tileUrlInput;
         this.saveTileBtn = fields.saveTileBtn;
@@ -64,11 +58,11 @@ export class MapTilesSection {
             await confSvc.setTilePreset(selectedPresetName, customUrl);
             mapSvc.updTile(customUrl);
         }, "Map tile settings saved.", "Error saving map tile settings");
+    }
 
+    updateFormElements(appState) {
         this.tilePresetSel.value = appState.settings.tilePreset;
         this.tileUrlIn.value = appState.settings.tileUrl;
-
-        return this.sectionEl;
     }
 
     get element() {

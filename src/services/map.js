@@ -106,7 +106,8 @@ export const mapSvc = {
     }, "All drawn shapes cleared.", "Error clearing drawn shapes"),
 
     getDrawControl: () => _drawControl,
-    getDrawnItems: () => _drawnItems,
+    getMapInstance: () => _map, // Expose map instance for specific integrations like adding controls
+
     updTile(url) { _mapTileLyr?.setUrl(url); },
 
     updReps(reports) {
@@ -132,6 +133,4 @@ export const mapSvc = {
             callback(e.latlng);
         });
     },
-
-    get: () => _map,
 };

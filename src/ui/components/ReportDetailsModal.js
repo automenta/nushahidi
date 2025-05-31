@@ -21,12 +21,14 @@ export class ReportDetailsModal extends Modal {
         this.reportFormModal = reportFormModal;
         this.modalContentContainer = null;
 
+        this.elements = {}; // Store references to dynamically created elements for granular updates
+
         this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.ui.reportIdToView === this.report.id && newState.reports !== oldState?.reports) {
                 const updatedReport = newState.reports.find(r => r.id === this.report.id);
                 if (updatedReport) {
                     this.report = updatedReport;
-                    this.renderContent(this.report, this.modalContentContainer);
+                    this.updateContent(this.report); // Call updateContent for granular updates
                 }
             }
         });
@@ -44,11 +46,72 @@ export class ReportDetailsModal extends Modal {
         const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
         const canFollow = currentUserPk && currentUserPk !== report.pk;
 
-        container.innerHTML = this.renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
+        container.innerHTML = ''; // Clear existing content
+
+        this.elements.backToListBtn = createEl('button', {class: 'small-button back-to-list-btn', textContent: '< List'});
+        container.appendChild(this.elements.backToListBtn);
+
+        if (isAuthor) {
+            this.elements.editButton = createEl('button', {class: 'small-button edit-button', 'data-report-id': sanitizeHTML(report.id), textContent: 'Edit Report', style: 'float:right;'});
+            this.elements.deleteButton = createEl('button', {class: 'small-button delete-button', 'data-report-id': sanitizeHTML(report.id), textContent: 'Delete Report', style: 'float:right; margin-right: 0.5rem;'});
+            container.appendChild(this.elements.deleteButton);
+            container.appendChild(this.elements.editButton);
+        }
+
+        this.elements.titleEl = createEl('h2', {class: 'detail-title', textContent: sanitizeHTML(report.title || 'Report')});
+        container.appendChild(this.elements.titleEl);
+
+        this.elements.authorInfoDiv = createEl('div', {class: 'report-author-info'});
+        container.appendChild(this.elements.authorInfoDiv);
+        this.updateAuthorInfo(report, profile, isFollowed, canFollow);
+
+        this.elements.dateEl = createEl('p', {innerHTML: `<strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}`});
+        container.appendChild(this.elements.dateEl);
+
+        this.elements.summaryEl = createEl('p', {innerHTML: `<strong>Summary:</strong> ${sanitizeHTML(report.sum || 'N/A')}`});
+        container.appendChild(this.elements.summaryEl);
+
+        this.elements.descriptionEl = createEl('div', {class: 'markdown-content', tabindex: '0'});
+        this.elements.descriptionEl.innerHTML = marked.parse(sanitizeHTML(report.ct || ''));
+        container.appendChild(createEl('p', {textContent: 'Description:'}));
+        container.appendChild(this.elements.descriptionEl);
+
+        this.elements.imagesContainer = createEl('div');
+        container.appendChild(this.elements.imagesContainer);
+        this.updateReportImages(report.imgs);
+
+        this.elements.locationEl = createEl('p', {innerHTML: `<strong>Location:</strong> ${report.lat?.toFixed(5)}, ${report.lon?.toFixed(5)} (Geohash: ${sanitizeHTML(report.gh || 'N/A')})`});
+        container.appendChild(this.elements.locationEl);
+
+        this.elements.miniMapDiv = createEl('div', {class: 'mini-map-det', style: 'height:150px;margin-top:.7rem;border:1px solid #ccc'});
+        container.appendChild(this.elements.miniMapDiv);
+        this.initializeMiniMap(report, this.elements.miniMapDiv);
+
+        this.elements.interactionsDiv = createEl('div', {class: 'interactions', textContent: 'Loading interactions...'});
+        container.appendChild(this.elements.interactionsDiv);
 
         this.setupReportDetailEventListeners(report, isAuthor, canFollow, container);
-        this.initializeMiniMap(report, container.querySelector('.mini-map-det'));
-        this.loadAndDisplayInteractions(report.id, report.pk, container.querySelector('.interactions'));
+        this.loadAndDisplayInteractions(report.id, report.pk, this.elements.interactionsDiv);
+    }
+
+    async updateContent(report) {
+        const profile = await nostrSvc.fetchProf(report.pk);
+        const currentUserPk = appStore.get().user?.pk;
+        const isAuthor = currentUserPk && currentUserPk === report.pk;
+        const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
+        const canFollow = currentUserPk && currentUserPk !== report.pk;
+
+        this.elements.titleEl.textContent = sanitizeHTML(report.title || 'Report');
+        this.updateAuthorInfo(report, profile, isFollowed, canFollow);
+        this.elements.dateEl.innerHTML = `<strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}`;
+        this.elements.summaryEl.innerHTML = `<strong>Summary:</strong> ${sanitizeHTML(report.sum || 'N/A')}`;
+        this.elements.descriptionEl.innerHTML = marked.parse(sanitizeHTML(report.ct || ''));
+        this.updateReportImages(report.imgs);
+        this.elements.locationEl.innerHTML = `<strong>Location:</strong> ${report.lat?.toFixed(5)}, ${report.lon?.toFixed(5)} (Geohash: ${sanitizeHTML(report.gh || 'N/A')})`;
+
+        // Re-setup event listeners for dynamic elements like follow/unfollow button
+        this.setupReportDetailEventListeners(report, isAuthor, canFollow, this.modalContentContainer);
+        this.loadAndDisplayInteractions(report.id, report.pk, this.elements.interactionsDiv);
     }
 
     async submitInteraction(kind, content, reportId, reportPk) {
@@ -83,56 +146,51 @@ export class ReportDetailsModal extends Modal {
         form.reset();
     };
 
-    renderReportImages(images) {
-        return (images || []).map(img =>
-            `<img src="${sanitizeHTML(img.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`
-        ).join('');
+    updateReportImages(images) {
+        this.elements.imagesContainer.innerHTML = '';
+        if (images && images.length) {
+            this.elements.imagesContainer.appendChild(createEl('h3', {textContent: 'Images:'}));
+            images.forEach(img => {
+                this.elements.imagesContainer.appendChild(createEl('img', {src: sanitizeHTML(img.url), alt: 'report image', style: 'max-width:100%;margin:.3rem 0;border-radius:4px;'}));
+            });
+        }
     }
 
-    renderAuthorInfo(rep, profile, isFollowed, canFollow) {
+    updateAuthorInfo(rep, profile, isFollowed, canFollow) {
         const authorDisplay = profile?.name || (profile?.nip05 ? sanitizeHTML(profile.nip05) : formatNpubShort(rep.pk));
         const authorPicture = profile?.picture ? `<img src="${sanitizeHTML(profile.picture)}" alt="Profile Picture" class="profile-picture">` : '';
         const authorAbout = profile?.about ? `<p class="profile-about">${sanitizeHTML(profile.about)}</p>` : '';
         const authorNip05 = profile?.nip05 ? `<span class="nip05-verified">${sanitizeHTML(profile.nip05)} ✅</span>` : '';
 
-        return `
-            <div class="report-author-info">
-                ${authorPicture}
-                <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(rep.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a> ${authorNip05}</p>
-                ${canFollow ? `<button class="small-button ${isFollowed ? 'unfollow-button' : 'follow-button'}" data-pubkey="${sanitizeHTML(rep.pk)}">${isFollowed ? 'Unfollow' : 'Follow'}</button>` : ''}
-                ${authorAbout}
-            </div>
+        this.elements.authorInfoDiv.innerHTML = `
+            ${authorPicture}
+            <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(rep.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a> ${authorNip05}</p>
         `;
-    }
-
-    renderReportDetailHtml(rep, profile, isAuthor, isFollowed, canFollow) {
-        return `
-            <button class="small-button back-to-list-btn">&lt; List</button>
-            ${isAuthor ? `<button class="small-button edit-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right;">Edit Report</button>` : ''}
-            ${isAuthor ? `<button class="small-button delete-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
-            <h2 class="detail-title">${sanitizeHTML(rep.title || 'Report')}</h2>
-            ${this.renderAuthorInfo(rep, profile, isFollowed, canFollow)}
-            <p><strong>Date:</strong> ${new Date(rep.at * 1000).toLocaleString()}</p>
-            <p><strong>Summary:</strong> ${sanitizeHTML(rep.sum || 'N/A')}</p>
-            <p><strong>Description:</strong></p><div class="markdown-content" tabindex="0">${marked.parse(sanitizeHTML(rep.ct || ''))}</div>
-            ${this.renderReportImages(rep.imgs) ? `<h3>Images:</h3>${this.renderReportImages(rep.imgs)}` : ''}
-            <p><strong>Location:</strong> ${rep.lat?.toFixed(5)}, ${rep.lon?.toFixed(5)} (Geohash: ${sanitizeHTML(rep.gh || 'N/A')})</p>
-            <div class="mini-map-det" style="height:150px;margin-top:.7rem;border:1px solid #ccc"></div>
-            <div class="interactions">Loading interactions...</div>
-        `;
+        if (canFollow) {
+            const followButton = createEl('button', {
+                class: `small-button ${isFollowed ? 'unfollow-button' : 'follow-button'}`,
+                'data-pubkey': sanitizeHTML(rep.pk),
+                textContent: isFollowed ? 'Unfollow' : 'Follow'
+            });
+            followButton.addEventListener('click', this.handleFollowToggle);
+            this.elements.authorInfoDiv.appendChild(followButton);
+        }
+        if (authorAbout) {
+            this.elements.authorInfoDiv.appendChild(createEl('div', {innerHTML: authorAbout}));
+        }
     }
 
     setupReportDetailEventListeners(rep, isAuthor, canFollow, detailContainer) {
-        detailContainer.querySelector('.back-to-list-btn').onclick = () => {
+        this.elements.backToListBtn.onclick = () => {
             this.hide();
             appStore.set(s => ({ui: {...s.ui, showReportList: true, reportIdToView: null}}));
         };
 
         if (isAuthor) {
-            detailContainer.querySelector('.edit-button').onclick = () => {
+            this.elements.editButton.onclick = () => {
                 this.reportFormModal.show('.nstr-rep-form #field-title', rep);
             };
-            detailContainer.querySelector('.delete-button').onclick = () => {
+            this.elements.deleteButton.onclick = () => {
                 showConfirmModal(
                     "Delete Report",
                     `Are you sure you want to delete the report "${sanitizeHTML(rep.title || rep.id.substring(0, 8) + '...')}"? This action publishes a deletion event to relays.`,
@@ -147,7 +205,12 @@ export class ReportDetailsModal extends Modal {
             };
         }
 
-        if (canFollow) detailContainer.querySelector('.follow-button')?.addEventListener('click', this.handleFollowToggle);
+        // Re-attach follow/unfollow listener as the button might be re-rendered
+        const followBtn = detailContainer.querySelector('.follow-button, .unfollow-button');
+        if (followBtn) {
+            followBtn.removeEventListener('click', this.handleFollowToggle); // Remove old listener if exists
+            followBtn.addEventListener('click', this.handleFollowToggle);
+        }
     }
 
     handleFollowToggle = async event => {
@@ -162,7 +225,7 @@ export class ReportDetailsModal extends Modal {
             const updatedReport = appStore.get().reports.find(r => r.id === this.report.id);
             if (updatedReport) {
                 this.report = updatedReport;
-                this.renderContent(this.report, this.modalContentContainer);
+                this.updateContent(this.report); // Use updateContent for granular refresh
             }
             return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
         }, null, "Error toggling follow status", () => btn.disabled = false))();
@@ -183,6 +246,12 @@ export class ReportDetailsModal extends Modal {
     }
 
     setupInteractionControls(reportId, reportPk, container) {
+        // Clear existing controls before adding new ones
+        const existingReactionButtons = container.querySelector('.reaction-buttons');
+        if (existingReactionButtons) existingReactionButtons.remove();
+        const existingCommentForm = container.querySelector('.comment-form');
+        if (existingCommentForm) existingCommentForm.remove();
+
         const reactionButtonsDiv = createEl('div', {class: 'reaction-buttons', style: 'margin-top:0.5rem;'});
         reactionButtonsDiv.appendChild(createEl('button', {'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '+', textContent: '👍 Like'}));
         reactionButtonsDiv.appendChild(createEl('button', {'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '-', textContent: '👎 Dislike'}));
@@ -228,8 +297,16 @@ export class ReportDetailsModal extends Modal {
 
     initializeMiniMap(rep, miniMapEl) {
         if (rep.lat && rep.lon && typeof L !== 'undefined' && miniMapEl) {
+            // Check if map already exists on this element
+            if (miniMapEl._leaflet_id) {
+                miniMapEl._leaflet_id = null; // Clear the ID to allow re-initialization
+                // If there's a way to destroy the map instance, do it here.
+                // L.map(element).remove() is usually used, but we don't have a direct reference to the old map instance here.
+                // For simplicity, we'll rely on re-initializing, which Leaflet handles by replacing the content.
+            }
             const miniMap = L.map(miniMapEl).setView([rep.lat, rep.lon], 13);
             L.tileLayer(confSvc.getTileServer(), {attribution: '&copy; OSM'}).addTo(miniMap);
+            L.marker([rep.lat, rep.lon]).addTo(miniMap); // Add marker to mini-map
             setTimeout(() => miniMap.invalidateSize(), 0);
         }
     }

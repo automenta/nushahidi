@@ -82,10 +82,17 @@ export const confSvc = {
     },
 
     async save(partialSettings) {
-        const currentSettings = await dbSvc.loadSetts() || {};
-        await dbSvc.saveSetts({ ...currentSettings, ...partialSettings });
+        const currentSettings = appStore.get().settings;
+        const newSettings = { ...currentSettings, ...partialSettings };
+        appStore.set(s => ({
+            settings: newSettings,
+            relays: partialSettings.rls !== undefined ? partialSettings.rls : s.relays,
+            focusTags: partialSettings.focusTags !== undefined ? partialSettings.focusTags : s.focusTags,
+            currentFocusTag: partialSettings.currentFocusTag !== undefined ? partialSettings.currentFocusTag : s.currentFocusTag,
+            followedPubkeys: partialSettings.followedPubkeys !== undefined ? partialSettings.followedPubkeys : s.followedPubkeys
+        }));
+        await dbSvc.saveSetts(newSettings);
         if (partialSettings.followedPubkeys !== undefined) await updateFollowedPubkeysInDb(partialSettings.followedPubkeys);
-        await this.load();
     },
 
     setRlys: rls => confSvc.save({ rls }),
