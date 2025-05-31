@@ -1,4 +1,4 @@
-import { createEl, formatNpubShort } from '../../../utils.js';
+import {createEl, formatNpubShort} from '../../../utils.js';
 
 export class MutePubkeyItem {
     constructor(pubkey) {
@@ -7,6 +7,10 @@ export class MutePubkeyItem {
     }
 
     render() {
-        return createEl('span', { textContent: formatNpubShort(this.pubkey) });
+        return createEl('span', {textContent: formatNpubShort(this.pubkey)});
+    }
+
+    get element() {
+        return this.element;
     }
 }

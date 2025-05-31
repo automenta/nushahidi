@@ -5,10 +5,10 @@ import {settingsSections} from '../settingsConfig.js';
 export class SettingsModal extends Modal {
     constructor() {
         const contentRenderer = (contentRoot, modalRoot) => {
-            const settingsContent = createEl('div', { class: 'settings-sections' });
+            const settingsContent = createEl('div', {class: 'settings-sections'});
             settingsSections.forEach(sectionConfig => {
                 const sectionEl = createEl('section');
-                sectionEl.appendChild(createEl('h3', { textContent: sectionConfig.title }));
+                sectionEl.appendChild(createEl('h3', {textContent: sectionConfig.title}));
 
                 const sectionInstance = new sectionConfig.renderer(sectionConfig);
                 const renderedContent = sectionInstance.element;
@@ -18,7 +18,7 @@ export class SettingsModal extends Modal {
                 settingsContent.appendChild(sectionEl);
                 settingsContent.appendChild(createEl('hr'));
             });
-            settingsContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => this.hide(), style: 'margin-top:1rem' }));
+            settingsContent.appendChild(createEl('button', {type: 'button', class: 'secondary', textContent: 'Close', onclick: () => this.hide(), style: 'margin-top:1rem'}));
             return settingsContent;
         };
         super('settings-modal', 'Settings', contentRenderer);

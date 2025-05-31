@@ -7,15 +7,15 @@ export class ConfigurableListSetting {
     constructor(config) {
         this.config = config;
         this.sectionEl = createEl('section');
-        this.listContainer = createEl('div', { class: 'configurable-list-container' });
+        this.listContainer = createEl('div', {class: 'configurable-list-container'});
         this.form = null;
 
-        this.sectionEl.appendChild(createEl('h3', { textContent: config.title }));
+        this.sectionEl.appendChild(createEl('h3', {textContent: config.title}));
         this.sectionEl.appendChild(this.listContainer);
 
         let formFieldsMap = {};
         if (config.formFields) {
-            const { form, fields } = renderForm(config.formFields, {}, { class: 'configurable-list-form' });
+            const {form, fields} = renderForm(config.formFields, {}, {class: 'configurable-list-form'});
             this.form = form;
             formFieldsMap = fields;
             this.sectionEl.appendChild(this.form);

@@ -5,7 +5,7 @@ import {App} from './ui/App.js';
 async function setupServiceWorker() {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js', { type: 'module' })
+            navigator.serviceWorker.register('/sw.js', {type: 'module'})
                 .then(registration => {
                     registration.onupdatefound = () => {
                         const installingWorker = registration.installing;
@@ -24,7 +24,7 @@ async function setupServiceWorker() {
 }
 
 async function initializeApplication() {
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+    appStore.set(s => ({ui: {...s.ui, loading: true}}));
     try {
         await confSvc.load();
         await idSvc.init();
@@ -32,15 +32,13 @@ async function initializeApplication() {
         const appRoot = document.getElementById('app');
         if (!appRoot) throw new Error("App root element not found!");
 
-        // App class now handles creating the map container and other UI elements,
-        // and also initializes the map service with its internal map container.
         new App(appRoot);
 
         const cachedReports = await dbSvc.getAllReps();
-        appStore.set({ reports: (Array.isArray(cachedReports) ? cachedReports : []).sort((a, b) => b.at - a.at) });
+        appStore.set({reports: (Array.isArray(cachedReports) ? cachedReports : []).sort((a, b) => b.at - a.at)});
 
         const offlineQueueCount = (await dbSvc.getOfflineQ()).length;
-        appStore.set(s => ({ offlineQueueCount }));
+        appStore.set(s => ({offlineQueueCount}));
 
         await nostrSvc.refreshSubs();
         offSvc.setupSyncLs();
@@ -48,7 +46,7 @@ async function initializeApplication() {
     } catch (e) {
         console.error("Application initialization failed:", e);
     } finally {
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+        appStore.set(s => ({ui: {...s.ui, loading: false}}));
     }
 }
 

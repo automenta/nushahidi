@@ -24,7 +24,7 @@ const createAddLogicHandler = (confSvcMethod, itemExistsChecker, itemExistsError
 };
 
 const addRelayLogic = createAddLogicHandler(
-    async url => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
+    async url => confSvc.setRlys([...appStore.get().relays, {url, read: true, write: true, status: '?'}]),
     url => appStore.get().relays.some(r => r.url === url),
     "Relay already exists."
 );
@@ -61,7 +61,7 @@ const handleFocusTagRemove = t => {
         updatedTags[0].active = true;
     } else if (!updatedTags.length) {
         confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
-        confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
+        confSvc.setFocusTags([{tag: C.FOCUS_TAG_DEFAULT, active: true}]);
     }
 };
 
@@ -90,7 +90,7 @@ const removeActionConfig = (title, message, onClickHandler) => ({
     label: 'Remove',
     className: 'remove-btn',
     onClick: onClickHandler,
-    confirm: { title, message }
+    confirm: {title, message}
 });
 
 const setupFollowedListUniqueListeners = (fields) => {
@@ -103,7 +103,7 @@ const setupFollowedListUniqueListeners = (fields) => {
         if (!contacts.length) return "No NIP-02 contact list found on relays for your account.";
 
         const currentFollowed = appStore.get().followedPubkeys.map(f => f.pk);
-        const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({ pk: c.pubkey, followedAt: Date.now() }));
+        const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({pk: c.pubkey, followedAt: Date.now()}));
         if (!newFollowed.length) return "No new contacts found to import.";
 
         await confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
@@ -119,7 +119,7 @@ const setupFollowedListUniqueListeners = (fields) => {
             "Publish Contacts",
             "This will publish your current followed list as a NIP-02 contact list (Kind 3 event) to your connected relays. This will overwrite any existing Kind 3 event for your pubkey. Continue?",
             withLoading(withToast(async () => {
-                const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' }));
+                const contactsToPublish = appStore.get().followedPubkeys.map(f => ({pubkey: f.pk, relay: '', petname: ''}));
                 await nostrSvc.pubContacts(contactsToPublish);
             }, null, "Error publishing contacts")),
             () => showToast("Publish contacts cancelled.", 'info')
@@ -133,9 +133,9 @@ export const settingsSections = [
         title: 'Relays',
         listId: 'rly-list',
         formFields: [
-            { label: 'New Relay URL:', type: 'url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
-            { type: 'button', ref: 'addRelayBtn', label: 'Add Relay', buttonType: 'button' },
-            { type: 'button', ref: 'saveRelaysBtn', label: 'Save & Reconnect Relays', buttonType: 'button' }
+            {label: 'New Relay URL:', type: 'url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com'},
+            {type: 'button', ref: 'addRelayBtn', label: 'Add Relay', buttonType: 'button'},
+            {type: 'button', ref: 'saveRelaysBtn', label: 'Save & Reconnect Relays', buttonType: 'button'}
         ],
         addInputRef: 'newRelayUrl',
         addBtnRef: 'addRelayBtn',
@@ -160,9 +160,9 @@ export const settingsSections = [
         title: 'Focus Tags',
         listId: 'focus-tag-list',
         formFields: [
-            { label: 'New Focus Tag:', type: 'text', name: 'newFocusTag', placeholder: '#NewFocusTag' },
-            { type: 'button', ref: 'addFocusTagBtn', label: 'Add Focus Tag', buttonType: 'button' },
-            { type: 'button', ref: 'saveFocusTagsBtn', label: 'Save Focus Tags', buttonType: 'button' }
+            {label: 'New Focus Tag:', type: 'text', name: 'newFocusTag', placeholder: '#NewFocusTag'},
+            {type: 'button', ref: 'addFocusTagBtn', label: 'Add Focus Tag', buttonType: 'button'},
+            {type: 'button', ref: 'saveFocusTagsBtn', label: 'Save Focus Tags', buttonType: 'button'}
         ],
         addInputRef: 'newFocusTag',
         addBtnRef: 'addFocusTagBtn',
@@ -182,9 +182,9 @@ export const settingsSections = [
         title: 'Categories',
         listId: 'cat-list',
         formFields: [
-            { label: 'New Category Name:', type: 'text', name: 'newCategory', placeholder: 'New Category' },
-            { type: 'button', ref: 'addCategoryBtn', label: 'Add Category', buttonType: 'button' },
-            { type: 'button', ref: 'saveCategoriesBtn', label: 'Save Categories', buttonType: 'button' }
+            {label: 'New Category Name:', type: 'text', name: 'newCategory', placeholder: 'New Category'},
+            {type: 'button', ref: 'addCategoryBtn', label: 'Add Category', buttonType: 'button'},
+            {type: 'button', ref: 'saveCategoriesBtn', label: 'Save Categories', buttonType: 'button'}
         ],
         addInputRef: 'newCategory',
         addBtnRef: 'addCategoryBtn',
@@ -213,9 +213,9 @@ export const settingsSections = [
         title: 'Mute List',
         listId: 'mute-list',
         formFields: [
-            { label: 'New Muted Pubkey:', type: 'text', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
-            { type: 'button', ref: 'addMuteBtn', label: 'Add to Mute List', buttonType: 'button' },
-            { type: 'button', ref: 'saveMuteListBtn', label: 'Save Mute List', buttonType: 'button' }
+            {label: 'New Muted Pubkey:', type: 'text', name: 'newMutePk', placeholder: 'npub... or hex pubkey'},
+            {type: 'button', ref: 'addMuteBtn', label: 'Add to Mute List', buttonType: 'button'},
+            {type: 'button', ref: 'saveMuteListBtn', label: 'Save Mute List', buttonType: 'button'}
         ],
         addInputRef: 'newMutePk',
         addBtnRef: 'addMuteBtn',
@@ -234,12 +234,12 @@ export const settingsSections = [
         title: 'Followed Users (NIP-02)',
         listId: 'followed-list',
         formFields: [
-            { label: 'New Followed Pubkey:', type: 'text', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
-            { type: 'button', ref: 'addFollowedBtn', label: 'Add to Followed', buttonType: 'button' },
-            { type: 'button', ref: 'saveFollowedBtn', label: 'Save Followed List', buttonType: 'button' },
-            { type: 'hr' },
-            { label: 'Import NIP-02 Contacts', type: 'button', ref: 'importContactsBtn', buttonType: 'button' },
-            { label: 'Publish NIP-02 Contacts', type: 'button', ref: 'publishContactsBtn', buttonType: 'button' }
+            {label: 'New Followed Pubkey:', type: 'text', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey'},
+            {type: 'button', ref: 'addFollowedBtn', label: 'Add to Followed', buttonType: 'button'},
+            {type: 'button', ref: 'saveFollowedBtn', label: 'Save Followed List', buttonType: 'button'},
+            {type: 'hr'},
+            {label: 'Import NIP-02 Contacts', type: 'button', ref: 'importContactsBtn', buttonType: 'button'},
+            {label: 'Publish NIP-02 Contacts', type: 'button', ref: 'publishContactsBtn', buttonType: 'button'}
         ],
         addInputRef: 'newFollowedPk',
         addBtnRef: 'addFollowedBtn',

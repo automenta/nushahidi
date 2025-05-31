@@ -16,20 +16,20 @@ export class AuthModal extends Modal {
 
         const contentRenderer = (contentRoot, modalRoot) => {
             const authFormFields = [
-                { type: 'paragraph', content: [createEl('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)'] },
-                { type: 'button', ref: 'connectNip07Btn', label: 'Connect NIP-07' },
-                { type: 'hr' },
-                { type: 'h4', content: ['Local Keys (Advanced/Risky)'] },
-                { type: 'custom-html', class: 'critical-warning', innerHTML: '<p><strong>SECURITY WARNING:</strong> Storing keys in browser is risky. Backup private key (nsec)!</p>' },
-                { label: 'Passphrase (min 8 chars):', type: 'password', name: 'authPassphrase', autocomplete: 'new-password' },
-                { type: 'button', ref: 'createProfileBtn', label: 'Create New Profile' },
-                { type: 'hr' },
-                { label: 'Import Private Key (nsec/hex):', type: 'text', name: 'authPrivateKey' },
-                { type: 'button', ref: 'importKeyBtn', label: 'Import Key' },
-                { type: 'button', ref: 'cancelAuthModalBtn', class: 'secondary', label: 'Cancel', onclick: () => this.hide(), style: 'margin-top:1rem' }
+                {type: 'paragraph', content: [createEl('strong', {textContent: 'Recommended: '}), 'Use NIP-07 (Alby, etc.)']},
+                {type: 'button', ref: 'connectNip07Btn', label: 'Connect NIP-07'},
+                {type: 'hr'},
+                {type: 'h4', content: ['Local Keys (Advanced/Risky)']},
+                {type: 'custom-html', class: 'critical-warning', innerHTML: '<p><strong>SECURITY WARNING:</strong> Storing keys in browser is risky. Backup private key (nsec)!</p>'},
+                {label: 'Passphrase (min 8 chars):', type: 'password', name: 'authPassphrase', autocomplete: 'new-password'},
+                {type: 'button', ref: 'createProfileBtn', label: 'Create New Profile'},
+                {type: 'hr'},
+                {label: 'Import Private Key (nsec/hex):', type: 'text', name: 'authPrivateKey'},
+                {type: 'button', ref: 'importKeyBtn', label: 'Import Key'},
+                {type: 'button', ref: 'cancelAuthModalBtn', class: 'secondary', label: 'Cancel', onclick: () => this.hide(), style: 'margin-top:1rem'}
             ];
 
-            const { form, fields } = renderForm(authFormFields, {}, {class: 'auth-form'});
+            const {form, fields} = renderForm(authFormFields, {}, {class: 'auth-form'});
 
             connNip07Btn = fields.connectNip07Btn;
             authPassInput = fields.authPassphrase;
@@ -49,8 +49,7 @@ export class AuthModal extends Modal {
     }
 
     handleConnectNip07 = withLoading(async () => {
-        await idSvc.nip07();
-        if (!appStore.get().user) throw new Error("NIP-07 connection failed or user not found.");
+        if (!await idSvc.nip07()) throw new Error("NIP-07 connection failed or user not found.");
         this.hide();
     });
 

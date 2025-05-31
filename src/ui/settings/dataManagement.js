@@ -18,12 +18,12 @@ export class DataManagementSection {
 
     render() {
         const dataManagementFormFields = [
-            { type: 'button', ref: 'clearReportsBtn', label: 'Clear Cached Reports' },
-            { type: 'button', ref: 'exportSettingsBtn', label: 'Export Settings' },
-            { label: 'Import Settings:', type: 'file', ref: 'importSettingsFile', name: 'importSettingsFile', accept: '.json' }
+            {type: 'button', ref: 'clearReportsBtn', label: 'Clear Cached Reports'},
+            {type: 'button', ref: 'exportSettingsBtn', label: 'Export Settings'},
+            {label: 'Import Settings:', type: 'file', ref: 'importSettingsFile', name: 'importSettingsFile', accept: '.json'}
         ];
 
-        const { form, fields } = renderForm(dataManagementFormFields, {}, { class: 'data-management-form' });
+        const {form, fields} = renderForm(dataManagementFormFields, {}, {class: 'data-management-form'});
 
         if (!this.form) {
             this.form = form;
@@ -43,19 +43,20 @@ export class DataManagementSection {
                 "Are you sure you want to clear all cached reports from your local database? This will not delete them from relays.",
                 withLoading(withToast(async () => {
                     await dbSvc.clearReps();
-                    appStore.set({ reports: [] });
+                    appStore.set({reports: []});
                 }, "Cached reports cleared.", "Error clearing reports")),
                 () => showToast("Clearing reports cancelled.", 'info')
             );
         };
 
         this.exportSettingsBtn.onclick = withLoading(withToast(async () => {
-            const exportData = { settings: await dbSvc.loadSetts(), followedPubkeys: await dbSvc.getFollowedPubkeys() };
+            const exportData = {settings: await dbSvc.loadSetts(), followedPubkeys: await dbSvc.getFollowedPubkeys()};
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
             downloadAnchorNode.setAttribute("download", "nostrmapper_settings.json");
             document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
             downloadAnchorNode.remove();
         }, "Settings exported.", "Error exporting settings"));
 
@@ -78,7 +79,9 @@ export class DataManagementSection {
                             for (const fp of importedData.followedPubkeys) await dbSvc.addFollowedPubkey(fp.pk);
                             await confSvc.load();
                             showToast("Settings imported successfully! Please refresh the page.", 'success', 5000);
-                            setTimeout(() => { if (confirm("Settings imported. Reload page now?")) window.location.reload(); }, 2000);
+                            setTimeout(() => {
+                                if (confirm("Settings imported. Reload page now?")) window.location.reload();
+                            }, 2000);
                         }, null, "Error importing settings")),
                         () => showToast("Import cancelled.", 'info')
                     );

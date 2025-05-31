@@ -7,7 +7,7 @@ export class ConnectionStatus {
         this.connectionStatusEl = createEl('span');
         this.syncStatusEl = createEl('span');
         this.offlineQueueCountEl = createEl('span');
-        this.container = createEl('div', { class: 'connection-status' }, [
+        this.container = createEl('div', {class: 'connection-status'}, [
             this.connectionStatusEl,
             this.syncStatusEl,
             this.offlineQueueCountEl

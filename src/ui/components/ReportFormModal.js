@@ -20,7 +20,7 @@ export class ReportFormModal extends Modal {
 
         const contentRenderer = (contentRoot, modalRoot) => {
             this.modalContentContainer = createEl('div');
-            const { form, fields } = renderForm(this.getReportFormFields(appStore.get().settings.cats, {}), {}, { class: 'nstr-rep-form' });
+            const {form, fields} = renderForm(this.getReportFormFields(appStore.get().settings.cats, {}), {}, {class: 'nstr-rep-form'});
             this.form = form;
             this.modalContentContainer.appendChild(this.form);
 
@@ -44,7 +44,7 @@ export class ReportFormModal extends Modal {
         this.reportToEdit = reportToEdit;
         const categories = appStore.get().settings.cats;
 
-        this.formState.pFLoc = reportToEdit?.lat && reportToEdit?.lon ? { lat: reportToEdit.lat, lng: reportToEdit.lon } : null;
+        this.formState.pFLoc = reportToEdit?.lat && reportToEdit?.lon ? {lat: reportToEdit.lat, lng: reportToEdit.lon} : null;
         this.formState.uIMeta = reportToEdit?.imgs?.length ? [...reportToEdit.imgs] : [];
 
         const initialFormData = {
@@ -61,8 +61,8 @@ export class ReportFormModal extends Modal {
         };
 
         this.root.querySelector('h2').textContent = reportToEdit ? 'Edit Report' : 'New Report';
-        
-        const { form: newForm, fields } = renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, { class: 'nstr-rep-form' });
+
+        const {form: newForm, fields} = renderForm(this.getReportFormFields(categories, initialFormData), initialFormData, {class: 'nstr-rep-form'});
         this.form.innerHTML = '';
         newForm.childNodes.forEach(node => this.form.appendChild(node));
 
@@ -81,39 +81,39 @@ export class ReportFormModal extends Modal {
 
     getReportFormFields(cats, initialData) {
         return [
-            { label: 'Title:', type: 'text', name: 'title' },
-            { label: 'Summary:', type: 'text', name: 'summary', required: true },
-            { label: 'Description (MD):', type: 'textarea', name: 'description', required: true, rows: 3 },
-            { label: 'Location:', type: 'custom-html', ref: 'pFLocCoords', content: ['Selected: ', createEl('span', { class: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
-            { type: 'button', ref: 'pickLocMapBtn', label: 'Pick Location', buttonType: 'button' },
-            { type: 'button', ref: 'useGpsLocBtn', label: 'Use GPS', buttonType: 'button' },
-            { label: 'Or Enter Address:', type: 'text', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
-            { type: 'button', ref: 'geocodeAddressBtn', label: 'Geocode Address', buttonType: 'button' },
+            {label: 'Title:', type: 'text', name: 'title'},
+            {label: 'Summary:', type: 'text', name: 'summary', required: true},
+            {label: 'Description (MD):', type: 'textarea', name: 'description', required: true, rows: 3},
+            {label: 'Location:', type: 'custom-html', ref: 'pFLocCoords', content: ['Selected: ', createEl('span', {class: 'pFLoc-coords', textContent: initialData.location || 'None'})]},
+            {type: 'button', ref: 'pickLocMapBtn', label: 'Pick Location', buttonType: 'button'},
+            {type: 'button', ref: 'useGpsLocBtn', label: 'Use GPS', buttonType: 'button'},
+            {label: 'Or Enter Address:', type: 'text', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy'},
+            {type: 'button', ref: 'geocodeAddressBtn', label: 'Geocode Address', buttonType: 'button'},
             {
                 label: 'Categories:',
                 type: 'checkbox-group',
                 name: 'category',
                 class: 'cats-cont-form',
-                options: (cats || []).map(cat => ({ value: cat, label: cat }))
+                options: (cats || []).map(cat => ({value: cat, label: cat}))
             },
-            { label: 'Add. Tags (comma-sep):', type: 'text', name: 'freeTags' },
+            {label: 'Add. Tags (comma-sep):', type: 'text', name: 'freeTags'},
             {
                 label: 'Event Type:',
                 type: 'select',
                 name: 'eventType',
-                options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({ value: type.toLowerCase(), label: type }))
+                options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({value: type.toLowerCase(), label: type}))
             },
             {
                 label: 'Status:',
                 type: 'select',
                 name: 'status',
-                options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
+                options: ['New', 'Active', 'Needs Verification'].map(status => ({value: status.toLowerCase().replace(' ', '_'), label: status}))
             },
-            { label: 'Photos (max 5MB each):', type: 'file', ref: 'reportPhotos', name: 'photos', multiple: true, accept: 'image/*' },
-            { type: 'custom-html', ref: 'uploadedPhotosPreview', class: 'upld-photos-preview' },
-            { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
-            { type: 'button', ref: 'submitReportBtn', label: initialData.isEdit ? 'Update Report' : 'Submit', buttonType: 'submit' },
-            { type: 'button', ref: 'cancelReportBtn', class: 'secondary', label: 'Cancel', onclick: () => this.hide() }
+            {label: 'Photos (max 5MB each):', type: 'file', ref: 'reportPhotos', name: 'photos', multiple: true, accept: 'image/*'},
+            {type: 'custom-html', ref: 'uploadedPhotosPreview', class: 'upld-photos-preview'},
+            {type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.']},
+            {type: 'button', ref: 'submitReportBtn', label: initialData.isEdit ? 'Update Report' : 'Submit', buttonType: 'submit'},
+            {type: 'button', ref: 'cancelReportBtn', class: 'secondary', label: 'Cancel', onclick: () => this.hide()}
         ];
     }
 
@@ -124,7 +124,7 @@ export class ReportFormModal extends Modal {
             return;
         }
 
-        const imageItemRenderer = img => createEl('span', { textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1)) });
+        const imageItemRenderer = img => createEl('span', {textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1))});
         const imageActionsConfig = [{
             label: 'x',
             className: 'remove-image-btn',
@@ -173,7 +173,7 @@ export class ReportFormModal extends Modal {
             }
             navigator.geolocation.getCurrentPosition(
                 position => {
-                    formState.pFLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    formState.pFLoc = {lat: position.coords.latitude, lng: position.coords.longitude};
                     updateLocationDisplay();
                 },
                 error => showToast(`GPS Error: ${error.message}`, 'error')
@@ -187,8 +187,8 @@ export class ReportFormModal extends Modal {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}}&limit=1`);
             const data = await response.json();
             if (data?.length) {
-                const { lat, lon, display_name } = data[0];
-                formState.pFLoc = { lat: parseFloat(lat), lng: parseFloat(lon) };
+                const {lat, lon, display_name} = data[0];
+                formState.pFLoc = {lat: parseFloat(lat), lng: parseFloat(lon)};
                 updateLocationDisplay(display_name);
                 return `Address found: ${display_name}`;
             } else {
@@ -246,7 +246,7 @@ export class ReportFormModal extends Modal {
             const currentFocusTag = appStore.get().currentFocusTag;
             const tags = this.buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag);
 
-            await nostrSvc.pubEv({ kind: C.NOSTR_KIND_REPORT, content: data.description, tags });
+            await nostrSvc.pubEv({kind: C.NOSTR_KIND_REPORT, content: data.description, tags});
             e.target.reset();
             this.pFLocCoordsEl.textContent = 'None';
             this.upldPhotosPreviewEl.innerHTML = '';

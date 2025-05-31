@@ -1,29 +1,29 @@
-import { appStore } from '../store.js';
-import { idSvc, mapSvc } from '../services.js';
-import { C, createEl } from '../utils.js';
-import { showConfirmModal } from './modals.js';
-import { applyAllFilters } from './components/FilterControls.js';
-import { ReportList } from './components/ReportList.js';
-import { GlobalLoadingSpinner } from './components/GlobalLoadingSpinner.js';
-import { AppHeader } from './components/AppHeader.js';
-import { ReportDetailsModal } from './components/ReportDetailsModal.js';
-import { AuthModal } from './components/AuthModal.js';
-import { ReportFormModal } from './components/ReportFormModal.js';
-import { SettingsModal } from './components/SettingsModal.js';
-import { OnboardingModal } from './components/OnboardingModal.js';
-import { SidebarControls } from './components/SidebarControls.js';
-import { FilterControls } from './components/FilterControls.js'; // Ensure FilterControls is imported
+import {appStore} from '../store.js';
+import {idSvc, mapSvc} from '../services.js';
+import {C, createEl} from '../utils.js';
+import {showConfirmModal} from './modals.js';
+import {applyAllFilters} from './components/FilterControls.js';
+import {ReportList} from './components/ReportList.js';
+import {GlobalLoadingSpinner} from './components/GlobalLoadingSpinner.js';
+import {AppHeader} from './components/AppHeader.js';
+import {ReportDetailsModal} from './components/ReportDetailsModal.js';
+import {AuthModal} from './components/AuthModal.js';
+import {ReportFormModal} from './components/ReportFormModal.js';
+import {SettingsModal} from './components/SettingsModal.js';
+import {OnboardingModal} from './components/OnboardingModal.js';
+import {SidebarControls} from './components/SidebarControls.js';
+import {FilterControls} from './components/FilterControls.js';
 
 export class App {
     constructor(rootElement) {
         this.root = rootElement;
         this.root.innerHTML = '';
 
-        const headerEl = createEl('header', { class: 'app-header' });
+        const headerEl = createEl('header', {class: 'app-header'});
         const mainEl = createEl('main');
-        const sidebarEl = createEl('div', { class: 'app-sidebar' }); // Changed from id: 'sidebar'
-        const mapContainerEl = createEl('div', { class: 'map-container', 'aria-label': 'Interactive Map' }); // Changed from id: 'map-container'
-        const footerEl = createEl('footer', {}, createEl('p', { textContent: '© NostrMapper Community' }));
+        const sidebarEl = createEl('div', {class: 'app-sidebar'});
+        const mapContainerEl = createEl('div', {class: 'map-container', 'aria-label': 'Interactive Map'});
+        const footerEl = createEl('footer', {}, createEl('p', {textContent: '© NostrMapper Community'}));
 
         this.root.append(headerEl, mainEl, footerEl);
         mainEl.append(mapContainerEl, sidebarEl);
@@ -62,7 +62,7 @@ export class App {
 
         this.setupEventListeners();
         applyAllFilters();
-        appStore.set(s => ({ ui: { ...s.ui, showReportList: true } }));
+        appStore.set(s => ({ui: {...s.ui, showReportList: true}}));
 
         mapSvc.init(mapContainerEl)
             .then(success => {

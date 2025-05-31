@@ -6,13 +6,20 @@ import {appStore} from '../../store.js';
 
 export const getOfflineQueueEventType = kind => {
     switch (kind) {
-        case C.NOSTR_KIND_REPORT: return 'Report';
-        case C.NOSTR_KIND_REACTION: return 'Reaction';
-        case C.NOSTR_KIND_NOTE: return 'Comment';
-        case 5: return 'Deletion';
-        case C.NOSTR_KIND_PROFILE: return 'Profile';
-        case C.NOSTR_KIND_CONTACTS: return 'Contacts';
-        default: return `Kind ${kind}`;
+        case C.NOSTR_KIND_REPORT:
+            return 'Report';
+        case C.NOSTR_KIND_REACTION:
+            return 'Reaction';
+        case C.NOSTR_KIND_NOTE:
+            return 'Comment';
+        case 5:
+            return 'Deletion';
+        case C.NOSTR_KIND_PROFILE:
+            return 'Profile';
+        case C.NOSTR_KIND_CONTACTS:
+            return 'Contacts';
+        default:
+            return `Kind ${kind}`;
     }
 };
 
@@ -21,13 +28,13 @@ export const offlineQueueItemRenderer = item => {
     const timestamp = new Date(item.ts).toLocaleString();
     const contentSnippet = item.event.content.substring(0, 50) + (item.event.content.length > 50 ? '...' : '');
     const eventIdSnippet = item.event.id.substring(0, 8);
-    return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
+    return createEl('span', {innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>`});
 };
 
 export class OfflineQueueSection {
     constructor(config) {
         this.config = config;
-        this.sectionEl = createEl('div', { class: 'offline-queue-section' });
+        this.sectionEl = createEl('div', {class: 'offline-queue-section'});
 
         this.renderQueue();
 
@@ -40,7 +47,7 @@ export class OfflineQueueSection {
 
     async renderQueue() {
         const queueItems = await dbSvc.getOfflineQ();
-        appStore.set(s => ({ offlineQueueCount: queueItems.length }));
+        appStore.set(s => ({offlineQueueCount: queueItems.length}));
         const actionsConfig = [
             {
                 label: 'Retry',
@@ -61,8 +68,8 @@ export class OfflineQueueSection {
             }
         ];
         this.sectionEl.innerHTML = '';
-        this.sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
-        const listContainer = createEl('div'); // Removed id: this.config.listId
+        this.sectionEl.appendChild(createEl('p', {textContent: 'Events waiting to be published when online.'}));
+        const listContainer = createEl('div');
         this.sectionEl.appendChild(listContainer);
         renderList(listContainer, queueItems, offlineQueueItemRenderer, actionsConfig, 'offline-q-entry');
     }

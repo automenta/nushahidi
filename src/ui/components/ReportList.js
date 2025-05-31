@@ -3,8 +3,8 @@ import {appStore} from '../../store.js';
 
 export class ReportList {
     constructor() {
-        this.listContainer = createEl('div', { class: 'report-list-container' });
-        this.listElement = createEl('div', { class: 'report-list' });
+        this.listContainer = createEl('div', {class: 'report-list-container'});
+        this.listElement = createEl('div', {class: 'report-list'});
         this.listContainer.appendChild(this.listElement);
 
         this.render(appStore.get());
@@ -33,11 +33,11 @@ export class ReportList {
                 cardWrapper.innerHTML = this.renderReportCard(report);
                 const cardElement = cardWrapper.firstElementChild;
                 cardElement.addEventListener('click', () => {
-                    appStore.set(s => ({ ui: { ...s.ui, reportIdToView: report.id, showReportList: false } }));
+                    appStore.set(s => ({ui: {...s.ui, reportIdToView: report.id, showReportList: false}}));
                 });
                 cardElement.addEventListener('keydown', e => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                        appStore.set(s => ({ ui: { ...s.ui, reportIdToView: report.id, showReportList: false } }));
+                        appStore.set(s => ({ui: {...s.ui, reportIdToView: report.id, showReportList: false}}));
                     }
                 });
                 this.listElement.appendChild(cardElement);

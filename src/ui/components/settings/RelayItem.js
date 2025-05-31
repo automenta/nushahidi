@@ -1,4 +1,4 @@
-import { createEl, sanitizeHTML } from '../../../utils.js';
+import {createEl, sanitizeHTML} from '../../../utils.js';
 
 export class RelayItem {
     constructor(relay) {
@@ -7,6 +7,10 @@ export class RelayItem {
     }
 
     render() {
-        return createEl('span', { textContent: `${sanitizeHTML(this.relay.url)} (${this.relay.read ? 'R' : ''}${this.relay.write ? 'W' : ''}) - ${sanitizeHTML(this.relay.status)}` });
+        return createEl('span', {textContent: `${sanitizeHTML(this.relay.url)} (${this.relay.read ? 'R' : ''}${this.relay.write ? 'W' : ''}) - ${sanitizeHTML(this.relay.status)}`});
+    }
+
+    get element() {
+        return this.element;
     }
 }

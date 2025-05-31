@@ -26,13 +26,13 @@ export class KeyManagementSection {
 
     render(appState) {
         const keyManagementFormFields = [
-            { type: 'button', ref: 'exportSkBtn', label: 'Export Private Key' },
-            { label: 'Old Passphrase:', type: 'password', name: 'oldPassphrase' },
-            { label: 'New Passphrase:', type: 'password', name: 'newPassphrase' },
-            { type: 'button', ref: 'changePassBtn', label: 'Change Passphrase' }
+            {type: 'button', ref: 'exportSkBtn', label: 'Export Private Key'},
+            {label: 'Old Passphrase:', type: 'password', name: 'oldPassphrase'},
+            {label: 'New Passphrase:', type: 'password', name: 'newPassphrase'},
+            {type: 'button', ref: 'changePassBtn', label: 'Change Passphrase'}
         ];
 
-        const { form, fields } = renderForm(keyManagementFormFields, {}, { class: 'key-management-form' });
+        const {form, fields} = renderForm(keyManagementFormFields, {}, {class: 'key-management-form'});
 
         if (!this.form) {
             this.form = form;

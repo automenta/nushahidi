@@ -8,11 +8,11 @@ export class AppHeader {
         this.onAuthToggle = props.onAuthToggle;
         this.onShowSettings = props.onShowSettings;
 
-        this.headerEl = createEl('div', { class: 'app-header-content' });
-        this.createReportBtn = createEl('button', { textContent: 'Create Report' });
+        this.headerEl = createEl('div', {class: 'app-header-content'});
+        this.createReportBtn = createEl('button', {textContent: 'Create Report'});
         this.authButton = createEl('button');
-        this.settingsButton = createEl('button', { textContent: 'Settings' });
-        this.userDisplay = createEl('span', { class: 'user-display' });
+        this.settingsButton = createEl('button', {textContent: 'Settings'});
+        this.userDisplay = createEl('span', {class: 'user-display'});
         this.connectionStatusComponent = new ConnectionStatus(this.onShowSettings);
 
         this.createReportBtn.onclick = this.onCreateReport;
@@ -20,13 +20,13 @@ export class AppHeader {
         this.authButton.onclick = this.onAuthToggle;
 
         this.headerEl.append(
-            createEl('h1', { textContent: 'NostrMapper' }),
-            createEl('div', { class: 'header-controls' }, [
+            createEl('h1', {textContent: 'NostrMapper'}),
+            createEl('div', {class: 'header-controls'}, [
                 this.createReportBtn,
                 this.authButton,
                 this.settingsButton
             ]),
-            createEl('div', { class: 'status-and-user' }, [
+            createEl('div', {class: 'status-and-user'}, [
                 this.userDisplay,
                 this.connectionStatusComponent.element
             ])

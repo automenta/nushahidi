@@ -34,8 +34,8 @@ export class ImageHostSection {
                 name: 'imgHostProvider',
                 value: appState.settings.nip96H ? 'nip96' : (appState.settings.imgH || C.IMG_UPLOAD_NOSTR_BUILD),
                 options: [
-                    { value: C.IMG_UPLOAD_NOSTR_BUILD, label: 'nostr.build (Default)' },
-                    { value: 'nip96', label: 'NIP-96 Server' }
+                    {value: C.IMG_UPLOAD_NOSTR_BUILD, label: 'nostr.build (Default)'},
+                    {value: 'nip96', label: 'NIP-96 Server'}
                 ]
             },
             {
@@ -43,16 +43,16 @@ export class ImageHostSection {
                 ref: 'nip96FieldsContainer',
                 class: 'nip96-fields',
                 content: [
-                    createEl('label', { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' }),
-                    createEl('input', { type: 'url', id: 'nip96-url-in', name: 'nip96Url', value: appState.settings.nip96H, placeholder: 'https://your.nip96.server' }),
-                    createEl('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
-                    createEl('input', { type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96T })
+                    createEl('label', {for: 'nip96-url-in', textContent: 'NIP-96 Server URL:'}),
+                    createEl('input', {type: 'url', id: 'nip96-url-in', name: 'nip96Url', value: appState.settings.nip96H, placeholder: 'https://your.nip96.server'}),
+                    createEl('label', {for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):'}),
+                    createEl('input', {type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96T})
                 ]
             },
-            { type: 'button', ref: 'saveImgHostBtn', textContent: 'Save Image Host' }
+            {type: 'button', ref: 'saveImgHostBtn', textContent: 'Save Image Host'}
         ];
 
-        const { form, fields } = renderForm(imageHostFormFields, {}, { class: 'image-host-form' });
+        const {form, fields} = renderForm(imageHostFormFields, {}, {class: 'image-host-form'});
 
         if (!this.form) {
             this.form = form;

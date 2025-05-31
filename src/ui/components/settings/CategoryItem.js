@@ -1,4 +1,4 @@
-import { createEl, sanitizeHTML } from '../../../utils.js';
+import {createEl, sanitizeHTML} from '../../../utils.js';
 
 export class CategoryItem {
     constructor(category) {
@@ -7,6 +7,10 @@ export class CategoryItem {
     }
 
     render() {
-        return createEl('span', { textContent: sanitizeHTML(this.category) });
+        return createEl('span', {textContent: sanitizeHTML(this.category)});
+    }
+
+    get element() {
+        return this.element;
     }
 }

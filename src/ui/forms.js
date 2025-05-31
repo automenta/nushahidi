@@ -2,18 +2,18 @@ import {createEl, sanitizeHTML, showToast} from '../utils.js';
 import {showConfirmModal} from './modals.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
-    const form = createEl('form', { ...formOptions });
+    const form = createEl('form', {...formOptions});
     const fields = {};
 
     if (formOptions.onSubmit) form.onsubmit = formOptions.onSubmit;
 
     for (const field of fieldsConfig) {
         const fieldId = field.id || (field.name ? `field-${field.name}-${Math.random().toString(36).substring(2, 9)}` : null);
-        const commonAttrs = { id: fieldId, name: field.name, required: field.required || false };
+        const commonAttrs = {id: fieldId, name: field.name, required: field.required || false};
         const initialValue = initialData[field.name] ?? field.value ?? '';
 
         if (field.label && !['button', 'custom-html', 'paragraph', 'hr', 'checkbox', 'h4'].includes(field.type)) {
-            form.appendChild(createEl('label', { for: fieldId, textContent: field.label }));
+            form.appendChild(createEl('label', {for: fieldId, textContent: field.label}));
         }
 
         let inputElement;
@@ -42,7 +42,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                 });
                 break;
             case 'select':
-                inputElement = createEl('select', { class: field.class || '', ...commonAttrs },
+                inputElement = createEl('select', {class: field.class || '', ...commonAttrs},
                     field.options.map(opt => createEl('option', {
                         value: opt.value,
                         textContent: opt.label,
@@ -51,21 +51,21 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                 );
                 break;
             case 'checkbox-group':
-                inputElement = createEl('div', { id: fieldId, class: field.class || '' });
+                inputElement = createEl('div', {id: fieldId, class: field.class || ''});
                 field.options.forEach(opt => inputElement.appendChild(createEl('label', {}, [
-                    createEl('input', { type: 'checkbox', name: field.name, value: opt.value, checked: initialData[field.name]?.includes(opt.value) || false }),
+                    createEl('input', {type: 'checkbox', name: field.name, value: opt.value, checked: initialData[field.name]?.includes(opt.value) || false}),
                     ` ${sanitizeHTML(opt.label)}`
                 ])));
                 break;
             case 'checkbox':
                 inputElement = createEl('label', {}, [
-                    createEl('input', { type: 'checkbox', id: fieldId, name: field.name, checked: initialData[field.name] || false }),
+                    createEl('input', {type: 'checkbox', id: fieldId, name: field.name, checked: initialData[field.name] || false}),
                     ` ${sanitizeHTML(field.label)}`
                 ]);
                 if (field.onchange) inputElement.querySelector('input').addEventListener('change', field.onchange);
                 break;
             case 'file':
-                inputElement = createEl('input', { type: 'file', multiple: field.multiple || false, accept: field.accept || '', ...commonAttrs });
+                inputElement = createEl('input', {type: 'file', multiple: field.multiple || false, accept: field.accept || '', ...commonAttrs});
                 if (field.onchange) inputElement.addEventListener('change', field.onchange);
                 break;
             case 'button':
@@ -79,19 +79,19 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                 if (field.onclick) inputElement.onclick = field.onclick;
                 break;
             case 'custom-html':
-                inputElement = createEl('div', { id: fieldId, class: field.class || '', innerHTML: field.innerHTML || '' }, field.content || []);
+                inputElement = createEl('div', {id: fieldId, class: field.class || '', innerHTML: field.innerHTML || ''}, field.content || []);
                 break;
             case 'paragraph':
-                inputElement = createEl('p', { class: field.class || '', innerHTML: field.innerHTML || '' }, field.content || []);
+                inputElement = createEl('p', {class: field.class || '', innerHTML: field.innerHTML || ''}, field.content || []);
                 break;
             case 'hr':
                 inputElement = createEl('hr');
                 break;
             case 'h4':
-                inputElement = createEl('h4', { textContent: field.content[0] });
+                inputElement = createEl('h4', {textContent: field.content[0]});
                 break;
             case 'radio-group':
-                inputElement = createEl('div', { id: fieldId, class: field.class || '' });
+                inputElement = createEl('div', {id: fieldId, class: field.class || ''});
                 field.options.forEach(opt => {
                     const radio = createEl('input', {
                         type: 'radio',
@@ -116,7 +116,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
             fields[fieldId] = inputElement;
         }
     }
-    return { form, fields };
+    return {form, fields};
 }
 
 export const renderList = (containerElement, items, itemRenderer, actionsConfig, itemWrapperClass) => {
@@ -133,7 +133,7 @@ export const renderList = (containerElement, items, itemRenderer, actionsConfig,
 
     items.forEach((item, index) => {
         const itemContent = itemRenderer(item, index);
-        const itemDiv = createEl('div', { class: itemWrapperClass });
+        const itemDiv = createEl('div', {class: itemWrapperClass});
 
         if (typeof itemContent === 'string') itemDiv.innerHTML = itemContent;
         else if (itemContent instanceof Node) itemDiv.appendChild(itemContent);

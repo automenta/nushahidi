@@ -5,14 +5,14 @@ import {C, createEl, formatNpubShort, sanitizeHTML, showToast} from '../../utils
 import {Modal, showConfirmModal} from '../modals.js';
 import {renderForm} from '../forms.js';
 import {applyAllFilters} from './FilterControls.js';
-import { nip19 } from 'nostr-tools';
+import {nip19} from 'nostr-tools';
 import {withLoading, withToast} from '../../decorators.js';
 import {ReportFormModal} from './ReportFormModal.js';
 
 export class ReportDetailsModal extends Modal {
     constructor(report, reportFormModal) {
         const contentRenderer = (contentRoot, modalRoot) => {
-            this.modalContentContainer = createEl('div', { class: 'report-detail-container' });
+            this.modalContentContainer = createEl('div', {class: 'report-detail-container'});
             this.renderContent(report, this.modalContentContainer);
             return this.modalContentContainer;
         };
@@ -64,7 +64,7 @@ export class ReportDetailsModal extends Modal {
 
     handleReactionSubmit = async event => {
         const btn = event.target;
-        const { reportId, reportPk, reaction } = btn.dataset;
+        const {reportId, reportPk, reaction} = btn.dataset;
         await withLoading(withToast(async () => {
             await this.submitInteraction(C.NOSTR_KIND_REACTION, reaction, reportId, reportPk);
         }, "Reaction sent!", "Error sending reaction", () => btn.disabled = false))();
@@ -74,7 +74,7 @@ export class ReportDetailsModal extends Modal {
         event.preventDefault();
         const form = event.target;
         const submitBtn = form.querySelector('button[type="submit"]');
-        const { reportId, reportPk } = form.dataset;
+        const {reportId, reportPk} = form.dataset;
         const commentText = form.elements.comment.value.trim();
         if (!commentText) throw new Error("Comment cannot be empty.");
 
@@ -124,11 +124,14 @@ export class ReportDetailsModal extends Modal {
     }
 
     setupReportDetailEventListeners(rep, isAuthor, canFollow, detailContainer) {
-        detailContainer.querySelector('.back-to-list-btn').onclick = () => { this.hide(); appStore.set(s => ({ ui: { ...s.ui, showReportList: true, reportIdToView: null } })) };
+        detailContainer.querySelector('.back-to-list-btn').onclick = () => {
+            this.hide();
+            appStore.set(s => ({ui: {...s.ui, showReportList: true, reportIdToView: null}}));
+        };
 
         if (isAuthor) {
             detailContainer.querySelector('.edit-button').onclick = () => {
-                this.reportFormModal.show('rep-title', rep);
+                this.reportFormModal.show('.nstr-rep-form #field-title', rep);
             };
             detailContainer.querySelector('.delete-button').onclick = () => {
                 showConfirmModal(
@@ -137,7 +140,7 @@ export class ReportDetailsModal extends Modal {
                     withLoading(withToast(async () => {
                         await nostrSvc.deleteEv(rep.id);
                         this.hide();
-                        appStore.set(s => ({ ui: { ...s.ui, showReportList: true, reportIdToView: null } }));
+                        appStore.set(s => ({ui: {...s.ui, showReportList: true, reportIdToView: null}}));
                         applyAllFilters();
                     }, null, "Failed to delete report")),
                     () => showToast("Report deletion cancelled.", 'info')
@@ -173,29 +176,29 @@ export class ReportDetailsModal extends Modal {
             `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(interaction.content)} <small>(${interactionTime})</small>` :
             `<strong>${sanitizeHTML(interactionUser)}</strong> commented: ${marked.parse(sanitizeHTML(interaction.content))} <small>(${interactionTime})</small>`;
 
-        return createEl('div', { class: 'interaction-item', innerHTML: contentHtml });
+        return createEl('div', {class: 'interaction-item', innerHTML: contentHtml});
     }
 
     renderInteractionsContent(interactions) {
         const fragment = document.createDocumentFragment();
-        fragment.appendChild(createEl('h4', { textContent: 'Interactions' }));
+        fragment.appendChild(createEl('h4', {textContent: 'Interactions'}));
 
-        if (!interactions.length) fragment.appendChild(createEl('p', { textContent: 'No interactions yet.' }));
+        if (!interactions.length) fragment.appendChild(createEl('p', {textContent: 'No interactions yet.'}));
         else interactions.forEach(i => fragment.appendChild(this.renderInteractionItem(i)));
         return fragment;
     }
 
     setupInteractionControls(reportId, reportPk, container) {
-        const reactionButtonsDiv = createEl('div', { class: 'reaction-buttons', style: 'margin-top:0.5rem;' });
-        reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '+', textContent: '👍 Like' }));
-        reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '-', textContent: '👎 Dislike' }));
+        const reactionButtonsDiv = createEl('div', {class: 'reaction-buttons', style: 'margin-top:0.5rem;'});
+        reactionButtonsDiv.appendChild(createEl('button', {'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '+', textContent: '👍 Like'}));
+        reactionButtonsDiv.appendChild(createEl('button', {'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '-', textContent: '👎 Dislike'}));
 
         const commentFormFields = [
-            { type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true },
-            { type: 'button', buttonType: 'submit', label: 'Post Comment' }
+            {type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true},
+            {type: 'button', buttonType: 'submit', label: 'Post Comment'}
         ];
 
-        const { form: commentForm } = renderForm(commentFormFields, {}, {
+        const {form: commentForm} = renderForm(commentFormFields, {}, {
             onSubmit: this.handleCommentSubmit,
             'data-report-id': sanitizeHTML(reportId),
             'data-report-pk': sanitizeHTML(reportPk),
@@ -222,8 +225,8 @@ export class ReportDetailsModal extends Modal {
                 const reportIndex = s.reports.findIndex(rep => rep.id === reportId);
                 if (reportIndex > -1) {
                     const updatedReports = [...s.reports];
-                    updatedReports[reportIndex] = { ...updatedReports[reportIndex], interactions };
-                    return { reports: updatedReports };
+                    updatedReports[reportIndex] = {...updatedReports[reportIndex], interactions};
+                    return {reports: updatedReports};
                 }
                 return {};
             });
@@ -235,7 +238,7 @@ export class ReportDetailsModal extends Modal {
             const miniMapEl = modalContent.querySelector('.mini-map-det');
             if (miniMapEl) {
                 const miniMap = L.map(miniMapEl).setView([rep.lat, rep.lon], 13);
-                L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
+                L.tileLayer(confSvc.getTileServer(), {attribution: '&copy; OSM'}).addTo(miniMap);
                 setTimeout(() => miniMap.invalidateSize(), 0);
             }
         }

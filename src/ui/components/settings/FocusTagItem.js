@@ -1,6 +1,6 @@
-import { createEl, sanitizeHTML } from '../../../utils.js';
-import { appStore } from '../../../store.js';
-import { confSvc, nostrSvc } from '../../../services.js';
+import {createEl, sanitizeHTML} from '../../../utils.js';
+import {appStore} from '../../../store.js';
+import {confSvc, nostrSvc} from '../../../services.js';
 
 export class FocusTagItem {
     constructor(focusTag) {
@@ -9,7 +9,7 @@ export class FocusTagItem {
     }
 
     handleRadioChange = () => {
-        const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === this.focusTag.tag }));
+        const updatedTags = appStore.get().focusTags.map(t => ({...t, active: t.tag === this.focusTag.tag}));
         confSvc.setFocusTags(updatedTags);
         confSvc.setCurrentFocusTag(this.focusTag.tag);
         nostrSvc.refreshSubs();
@@ -18,8 +18,8 @@ export class FocusTagItem {
     render() {
         const radioId = `focus-tag-radio-${sanitizeHTML(this.focusTag.tag.replace(/[^a-zA-Z0-9]/g, ''))}`;
         return createEl('div', {}, [
-            createEl('span', { textContent: `${sanitizeHTML(this.focusTag.tag)}${this.focusTag.active ? ' (Active)' : ''}` }),
-            createEl('label', { for: radioId }, [
+            createEl('span', {textContent: `${sanitizeHTML(this.focusTag.tag)}${this.focusTag.active ? ' (Active)' : ''}`}),
+            createEl('label', {for: radioId}, [
                 createEl('input', {
                     type: 'radio',
                     id: radioId,
@@ -31,5 +31,9 @@ export class FocusTagItem {
                 ` Set Active`
             ])
         ]);
+    }
+
+    get element() {
+        return this.element;
     }
 }

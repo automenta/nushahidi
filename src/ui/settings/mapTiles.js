@@ -29,13 +29,13 @@ export class MapTilesSection {
                 ref: 'tilePresetSelect',
                 name: 'tilePreset',
                 value: appState.settings.tilePreset,
-                options: C.TILE_SERVERS_PREDEFINED.map(p => ({ value: p.name, label: p.name }))
+                options: C.TILE_SERVERS_PREDEFINED.map(p => ({value: p.name, label: p.name}))
             },
-            { label: 'Custom Tile URL Template:', type: 'url', ref: 'tileUrlInput', name: 'tileUrl', value: appState.settings.tileUrl },
-            { type: 'button', ref: 'saveTileBtn', label: 'Save Map Tiles', buttonType: 'button' }
+            {label: 'Custom Tile URL Template:', type: 'url', ref: 'tileUrlInput', name: 'tileUrl', value: appState.settings.tileUrl},
+            {type: 'button', ref: 'saveTileBtn', label: 'Save Map Tiles', buttonType: 'button'}
         ];
 
-        const { form, fields } = renderForm(mapTilesFormFields, {}, { class: 'map-tiles-form' });
+        const {form, fields} = renderForm(mapTilesFormFields, {}, {class: 'map-tiles-form'});
 
         if (!this.form) {
             this.form = form;

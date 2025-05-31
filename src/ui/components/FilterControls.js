@@ -1,14 +1,14 @@
 import {booleanPointInPolygon, point} from '@turf/turf';
 import {appStore} from '../../store.js';
 import {mapSvc, nostrSvc} from '../../services.js';
-import {C, debounce, npubToHex, createEl, sanitizeHTML} from '../../utils.js';
+import {C, debounce, npubToHex, createEl} from '../../utils.js';
 import {renderForm} from '../forms.js';
 
 export const applyAllFilters = () => {
-    const { reports: allReports, settings, currentFocusTag, drawnShapes, ui, followedPubkeys } = appStore.get();
-    const { mute: mutedPubkeys } = settings;
-    const { spatialFilterEnabled, followedOnlyFilter, filters } = ui;
-    const { q: searchQuery, cat: categoryFilter, auth: authorFilter, tStart: timeStart, tEnd: timeEnd } = filters;
+    const {reports: allReports, settings, currentFocusTag, drawnShapes, ui, followedPubkeys} = appStore.get();
+    const {mute: mutedPubkeys} = settings;
+    const {spatialFilterEnabled, followedOnlyFilter, filters} = ui;
+    const {q: searchQuery, cat: categoryFilter, auth: authorFilter, tStart: timeStart, tEnd: timeEnd} = filters;
 
     const filteredReports = allReports.filter(report =>
         isMuted(report, mutedPubkeys) &&
@@ -21,7 +21,7 @@ export const applyAllFilters = () => {
         matchesFollowedOnly(report, followedOnlyFilter, followedPubkeys)
     ).sort((a, b) => b.at - a.at);
 
-    appStore.set({ filteredReports });
+    appStore.set({filteredReports});
     mapSvc.updReps(filteredReports);
 };
 export const debouncedApplyAllFilters = debounce(applyAllFilters, 350);
@@ -42,7 +42,7 @@ const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => !fo
 
 export class FilterControls {
     constructor() {
-        this.filterFormElement = createEl('div', { class: 'filter-controls-container' });
+        this.filterFormElement = createEl('div', {class: 'filter-controls-container'});
         this.mapDrawControlsDiv = null;
 
         this.render(appStore.get());
@@ -60,7 +60,7 @@ export class FilterControls {
     }
 
     updateFilterState(key, value) {
-        appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
+        appStore.set(s => ({ui: {...s.ui, filters: {...s.ui.filters, [key]: value}}}));
     }
 
     setupFilterInput(fields, refKey, stateKey, handler = applyAllFilters, debounceInput = false) {
@@ -92,27 +92,27 @@ export class FilterControls {
 
     render(appState) {
         const filterFormFields = [
-            { type: 'h4', content: ['Filter Reports'] },
-            { label: 'Search reports...', type: 'search', ref: 'searchQueryInput', name: 'searchQuery', placeholder: 'Search reports text' },
-            { label: 'Focus Tag:', type: 'text', ref: 'focusTagInput', name: 'focusTag', readOnly: true },
+            {type: 'h4', content: ['Filter Reports']},
+            {label: 'Search reports...', type: 'search', ref: 'searchQueryInput', name: 'searchQuery', placeholder: 'Search reports text'},
+            {label: 'Focus Tag:', type: 'text', ref: 'focusTagInput', name: 'focusTag', readOnly: true},
             {
                 label: 'Category:',
                 type: 'select',
                 ref: 'filterCategorySelect',
                 name: 'filterCategory',
-                options: [{ value: '', label: 'All' }, ...(appState.settings?.cats || []).map(cat => ({ value: cat, label: cat }))]
+                options: [{value: '', label: 'All'}, ...(appState.settings?.cats || []).map(cat => ({value: cat, label: cat}))]
             },
-            { label: 'Author (npub/hex):', type: 'text', ref: 'filterAuthorInput', name: 'filterAuthor', placeholder: 'Author pubkey' },
-            { label: 'From:', type: 'datetime-local', ref: 'filterTimeStartInput', name: 'filterTimeStart' },
-            { label: 'To:', type: 'datetime-local', ref: 'filterTimeEndInput', name: 'filterTimeEnd' },
-            { type: 'button', ref: 'applyFiltersBtn', label: 'Apply', class: 'apply-filters-btn' },
-            { type: 'button', ref: 'resetFiltersBtn', label: 'Reset', class: 'reset-filters-btn' },
-            { type: 'hr' },
-            { type: 'h4', content: ['Map Drawing Filters'] },
-            { type: 'custom-html', ref: 'mapDrawControlsContainer', class: 'map-draw-controls' },
-            { label: 'Enable Spatial Filter', type: 'checkbox', ref: 'spatialFilterToggle', name: 'spatialFilterEnabled' },
-            { label: 'Show Only Followed Users', type: 'checkbox', ref: 'followedOnlyToggle', name: 'followedOnlyFilter' },
-            { type: 'button', ref: 'clearDrawnShapesBtn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
+            {label: 'Author (npub/hex):', type: 'text', ref: 'filterAuthorInput', name: 'filterAuthor', placeholder: 'Author pubkey'},
+            {label: 'From:', type: 'datetime-local', ref: 'filterTimeStartInput', name: 'filterTimeStart'},
+            {label: 'To:', type: 'datetime-local', ref: 'filterTimeEndInput', name: 'filterTimeEnd'},
+            {type: 'button', ref: 'applyFiltersBtn', label: 'Apply', class: 'apply-filters-btn'},
+            {type: 'button', ref: 'resetFiltersBtn', label: 'Reset', class: 'reset-filters-btn'},
+            {type: 'hr'},
+            {type: 'h4', content: ['Map Drawing Filters']},
+            {type: 'custom-html', ref: 'mapDrawControlsContainer', class: 'map-draw-controls'},
+            {label: 'Enable Spatial Filter', type: 'checkbox', ref: 'spatialFilterToggle', name: 'spatialFilterEnabled'},
+            {label: 'Show Only Followed Users', type: 'checkbox', ref: 'followedOnlyToggle', name: 'followedOnlyFilter'},
+            {type: 'button', ref: 'clearDrawnShapesBtn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn'}
         ];
 
         const initialFilterData = {
@@ -126,7 +126,7 @@ export class FilterControls {
             followedOnlyFilter: appState.ui.followedOnlyFilter
         };
 
-        const { form: newForm, fields } = renderForm(filterFormFields, initialFilterData, { class: 'filter-form' });
+        const {form: newForm, fields} = renderForm(filterFormFields, initialFilterData, {class: 'filter-form'});
 
         this.setupFilterInput(fields, 'searchQueryInput', 'q', applyAllFilters, true);
         this.setupFilterSelect(fields, 'filterCategorySelect', 'cat');
@@ -141,7 +141,7 @@ export class FilterControls {
                     ...s.ui,
                     spatialFilterEnabled: false,
                     followedOnlyFilter: false,
-                    filters: { q: '', cat: '', auth: '', tStart: null, tEnd: null }
+                    filters: {q: '', cat: '', auth: '', tStart: null, tEnd: null}
                 },
                 currentFocusTag: C.FOCUS_TAG_DEFAULT
             }));
@@ -150,14 +150,14 @@ export class FilterControls {
         const spatialFilterToggle = fields.spatialFilterToggle;
         spatialFilterToggle.checked = appState.ui.spatialFilterEnabled;
         spatialFilterToggle.onchange = e => {
-            appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
+            appStore.set(s => ({ui: {...s.ui, spatialFilterEnabled: e.target.checked}}));
             applyAllFilters();
         };
 
         const followedOnlyToggle = fields.followedOnlyToggle;
         followedOnlyToggle.checked = appState.ui.followedOnlyFilter;
         followedOnlyToggle.onchange = e => {
-            appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
+            appStore.set(s => ({ui: {...s.ui, followedOnlyFilter: e.target.checked}}));
             nostrSvc.refreshSubs();
             applyAllFilters();
         };
