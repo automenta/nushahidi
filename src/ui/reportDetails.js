@@ -9,28 +9,23 @@ import {applyAllFilters} from './filters.js';
 import { nip19 } from 'nostr-tools';
 import {withLoading, withToast} from '../decorators.js';
 
-const submitInteraction = async (kind, content, reportId, reportPk, onFinally) => {
-    if (!appStore.get().user) {
-        showToast("Please connect your Nostr identity to interact.", 'warning');
-        onFinally?.();
-        return;
-    }
+const submitInteraction = async (kind, content, reportId, reportPk) => {
+    if (!appStore.get().user) throw new Error("Please connect your Nostr identity to interact.");
 
-    await withLoading(withToast(async () => {
-        await nostrSvc.pubEv({
-            kind,
-            content,
-            tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
-        });
-        await showReportDetails(appStore.get().reports.find(r => r.id === reportId));
-    }, kind === C.NOSTR_KIND_REACTION ? "Reaction sent!" : "Comment sent!", `Error sending ${kind === C.NOSTR_KIND_REACTION ? 'reaction' : 'comment'}`, onFinally))();
+    await nostrSvc.pubEv({
+        kind,
+        content,
+        tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
+    });
+    await showReportDetails(appStore.get().reports.find(r => r.id === reportId));
 };
 
 async function handleReactionSubmit(event) {
     const btn = event.target;
     const { reportId, reportPk, reaction } = btn.dataset;
-    btn.disabled = true;
-    await submitInteraction(C.NOSTR_KIND_REACTION, reaction, reportId, reportPk, () => { btn.disabled = false; });
+    await withLoading(withToast(async () => {
+        await submitInteraction(C.NOSTR_KIND_REACTION, reaction, reportId, reportPk);
+    }, "Reaction sent!", "Error sending reaction", () => btn.disabled = false))();
 }
 
 async function handleCommentSubmit(event) {
@@ -39,12 +34,11 @@ async function handleCommentSubmit(event) {
     const submitBtn = form.querySelector('button[type="submit"]');
     const { reportId, reportPk } = form.dataset;
     const commentText = form.elements.comment.value.trim();
-    if (!commentText) {
-        showToast("Comment cannot be empty.", 'warning');
-        return;
-    }
-    submitBtn.disabled = true;
-    await submitInteraction(C.NOSTR_KIND_NOTE, commentText, reportId, reportPk, () => { submitBtn.disabled = false; });
+    if (!commentText) throw new Error("Comment cannot be empty.");
+
+    await withLoading(withToast(async () => {
+        await submitInteraction(C.NOSTR_KIND_NOTE, commentText, reportId, reportPk);
+    }, "Comment sent!", "Error sending comment", () => submitBtn.disabled = false))();
     form.reset();
 }
 
@@ -115,18 +109,13 @@ async function handleFollowToggle(event) {
     const pubkeyToToggle = btn.dataset.pubkey;
     const isCurrentlyFollowed = appStore.get().followedPubkeys.some(f => f.pk === pubkeyToToggle);
 
-    if (!appStore.get().user) {
-        showToast("Please connect your Nostr identity to follow users.", 'warning');
-        return;
-    }
+    if (!appStore.get().user) throw new Error("Please connect your Nostr identity to follow users.");
 
     await withLoading(withToast(async () => {
-        btn.disabled = true;
         isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
+        await showReportDetails(appStore.get().reports.find(r => r.pk === pubkeyToToggle));
         return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
-    }, null, "Error toggling follow status", () => { btn.disabled = false; }))();
-
-    await showReportDetails(appStore.get().reports.find(r => r.pk === pubkeyToToggle));
+    }, null, "Error toggling follow status", () => btn.disabled = false))();
 }
 
 function renderInteractionItem(interaction) {

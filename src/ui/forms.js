@@ -1,10 +1,12 @@
 import {$, createEl, sanitizeHTML, showToast} from '../utils.js';
 import {showConfirmModal} from './modals.js';
+import {withToast} from '../decorators.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
-    const form = createEl('form', { id: formOptions.id || 'dynamic-form' });
+    const formAttrs = { id: formOptions.id || 'dynamic-form' };
+    for (const key in formOptions) if (key.startsWith('data-')) formAttrs[key] = formOptions[key];
+    const form = createEl('form', formAttrs);
     if (formOptions.onSubmit) form.onsubmit = formOptions.onSubmit;
-    for (const key in formOptions) if (key.startsWith('data-')) form.setAttribute(key, formOptions[key]);
 
     for (const field of fieldsConfig) {
         const fieldId = field.id || (field.name ? `field-${field.name}` : null);
@@ -112,37 +114,25 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
 }
 
 export const setupAddRemoveListSection = ({
-    modalContent, addInputId, addBtnId, addLogic, listRenderer, saveBtnId, onSaveCallback
+    modalContent, addInputId, addBtnId, addLogic, listRenderer, saveBtnId, onSaveCallback,
+    successMsg, errorMsg
 }) => {
     const addInput = $(`#${addInputId}`, modalContent);
     const addBtn = $(`#${addBtnId}`, modalContent);
     const saveBtn = saveBtnId ? $(`#${saveBtnId}`, modalContent) : null;
 
-    if (!addInput || !addBtn) {
-        console.warn(`Missing elements for list setup: input=${addInputId}, button=${addBtnId}`);
-        return;
-    }
+    if (!addInput || !addBtn) return;
 
-    addBtn.onclick = async () => {
+    addBtn.onclick = withToast(async () => {
         const inputValue = addInput.value.trim();
-        if (!inputValue) {
-            showToast("Input cannot be empty.", 'warning');
-            return;
-        }
-        try {
-            if (await addLogic(inputValue)) {
-                addInput.value = '';
-                listRenderer();
-            }
-        } catch (e) {
-            showToast(`Error: ${e.message}`, 'error');
-        }
-    };
+        await addLogic(inputValue);
+        addInput.value = '';
+        listRenderer();
+    }, successMsg, errorMsg);
 
-    if (saveBtn) saveBtn.onclick = () => {
-        onSaveCallback?.();
-        showToast("Settings saved.", 'success');
-    };
+    if (saveBtn) saveBtn.onclick = withToast(async () => {
+        await onSaveCallback?.();
+    }, "Settings saved.", "Error saving settings");
 };
 
 export const renderList = (containerId, items, itemRenderer, actionsConfig, itemWrapperClass, scopeElement = document) => {

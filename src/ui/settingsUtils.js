@@ -38,14 +38,10 @@ export function renderConfigurableListSetting(wrapper, config) {
             addLogic: config.addLogic,
             listRenderer,
             saveBtnId: config.saveBtnId,
-            onSaveCallback: config.onSaveCallback
+            onSaveCallback: config.onSaveCallback,
+            successMsg: config.addSuccessMsg,
+            errorMsg: config.addErrorMsg
         });
-    } else if (config.saveBtnId && config.onSaveCallback) {
-        const saveBtn = $(`#${config.saveBtnId}`, wrapper);
-        if (saveBtn) saveBtn.onclick = () => {
-            config.onSaveCallback?.();
-            showToast("Settings saved.", 'success');
-        };
     }
 
     listRenderer();

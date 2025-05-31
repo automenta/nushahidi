@@ -3,91 +3,54 @@ import {$, createEl} from '../utils.js';
 
 export function createModalWrapper(modalId, title, contentRenderer) {
     const modalElement = $(`#${modalId}`);
-    if (!modalElement) {
-        console.error(`Modal element with ID ${modalId} not found.`);
-        return null;
-    }
+    if (!modalElement) return console.error(`Modal element with ID ${modalId} not found.`);
 
-    const modalContent = createEl('div', { class: 'modal-content' });
     modalElement.innerHTML = '';
-    modalElement.appendChild(modalContent);
+    const modalContent = createEl('div', { class: 'modal-content' });
 
-    const closeBtn = createEl('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal(modalId) });
-    const heading = createEl('h2', { id: `${modalId}-heading`, textContent: title });
-
-    modalContent.appendChild(closeBtn);
-    modalContent.appendChild(heading);
+    modalElement.append(
+        createEl('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal(modalId) }),
+        createEl('h2', { id: `${modalId}-heading`, textContent: title }),
+        modalContent
+    );
 
     const specificContent = contentRenderer(modalContent);
-    if (Array.isArray(specificContent)) {
-        specificContent.forEach(el => modalContent.appendChild(el));
-    } else if (specificContent instanceof Node) {
-        modalContent.appendChild(specificContent);
-    }
+    if (Array.isArray(specificContent)) specificContent.forEach(el => modalContent.appendChild(el));
+    else if (specificContent instanceof Node) modalContent.appendChild(specificContent);
 
-    return modalContent;
+    return modalElement;
 }
 
 export function showConfirmModal(title, message, onConfirm, onCancel) {
-    createModalWrapper('confirm-modal', title, root => {
-        const msgPara = createEl('p', { innerHTML: message });
-        const buttonContainer = createEl('div', { class: 'confirm-modal-buttons' });
-
-        const confirmBtn = createEl('button', {
-            class: 'confirm-button',
-            textContent: 'Confirm',
-            onclick: () => { hideModal('confirm-modal'); onConfirm(); }
-        });
-        const cancelBtn = createEl('button', {
-            class: 'cancel-button',
-            textContent: 'Cancel',
-            onclick: () => { hideModal('confirm-modal'); if (onCancel) onCancel(); }
-        });
-
-        buttonContainer.appendChild(cancelBtn);
-        buttonContainer.appendChild(confirmBtn);
-
-        return [msgPara, buttonContainer];
-    });
-
+    createModalWrapper('confirm-modal', title, root => [
+        createEl('p', { innerHTML: message }),
+        createEl('div', { class: 'confirm-modal-buttons' }, [
+            createEl('button', { class: 'cancel-button', textContent: 'Cancel', onclick: () => { hideModal('confirm-modal'); onCancel?.(); } }),
+            createEl('button', { class: 'confirm-button', textContent: 'Confirm', onclick: () => { hideModal('confirm-modal'); onConfirm(); } })
+        ])
+    ]);
     showModal('confirm-modal', 'confirm-modal-heading');
 }
 
 export function showPassphraseModal(title, message) {
     return new Promise(resolve => {
         createModalWrapper('passphrase-modal', title, root => {
-            const msgPara = createEl('p', { textContent: message });
             const passphraseInput = createEl('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
-            const buttonContainer = createEl('div', { class: 'confirm-modal-buttons' });
-
             const decryptBtn = createEl('button', {
-                class: 'confirm-button',
-                textContent: 'Decrypt',
-                onclick: () => {
-                    const passphrase = passphraseInput.value;
-                    hideModal('passphrase-modal');
-                    resolve(passphrase);
-                }
+                class: 'confirm-button', textContent: 'Decrypt',
+                onclick: () => { hideModal('passphrase-modal'); resolve(passphraseInput.value); }
             });
-            const cancelBtn = createEl('button', {
-                class: 'cancel-button',
-                textContent: 'Cancel',
-                onclick: () => { hideModal('passphrase-modal'); resolve(null); }
-            });
+            passphraseInput.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), decryptBtn.click()));
 
-            passphraseInput.addEventListener('keydown', e => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    decryptBtn.click();
-                }
-            });
-
-            buttonContainer.appendChild(cancelBtn);
-            buttonContainer.appendChild(decryptBtn);
-
-            return [msgPara, passphraseInput, buttonContainer];
+            return [
+                createEl('p', { textContent: message }),
+                passphraseInput,
+                createEl('div', { class: 'confirm-modal-buttons' }, [
+                    createEl('button', { class: 'cancel-button', textContent: 'Cancel', onclick: () => { hideModal('passphrase-modal'); resolve(null); } }),
+                    decryptBtn
+                ])
+            ];
         });
-
         showModal('passphrase-modal', 'passphrase-input');
     });
 }
@@ -97,7 +60,7 @@ export const showModal = (id, focusElId) => {
     if (modal) {
         modal.style.display = 'block';
         modal.setAttribute('aria-hidden', 'false');
-        if (focusElId) $(focusElId, modal)?.focus();
+        $(focusElId, modal)?.focus();
     }
     appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: id } }));
 };

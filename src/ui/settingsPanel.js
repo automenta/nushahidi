@@ -14,26 +14,26 @@ const settingsContentRenderer = modalRoot => {
                 renderConfigurableListSetting(settingsSectionsWrapper, section);
                 break;
             case 'section':
-                const renderedContent = section.renderer(settingsSectionsWrapper);
-                if (renderedContent) sectionEl.appendChild(renderedContent);
+                sectionEl.appendChild(section.renderer(settingsSectionsWrapper));
                 settingsSectionsWrapper.appendChild(sectionEl);
                 settingsSectionsWrapper.appendChild(createEl('hr'));
                 break;
             case 'offline-queue':
-                sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
-                sectionEl.appendChild(createEl('div', { id: section.listId }));
+                sectionEl.append(
+                    createEl('p', { textContent: 'Events waiting to be published when online.' }),
+                    createEl('div', { id: section.listId })
+                );
                 settingsSectionsWrapper.appendChild(sectionEl);
                 settingsSectionsWrapper.appendChild(createEl('hr'));
                 renderOfflineQueue(settingsSectionsWrapper);
                 break;
         }
     });
-
     return settingsSectionsWrapper;
 };
 
 export function SettPanComp() {
-    const modalContent = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
-    modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
-    return modalContent;
+    const modalElement = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
+    modalElement.querySelector('.modal-content').appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
+    return modalElement;
 }

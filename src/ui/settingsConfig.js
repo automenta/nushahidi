@@ -1,4 +1,4 @@
-import {C, createEl, formatNpubShort, npubToHex, showToast} from '../utils.js';
+import {C, createEl, formatNpubShort, npubToHex} from '../utils.js';
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
 import {renderKeyManagementSection} from './settings/keyManagement.js';
@@ -15,39 +15,22 @@ import {
 import {renderDataManagementSection} from './settings/dataManagement.js';
 import {offlineQueueActionsConfig, offlineQueueItemRenderer, renderOfflineQueue} from './settings/offlineQueue.js';
 
-const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async inputValue => {
-    if (!inputValue) {
-        showToast("Input cannot be empty.", 'warning');
-        return false;
-    }
-    try {
-        if (itemExistsChecker?.(inputValue)) {
-            showToast(warningMsg || "Item already exists.", 'info');
-            return false;
-        }
-        await confSvcMethod(inputValue);
-        showToast(successMsg || "Item added.", 'success');
-        return true;
-    } catch (e) {
-        showToast(`${errorMsg || 'Error adding item'}: ${e.message}`, 'error');
-        return false;
-    }
+const createAddLogicHandler = (confSvcMethod, itemExistsChecker, itemExistsErrorMsg) => async inputValue => {
+    if (!inputValue) throw new Error("Input cannot be empty.");
+    if (itemExistsChecker?.(inputValue)) throw new Error(itemExistsErrorMsg || "Item already exists.");
+    await confSvcMethod(inputValue);
 };
 
 const addRelayLogic = createAddLogicHandler(
     async url => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
     url => appStore.get().relays.some(r => r.url === url),
-    "Relay added.",
-    "Relay already exists.",
-    "Error adding relay"
+    "Relay already exists."
 );
 
 const addCategoryLogic = createAddLogicHandler(
     cat => confSvc.setCats([...appStore.get().settings.cats, cat]),
     cat => appStore.get().settings.cats.includes(cat),
-    "Category added.",
-    "Category already exists.",
-    "Error adding category"
+    "Category already exists."
 );
 
 const addFocusTagLogic = createAddLogicHandler(
@@ -56,25 +39,19 @@ const addFocusTagLogic = createAddLogicHandler(
         await confSvc.setFocusTags([...appStore.get().focusTags, {tag, active: false}]);
     },
     tag => appStore.get().focusTags.some(t => t.tag === (tag.startsWith('#') ? tag : '#' + tag)),
-    "Focus tag added.",
-    "Focus tag already exists.",
-    "Error adding focus tag"
+    "Focus tag already exists."
 );
 
 const addMutePubkeyLogic = createAddLogicHandler(
     async pk => confSvc.addMute(npubToHex(pk)),
     pk => appStore.get().settings.mute.includes(npubToHex(pk)),
-    "Pubkey added to mute list.",
-    "Pubkey already muted.",
-    "Error adding pubkey to mute list"
+    "Pubkey already muted."
 );
 
 const addFollowedPubkeyLogic = createAddLogicHandler(
     async pk => confSvc.addFollowed(npubToHex(pk)),
     pk => appStore.get().followedPubkeys.some(f => f.pk === npubToHex(pk)),
-    "User added to followed list.",
-    "User already followed.",
-    "Error adding user to followed list"
+    "User already followed."
 );
 
 const reconnectRelays = () => {
@@ -108,7 +85,9 @@ export const settingsSections = [
         itemWrapperClass: 'relay-entry',
         saveBtnId: 'save-rlys-btn',
         onSaveCallback: reconnectRelays,
-        getItems: () => appStore.get().relays
+        getItems: () => appStore.get().relays,
+        addSuccessMsg: "Relay added.",
+        addErrorMsg: "Error adding relay"
     },
     {
         type: 'section',
@@ -133,7 +112,9 @@ export const settingsSections = [
         itemWrapperClass: 'focus-tag-entry',
         saveBtnId: 'save-focus-tags-btn',
         onSaveCallback: () => nostrSvc.refreshSubs(),
-        getItems: () => appStore.get().focusTags
+        getItems: () => appStore.get().focusTags,
+        addSuccessMsg: "Focus tag added.",
+        addErrorMsg: "Error adding focus tag"
     },
     {
         type: 'list',
@@ -152,7 +133,9 @@ export const settingsSections = [
         actionsConfig: [removeActionConfig('Remove Category', 'Are you sure you want to remove this category?', handleCategoryRemove)],
         itemWrapperClass: 'category-entry',
         saveBtnId: 'save-cats-btn',
-        getItems: () => appStore.get().settings.cats
+        getItems: () => appStore.get().settings.cats,
+        addSuccessMsg: "Category added.",
+        addErrorMsg: "Error adding category"
     },
     {
         type: 'section',
@@ -181,7 +164,9 @@ export const settingsSections = [
         actionsConfig: [removeActionConfig('Remove Muted Pubkey', 'Are you sure you want to unmute this pubkey?', handleMutePubkeyRemove)],
         itemWrapperClass: 'mute-entry',
         saveBtnId: 'save-mute-list-btn',
-        getItems: () => appStore.get().settings.mute
+        getItems: () => appStore.get().settings.mute,
+        addSuccessMsg: "Pubkey added to mute list.",
+        addErrorMsg: "Error adding pubkey to mute list"
     },
     {
         type: 'list',
@@ -204,7 +189,9 @@ export const settingsSections = [
         itemWrapperClass: 'followed-entry',
         saveBtnId: 'save-followed-btn',
         uniqueListenersSetup: setupFollowedListUniqueListeners,
-        getItems: () => appStore.get().followedPubkeys
+        getItems: () => appStore.get().followedPubkeys,
+        addSuccessMsg: "User added to followed list.",
+        addErrorMsg: "Error adding user to followed list"
     },
     {
         type: 'offline-queue',
