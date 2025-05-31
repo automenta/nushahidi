@@ -10,7 +10,8 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['nostr-tools'],
+    // Removed 'nostr-tools' from include to prevent potential bundling issues with subpath exports
+    // include: ['nostr-tools'], 
   },
   // publicDir: 'public'
 });

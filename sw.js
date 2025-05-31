@@ -5,7 +5,7 @@ import {ExpirationPlugin} from 'workbox-expiration';
 import {BackgroundSyncPlugin} from 'workbox-background-sync';
 import * as workboxCore from 'workbox-core';
 
-workboxCore.setLogLevel(workboxCore.LogLevel.SILENT);
+workboxCore.setLogLevel(workboxCore.LOG_LEVEL.SILENT);
 
 cleanupOutdatedCaches();
 
