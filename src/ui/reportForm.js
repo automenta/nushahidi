@@ -137,9 +137,9 @@ const setupReportFormLocationHandlers = (formElement, formState, updateLocationD
     }, null, "Geocoding error"));
 };
 
-const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => withLoading(async e => {
+const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => async e => {
     for (const file of e.target.files) {
-        try {
+        await withLoading(withToast(async () => {
             const processedImage = await processImageFile(file);
             const uploadedUrl = await imgSvc.upload(processedImage.file);
             imagesMetadata.push({
@@ -148,13 +148,11 @@ const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => wit
                 dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
                 hHex: processedImage.hash
             });
-            showToast(`Image ${file.name} uploaded.`, 'success', 1500);
-        } catch (error) {
-            showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
-        }
+            updatePreview();
+            return `Image ${file.name} uploaded.`;
+        }, null, `Failed to upload ${file.name}`))();
     }
-    updatePreview();
-});
+};
 
 const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
     formElement.onsubmit = withLoading(withToast(async e => {

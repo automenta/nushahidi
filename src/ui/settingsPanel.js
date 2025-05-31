@@ -9,19 +9,23 @@ const settingsContentRenderer = modalRoot => {
 
     settingsSections.forEach(section => {
         const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
-        if (section.type === 'list') {
-            renderConfigurableListSetting(settingsSectionsWrapper, section);
-        } else if (section.type === 'section') {
-            const renderedContent = section.renderer(settingsSectionsWrapper);
-            if (renderedContent) sectionEl.appendChild(renderedContent);
-            settingsSectionsWrapper.appendChild(sectionEl);
-            settingsSectionsWrapper.appendChild(createEl('hr'));
-        } else if (section.type === 'offline-queue') {
-            sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
-            sectionEl.appendChild(createEl('div', { id: section.listId }));
-            settingsSectionsWrapper.appendChild(sectionEl);
-            settingsSectionsWrapper.appendChild(createEl('hr'));
-            renderOfflineQueue(settingsSectionsWrapper);
+        switch (section.type) {
+            case 'list':
+                renderConfigurableListSetting(settingsSectionsWrapper, section);
+                break;
+            case 'section':
+                const renderedContent = section.renderer(settingsSectionsWrapper);
+                if (renderedContent) sectionEl.appendChild(renderedContent);
+                settingsSectionsWrapper.appendChild(sectionEl);
+                settingsSectionsWrapper.appendChild(createEl('hr'));
+                break;
+            case 'offline-queue':
+                sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
+                sectionEl.appendChild(createEl('div', { id: section.listId }));
+                settingsSectionsWrapper.appendChild(sectionEl);
+                settingsSectionsWrapper.appendChild(createEl('hr'));
+                renderOfflineQueue(settingsSectionsWrapper);
+                break;
         }
     });
 

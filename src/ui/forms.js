@@ -17,7 +17,12 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
 
         let inputElement;
         switch (field.type) {
-            case 'text': case 'password': case 'url': case 'email': case 'search': case 'datetime-local':
+            case 'text':
+            case 'password':
+            case 'url':
+            case 'email':
+            case 'search':
+            case 'datetime-local':
                 inputElement = createEl('input', {
                     type: field.type,
                     placeholder: field.placeholder || '',

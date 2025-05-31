@@ -4,7 +4,14 @@ import {confSvc, nostrSvc} from '../services.js';
 import {renderKeyManagementSection} from './settings/keyManagement.js';
 import {renderMapTilesSection} from './settings/mapTiles.js';
 import {renderImageHostSection} from './settings/imageHost.js';
-import {setupFollowedListUniqueListeners} from './settingsUtils.js';
+import {
+    setupFollowedListUniqueListeners,
+    renderRelayItem, handleRelayRemove,
+    renderFocusTagItem, handleFocusTagRadioChange, handleFocusTagRemove,
+    renderCategoryItem, handleCategoryRemove,
+    renderMutePubkeyItem, handleMutePubkeyRemove,
+    renderFollowedPubkeyItem, handleFollowedPubkeyRemove
+} from './settingsUtils.js';
 import {renderDataManagementSection} from './settings/dataManagement.js';
 import {offlineQueueActionsConfig, offlineQueueItemRenderer, renderOfflineQueue} from './settings/offlineQueue.js';
 
@@ -89,20 +96,17 @@ export const settingsSections = [
         addInputId: 'new-rly-url',
         addBtnId: 'add-rly-btn',
         addLogic: addRelayLogic,
-        itemRenderer: r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` }),
+        itemRenderer: renderRelayItem,
         actionsConfig: [{
             label: 'Remove',
             className: 'remove-relay-btn',
-            onClick: r => {
-                const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
-                confSvc.setRlys(updatedRelays);
-                reconnectRelays();
-            },
+            onClick: handleRelayRemove,
             confirm: { title: 'Remove Relay', message: 'Are you sure you want to remove this relay?' }
         }],
         itemWrapperClass: 'relay-entry',
         saveBtnId: 'save-rlys-btn',
-        onSaveCallback: reconnectRelays
+        onSaveCallback: reconnectRelays,
+        getItems: () => appStore.get().relays
     },
     {
         type: 'section',
@@ -122,43 +126,17 @@ export const settingsSections = [
         addInputId: 'new-focus-tag-input',
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
-        itemRenderer: ft => createEl('div', {}, [
-            createEl('span', { textContent: `${sanitizeHTML(ft.tag)}${ft.active ? ' (Active)' : ''}` }),
-            createEl('label', {}, [
-                createEl('input', {
-                    type: 'radio',
-                    name: 'activeFocusTag',
-                    value: ft.tag,
-                    checked: ft.active,
-                    onchange: () => {
-                        const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === ft.tag }));
-                        confSvc.setFocusTags(updatedTags);
-                        confSvc.setCurrentFocusTag(ft.tag);
-                        nostrSvc.refreshSubs();
-                    }
-                }),
-                ` Set Active`
-            ])
-        ]),
+        itemRenderer: renderFocusTagItem,
         actionsConfig: [{
             label: 'Remove',
             className: 'remove-focus-tag-btn',
-            onClick: t => {
-                const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
-                confSvc.setFocusTags(updatedTags);
-                if (t.active && updatedTags.length) {
-                    confSvc.setCurrentFocusTag(updatedTags[0].tag);
-                    updatedTags[0].active = true;
-                } else if (!updatedTags.length) {
-                    confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
-                    confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
-                }
-            },
+            onClick: handleFocusTagRemove,
             confirm: { title: 'Remove Focus Tag', message: 'Are you sure you want to remove this focus tag?' }
         }],
         itemWrapperClass: 'focus-tag-entry',
         saveBtnId: 'save-focus-tags-btn',
-        onSaveCallback: () => nostrSvc.refreshSubs()
+        onSaveCallback: () => nostrSvc.refreshSubs(),
+        getItems: () => appStore.get().focusTags
     },
     {
         type: 'list',
@@ -173,15 +151,16 @@ export const settingsSections = [
         addInputId: 'new-cat-name',
         addBtnId: 'add-cat-btn',
         addLogic: addCategoryLogic,
-        itemRenderer: c => createEl('span', { textContent: sanitizeHTML(c) }),
+        itemRenderer: renderCategoryItem,
         actionsConfig: [{
             label: 'Remove',
             className: 'remove-category-btn',
-            onClick: c => confSvc.setCats(appStore.get().settings.cats.filter(cat => cat !== c)),
+            onClick: handleCategoryRemove,
             confirm: { title: 'Remove Category', message: 'Are you sure you want to remove this category?' }
         }],
         itemWrapperClass: 'category-entry',
-        saveBtnId: 'save-cats-btn'
+        saveBtnId: 'save-cats-btn',
+        getItems: () => appStore.get().settings.cats
     },
     {
         type: 'section',
@@ -206,15 +185,16 @@ export const settingsSections = [
         addInputId: 'new-mute-pk-input',
         addBtnId: 'add-mute-btn',
         addLogic: addMutePubkeyLogic,
-        itemRenderer: pk => createEl('span', { textContent: formatNpubShort(pk) }),
+        itemRenderer: renderMutePubkeyItem,
         actionsConfig: [{
             label: 'Remove',
             className: 'remove-mute-btn',
-            onClick: pk => confSvc.rmMute(pk),
+            onClick: handleMutePubkeyRemove,
             confirm: { title: 'Remove Muted Pubkey', message: 'Are you sure you want to unmute this pubkey?' }
         }],
         itemWrapperClass: 'mute-entry',
-        saveBtnId: 'save-mute-list-btn'
+        saveBtnId: 'save-mute-list-btn',
+        getItems: () => appStore.get().settings.mute
     },
     {
         type: 'list',
@@ -232,16 +212,17 @@ export const settingsSections = [
         addInputId: 'new-followed-pk-input',
         addBtnId: 'add-followed-btn',
         addLogic: addFollowedPubkeyLogic,
-        itemRenderer: f => createEl('span', { textContent: formatNpubShort(f.pk) }),
+        itemRenderer: renderFollowedPubkeyItem,
         actionsConfig: [{
             label: 'Unfollow',
             className: 'remove-followed-btn',
-            onClick: f => confSvc.rmFollowed(f.pk),
+            onClick: handleFollowedPubkeyRemove,
             confirm: { title: 'Unfollow User', message: 'Are you sure you want to unfollow this user?' }
         }],
         itemWrapperClass: 'followed-entry',
         saveBtnId: 'save-followed-btn',
-        uniqueListenersSetup: setupFollowedListUniqueListeners
+        uniqueListenersSetup: setupFollowedListUniqueListeners,
+        getItems: () => appStore.get().followedPubkeys
     },
     {
         type: 'offline-queue',

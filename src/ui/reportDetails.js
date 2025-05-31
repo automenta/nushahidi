@@ -9,23 +9,28 @@ import {applyAllFilters} from './filters.js';
 import { nip19 } from 'nostr-tools';
 import {withLoading, withToast} from '../decorators.js';
 
-async function handleReactionSubmit(event) {
-    const btn = event.target;
-    const { reportId, reportPk, reaction } = btn.dataset;
+const submitInteraction = async (kind, content, reportId, reportPk, onFinally) => {
     if (!appStore.get().user) {
-        showToast("Please connect your Nostr identity to react.", 'warning');
+        showToast("Please connect your Nostr identity to interact.", 'warning');
+        onFinally?.();
         return;
     }
 
     await withLoading(withToast(async () => {
-        btn.disabled = true;
         await nostrSvc.pubEv({
-            kind: C.NOSTR_KIND_REACTION,
-            content: reaction,
+            kind,
+            content,
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
         await showReportDetails(appStore.get().reports.find(r => r.id === reportId));
-    }, "Reaction sent!", "Error sending reaction", () => { btn.disabled = false; }))();
+    }, kind === C.NOSTR_KIND_REACTION ? "Reaction sent!" : "Comment sent!", `Error sending ${kind === C.NOSTR_KIND_REACTION ? 'reaction' : 'comment'}`, onFinally))();
+};
+
+async function handleReactionSubmit(event) {
+    const btn = event.target;
+    const { reportId, reportPk, reaction } = btn.dataset;
+    btn.disabled = true;
+    await submitInteraction(C.NOSTR_KIND_REACTION, reaction, reportId, reportPk, () => { btn.disabled = false; });
 }
 
 async function handleCommentSubmit(event) {
@@ -38,21 +43,9 @@ async function handleCommentSubmit(event) {
         showToast("Comment cannot be empty.", 'warning');
         return;
     }
-    if (!appStore.get().user) {
-        showToast("Please connect your Nostr identity to comment.", 'warning');
-        return;
-    }
-
-    await withLoading(withToast(async () => {
-        submitBtn.disabled = true;
-        await nostrSvc.pubEv({
-            kind: C.NOSTR_KIND_NOTE,
-            content: commentText,
-            tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
-        });
-        form.reset();
-        await showReportDetails(appStore.get().reports.find(r => r.id === reportId));
-    }, "Comment sent!", "Error sending comment", () => { submitBtn.disabled = false; }))();
+    submitBtn.disabled = true;
+    await submitInteraction(C.NOSTR_KIND_NOTE, commentText, reportId, reportPk, () => { submitBtn.disabled = false; });
+    form.reset();
 }
 
 const renderReportImages = images => (images || []).map(img =>
