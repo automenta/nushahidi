@@ -84,7 +84,8 @@ export const dbSvc = {
             showToast(`Pruned ${toDelete.length} old reports.`, 'info');
         }
 
-        const allProfiles = (await this.getAllProfiles()) || [];
+        const rawProfiles = await this.getAllProfiles();
+        const allProfiles = Array.isArray(rawProfiles) ? rawProfiles : [];
         const profileStore = await getDbStore(C.STORE_PROFILES, 'readwrite');
         let profilesDeleted = 0;
         for (const prof of allProfiles) {
