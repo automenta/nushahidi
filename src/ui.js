@@ -2,7 +2,7 @@ import { marked } from 'marked';
 import { point, booleanPointInPolygon } from '@turf/turf'; // Import turf for spatial queries
 import { appStore } from './store.js';
 import { mapSvc, idSvc, confSvc, nostrSvc, imgSvc, dbSvc } from './services.js';
-import { C, $, $$, createEl, showModal, hideModal, sanitizeHTML, debounce, geohashEncode, sha256, getImgDims, formatNpubShort, npubToHex, showToast, isValidUrl, generateUUID, renderList } from './utils.js';
+import { C, $, $$, createEl, showModal, hideModal, sanitizeHTML, debounce, geohashEncode, sha256, getImgDims, formatNpubShort, npubToHex, showToast, isValidUrl, generateUUID, renderList, processImageFile } from './utils.js';
 
 const gE = (id, p = document) => $(id, p); /* gE: getElement */
 const cE = (t, a, c) => createEl(t, a, c); /* cE: createElement */
@@ -581,12 +581,14 @@ const _setupReportFormImageUploadHandler = (imagesMetadata, renderPreview) => {
         try {
             for (const file of files) {
                 try {
-                    if (file.size > C.IMG_SIZE_LIMIT_BYTES) throw new Error(`Max ${C.IMG_SIZE_LIMIT_BYTES / 1024 / 1024}MB`);
-                    const buffer = await file.arrayBuffer();
-                    const hash = await sha256(buffer);
-                    const dimensions = await getImgDims(file);
-                    const uploadedUrl = await imgSvc.upload(file);
-                    imagesMetadata.push({ url: uploadedUrl, type: file.type, dim: `${dimensions.w}x${dimensions.h}`, hHex: hash });
+                    const processedImage = await processImageFile(file); // Use the new utility
+                    const uploadedUrl = await imgSvc.upload(processedImage.file);
+                    imagesMetadata.push({
+                        url: uploadedUrl,
+                        type: processedImage.file.type,
+                        dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
+                        hHex: processedImage.hash
+                    });
                     showToast(`Image ${file.name} uploaded.`, 'success', 1500);
                 } catch (error) {
                     showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
@@ -683,7 +685,7 @@ function RepFormComp(reportToEdit = null) {
     // Pre-fill location and images if editing
     if (reportToEdit) {
         if (reportToEdit.lat && reportToEdit.lon) {
-            pFLoc = { lat: reportToEdit.lat, lng: reportToEdit.lon };
+            pFLoc = { lat: reportToEdit.lat, lng: reportToot.lon };
         }
         if (reportToEdit.imgs && reportToEdit.imgs.length > 0) {
             uIMeta = [...reportToEdit.imgs];

@@ -336,3 +336,24 @@ export const generateUUID = () => {
         return v.toString(16);
     });
 };
+
+/**
+ * Processes an image file, performing validation, hashing, and dimension extraction.
+ * @param {File} file - The image file to process.
+ * @returns {Promise<{file: File, hash: string, dimensions: {w: number, h: number}}>}
+ * @throws {Error} If file type is invalid or size limit exceeded.
+ */
+export const processImageFile = async (file) => {
+    if (!file.type.startsWith('image/')) {
+        throw new Error('Invalid file type. Only images are allowed.');
+    }
+    if (file.size > C.IMG_SIZE_LIMIT_BYTES) {
+        throw new Error(`File too large (max ${C.IMG_SIZE_LIMIT_BYTES / 1024 / 1024}MB).`);
+    }
+
+    const buffer = await file.arrayBuffer();
+    const hash = await sha256(buffer);
+    const dimensions = await getImgDims(file);
+
+    return { file, hash, dimensions };
+};
