@@ -202,20 +202,16 @@ const fetchContactsLogic = async () => {
 
 export const nostrSvc = {
     async connRlys() {
-        // Check if _pool is already a valid SimplePool instance
-        if (_pool && typeof _pool.on === 'function') {
-            // If it's valid, proceed to connect/manage relays
-            // No need to re-initialize or re-attach listeners
-        } else {
-            // If _pool is null or invalid, attempt to initialize it
+        // Only re-initialize if _pool is not a valid SimplePool instance
+        if (!_pool || typeof _pool.on !== 'function') {
             try {
-                _pool = new SimplePool();
-                // Immediately check if the newly created _pool is valid
-                if (typeof _pool.on !== 'function') {
-                    console.error("SimplePool constructor returned an invalid object. Forcing re-initialization.");
-                    _pool = null; // Reset to null to ensure next call tries again
-                    throw new Error("Nostr SimplePool failed to initialize correctly.");
+                const newPool = new SimplePool(); // Create a new instance
+                // Validate the newly created instance immediately
+                if (typeof newPool.on !== 'function') {
+                    console.error("SimplePool constructor returned an object without an 'on' method.");
+                    throw new Error("Nostr SimplePool failed to initialize correctly: Missing 'on' method.");
                 }
+                _pool = newPool; // Assign to _pool only if valid
 
                 // Attach listeners only once when the pool is successfully created
                 _pool.on('relay:connect', (url) => {
@@ -232,6 +228,7 @@ export const nostrSvc = {
                 });
             } catch (e) {
                 console.error("Error initializing Nostr SimplePool:", e);
+                _pool = null; // Ensure _pool is null if initialization failed
                 showToast(`Critical Nostr error: ${e.message}. Please refresh.`, 'error', 0);
                 throw e; // Re-throw to stop further execution if pool init fails
             }

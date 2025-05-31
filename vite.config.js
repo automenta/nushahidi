@@ -10,7 +10,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['nostr-tools/relay'], // Exclude nostr-tools/relay from pre-bundling
+    // Removed exclude for 'nostr-tools/relay' to allow Vite to handle it by default
   },
   // publicDir: 'public' // This is Vite's default behavior, can be removed
 });
