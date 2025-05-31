@@ -205,10 +205,9 @@ export const nostrSvc = {
         // Only re-initialize if _pool is not a valid SimplePool instance
         if (!_pool || typeof _pool.on !== 'function') {
             try {
-
                 _pool = new SimplePool();
-
-                // // Attach listeners only once when the pool is successfully created
+                // Re-enable these listeners if real-time relay status updates are desired.
+                // They need to be carefully implemented to update appStore.relays correctly.
                 // _pool.on('relay:connect', (url) => {
                 //     updRlyStore(url, 'connected');
                 //     showToast(`Connected to ${url}`, 'success', 2000);
@@ -229,35 +228,9 @@ export const nostrSvc = {
             }
         }
 
-        // If _pool is still null here, it means initialization failed.
-        // This check is crucial before attempting to use _pool.
-        if (!_pool) {
-            throw new Error("Nostr SimplePool is not initialized. Cannot connect relays.");
-        }
-
-        const currentRelaysInStore = appStore.get().relays;
-
-        const poolRelayUrls = _pool.relays.entries().map(r => r.url).toArray();
-
-        for (const rConf of currentRelaysInStore) {
-            if (!rConf.read && !rConf.write) continue;
-
-
-            const u = rConf.url;
-            if (!poolRelayUrls.includes(u)) {
-                _pool.subscribe([u]);
-                updRlyStore(u, 'connecting');
-
-                if (!rConf.nip11) {
-                    try {
-                        const nip11Doc = await nip11.fetchRelayInformation(u);
-                        updRlyStore(u, 'connecting', nip11Doc);
-                    } catch (e) {
-                        console.warn(`Failed to fetch NIP-11 for ${u}: ${e.message}`);
-                    }
-                }
-            }
-        }
+        // The SimplePool handles connections implicitly when sub/pub is called.
+        // No need to manually iterate and call _pool.subscribe here.
+        // The `subToReps` function will pass the list of relays to _pool.sub.
     },
 
     discAllRlys() {
