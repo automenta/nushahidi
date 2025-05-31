@@ -3,28 +3,7 @@ import { mapSvc, imgSvc, nostrSvc } from '../services.js';
 import { C, $, createEl, sanitizeHTML, geohashEncode, showToast, isValidUrl, generateUUID, processImageFile } from '../utils.js';
 import { renderForm, renderList } from './forms.js';
 import { createModalWrapper, showModal, hideModal } from './modals.js';
-
-// Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
-const withLoading = (fn) => async (...args) => {
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-    try {
-        return await fn(...args);
-    } finally {
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
-};
-
-const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
-    try {
-        const result = await fn(...args);
-        if (successMsg) showToast(successMsg, 'success');
-        return result;
-    } catch (e) {
-        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
-        if (onErrorCallback) onErrorCallback(e);
-        throw e; // Re-throw to allow further error handling if needed
-    }
-};
+import { withLoading, withToast } from '../decorators.js'; // Import from new decorators file
 
 const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     previewElement.innerHTML = '';

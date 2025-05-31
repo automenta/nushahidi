@@ -7,28 +7,7 @@ import { renderForm } from './forms.js';
 import { RepFormComp } from './reportForm.js';
 import { applyAllFilters } from './filters.js';
 import { nip19 } from 'nostr-tools';
-
-// Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
-const withLoading = (fn) => async (...args) => {
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-    try {
-        return await fn(...args);
-    } finally {
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
-};
-
-const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
-    try {
-        const result = await fn(...args);
-        if (successMsg) showToast(successMsg, 'success');
-        return result;
-    } catch (e) {
-        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
-        if (onErrorCallback) onErrorCallback(e);
-        throw e; // Re-throw to allow further error handling if needed
-    }
-};
+import { withLoading, withToast } from '../decorators.js'; // Import from new decorators file
 
 const rendRepCard = report => {
     const summary = report.sum || (report.ct ? report.ct.substring(0, 100) + '...' : 'N/A');

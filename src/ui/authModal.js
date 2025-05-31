@@ -4,6 +4,7 @@ import { idSvc } from '../services.js';
 import { C, $, createEl, showToast } from '../utils.js';
 import { createModalWrapper, showConfirmModal, hideModal } from './modals.js';
 import { renderForm } from './forms.js';
+import { withLoading, withToast } from '../decorators.js'; // Import from new decorators file
 
 export function AuthModalComp() {
     const authFormFields = [
@@ -23,28 +24,6 @@ export function AuthModalComp() {
     const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', (root) => {
         const form = renderForm(authFormFields, {}, { id: 'auth-form' });
         root.appendChild(form);
-
-        // Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
-        const withLoading = (fn) => async (...args) => {
-            appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-            try {
-                return await fn(...args);
-            } finally {
-                appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-            }
-        };
-
-        const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
-            try {
-                const result = await fn(...args);
-                if (successMsg) showToast(successMsg, 'success');
-                return result;
-            } catch (e) {
-                showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
-                if (onErrorCallback) onErrorCallback(e);
-                throw e; // Re-throw to allow further error handling if needed
-            }
-        };
 
         $('#conn-nip07-btn', form).onclick = withLoading(async () => {
             await idSvc.nip07();

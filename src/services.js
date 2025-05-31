@@ -4,30 +4,9 @@ import { generatePrivateKey as genSk, getPublicKey as getPk, nip19, getEventHash
 import { appStore } from './store.js';
 import { C, $, encrypt, decrypt, sha256, npubToHex, geohashEncode, parseReport, getGhPrefixes, nsecToHex, isNostrId, showToast, generateUUID } from './utils.js';
 import { showPassphraseModal, showConfirmModal } from './ui/modals.js';
+import { withLoading, withToast } from './decorators.js'; // Import from new decorators file
 
 let _db;
-
-// Helper for loading state and toasts
-const withLoading = (fn) => async (...args) => {
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-    try {
-        return await fn(...args);
-    } finally {
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
-};
-
-const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
-    try {
-        const result = await fn(...args);
-        if (successMsg) showToast(successMsg, 'success');
-        return result;
-    } catch (e) {
-        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
-        if (onErrorCallback) onErrorCallback(e);
-        throw e; // Re-throw to allow further error handling if needed
-    }
-};
 
 const getDbStore = async (storeName, mode = 'readonly') => {
     if (!_db) {

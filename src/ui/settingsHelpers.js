@@ -1,11 +1,21 @@
 import { appStore } from '../store.js';
-import { confSvc } from '../services.js'; // Only need confSvc here
-import { C, $, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast, isValidUrl } from '../utils.js';
+import { confSvc } from '../services.js';
+import { C, createEl, showToast, npubToHex } from '../utils.js';
 import { renderList } from './forms.js';
 
 // Helper to create list rendering functions
 export const createListSectionRenderer = (containerId, itemRenderer, actionsConfig, itemWrapperClass) => (modalContent) => {
-    renderList(containerId, appStore.get()[containerId.replace('-list', '')] || appStore.get().settings[containerId.replace('-list', '')], itemRenderer, actionsConfig, itemWrapperClass, modalContent);
+    // Determine the data source based on containerId
+    let items;
+    if (containerId === 'rly-list') {
+        items = appStore.get().relays;
+    } else if (containerId === 'followed-list') {
+        items = appStore.get().followedPubkeys;
+    } else {
+        items = appStore.get().settings[containerId.replace('-list', '')];
+    }
+
+    renderList(containerId, items || [], itemRenderer, actionsConfig, itemWrapperClass, modalContent);
 };
 
 // Factory for addLogic functions

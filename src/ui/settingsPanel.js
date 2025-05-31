@@ -1,9 +1,8 @@
-import { nip19 } from 'nostr-tools';
 import { appStore } from '../store.js';
 import { mapSvc, idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
-import { C, $, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast, isValidUrl } from '../utils.js';
-import { createModalWrapper, showConfirmModal, showPassphraseModal, hideModal, showModal } from './modals.js';
-import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
+import { C, $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
+import { createModalWrapper, hideModal } from './modals.js';
+import { renderForm, setupAddRemoveListSection } from './forms.js';
 import {
     createListSectionRenderer,
     addRelayLogic,
@@ -11,29 +10,15 @@ import {
     addFocusTagLogic,
     addMutePubkeyLogic,
     addFollowedPubkeyLogic
-} from './settingsHelpers.js'; // New import
+} from './settingsHelpers.js';
 
-// Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
-const withLoading = (fn) => async (...args) => {
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-    try {
-        return await fn(...args);
-    } finally {
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
-};
+// Import modularized settings sections
+import { renderKeyManagementSection } from './settings/keyManagement.js';
+import { renderMapTilesSection } from './settings/mapTiles.js';
+import { renderImageHostSection } from './settings/imageHost.js';
+import { renderFollowedUsersSection, renderFollowedList } from './settings/followedUsers.js';
+import { renderDataManagementSection } from './settings/dataManagement.js';
 
-const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
-    try {
-        const result = await fn(...args);
-        if (successMsg) showToast(successMsg, 'success');
-        return result;
-    } catch (e) {
-        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
-        if (onErrorCallback) onErrorCallback(e);
-        throw e; // Re-throw to allow further error handling if needed
-    }
-};
 
 const renderRelays = createListSectionRenderer('rly-list',
     r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` }),
@@ -113,17 +98,6 @@ const renderMuteList = createListSectionRenderer('mute-list',
     'mute-entry'
 );
 
-const renderFollowedList = createListSectionRenderer('followed-list',
-    f => createEl('span', { textContent: formatNpubShort(f.pk) }),
-    [{
-        label: 'Unfollow',
-        className: 'remove-followed-btn',
-        onClick: f => confSvc.rmFollowed(f.pk),
-        confirm: { title: 'Unfollow User', message: 'Are you sure you want to unfollow this user?' }
-    }],
-    'followed-entry'
-);
-
 const renderOfflineQueue = async (modalContent) => {
     const queueItems = await dbSvc.getOfflineQ();
 
@@ -151,19 +125,19 @@ const renderOfflineQueue = async (modalContent) => {
         {
             label: 'Retry',
             className: 'retry-offline-q-btn',
-            onClick: withLoading(withToast(async (item) => {
+            onClick: async (item) => { // withLoading/withToast handled by pubEv
                 await nostrSvc.pubEv(item.event);
                 await dbSvc.rmOfflineQ(item.qid);
                 renderOfflineQueue(modalContent); // Re-render list after action
-            }, "Event retried and published!", "Failed to retry event"))
+            }
         },
         {
             label: 'Delete',
             className: 'remove-offline-q-btn',
-            onClick: withLoading(withToast(async (item) => {
+            onClick: async (item) => { // withLoading/withToast handled by rmOfflineQ
                 await dbSvc.rmOfflineQ(item.qid);
                 renderOfflineQueue(modalContent); // Re-render list after action
-            }, "Event removed from queue.", "Failed to delete event from queue"))
+            }
         }
     ];
 
@@ -183,217 +157,13 @@ const setupListManagement = (modalContent, config) => {
     });
 };
 
-const setupKeyManagementListeners = (modalContent) => {
-    const expSkBtn = $('#exp-sk-btn', modalContent);
-    if (expSkBtn) {
-        expSkBtn.onclick = withLoading(withToast(async () => {
-            if (!appStore.get().user) throw new Error("No Nostr identity connected.");
-            if (appStore.get().user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
-
-            const sk = await idSvc.getSk(true);
-            if (sk) {
-                showToast(
-                    "Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.",
-                    'critical-warning',
-                    0,
-                    nip19.nsecEncode(sk)
-                );
-            } else {
-                throw new Error("Private key not available for export.");
-            }
-        }, null, "Export failed"));
-    }
-
-    const chgPassBtn = $('#chg-pass-btn', modalContent);
-    if (chgPassBtn) {
-        chgPassBtn.onclick = withLoading(withToast(async () => {
-            const oldPass = $('#chg-pass-old', modalContent).value;
-            const newPass = $('#chg-pass-new', modalContent).value;
-            if (!oldPass || !newPass || newPass.length < 8) {
-                throw new Error("Both passphrases are required, new must be min 8 chars.");
-            }
-            await idSvc.chgPass(oldPass, newPass);
-            $('#chg-pass-old', modalContent).value = '';
-            $('#chg-pass-new', modalContent).value = '';
-        }, null, "Passphrase change failed"));
-    }
-};
-
-const setupMapTilesListeners = (modalContent) => {
-    const tilePresetSel = $('#tile-preset-sel', modalContent);
-    const tileUrlIn = $('#tile-url-in', modalContent);
-    const appState = appStore.get();
-
-    tilePresetSel.value = appState.settings.tilePreset;
-
-    tilePresetSel.onchange = () => {
-        const selectedPreset = C.TILE_SERVERS_PREDEFINED.find(p => p.name === tilePresetSel.value);
-        if (selectedPreset) {
-            tileUrlIn.value = selectedPreset.url;
-        } else {
-            tileUrlIn.value = '';
-        }
-    };
-
-    $('#save-tile-btn', modalContent).onclick = withToast(async () => {
-        const selectedPresetName = tilePresetSel.value;
-        const customUrl = tileUrlIn.value.trim();
-
-        if (!isValidUrl(customUrl)) {
-            throw new Error("Invalid tile URL.");
-        }
-
-        confSvc.setTilePreset(selectedPresetName, customUrl);
-        mapSvc.updTile(customUrl);
-    }, "Map tile settings saved.", "Error saving map tile settings");
-};
-
-const setupImageHostListeners = (modalContent) => {
-    const imgHostSel = $('#img-host-sel', modalContent);
-    const nip96Fields = $('#nip96-fields', modalContent);
-    const nip96UrlIn = $('#nip96-url-in', modalContent);
-    const nip96TokenIn = $('#nip96-token-in', modalContent);
-    const appState = appStore.get();
-
-    if (appState.settings.nip96Host) {
-        imgHostSel.value = 'nip96';
-        nip96Fields.style.display = '';
-    } else {
-        imgHostSel.value = appState.settings.imgHost || C.IMG_UPLOAD_NOSTR_BUILD;
-        nip96Fields.style.display = 'none';
-    }
-
-    imgHostSel.onchange = () => {
-        if (imgHostSel.value === 'nip96') {
-            nip96Fields.style.display = '';
-        } else {
-            nip96Fields.style.display = 'none';
-        }
-    };
-
-    $('#save-img-host-btn', modalContent).onclick = withToast(async () => {
-        const selectedHost = imgHostSel.value;
-        if (selectedHost === 'nip96') {
-            const nip96Url = nip96UrlIn.value.trim();
-            const nip96Token = nip96TokenIn.value.trim();
-            if (!isValidUrl(nip96Url)) {
-                throw new Error("Invalid NIP-96 server URL.");
-            }
-            confSvc.setImgHost(nip96Url, true, nip96Token);
-        } else {
-            confSvc.setImgHost(selectedHost, false);
-        }
-    }, "Image host settings saved.", "Error saving image host settings");
-};
-
-const setupFollowedListUniqueListeners = (modalContent) => {
-    $('#import-contacts-btn', modalContent).onclick = withLoading(withToast(async () => {
-        if (!appStore.get().user) {
-            throw new Error("Please connect your Nostr identity to import contacts.");
-        }
-        const contacts = await nostrSvc.fetchContacts();
-        if (contacts.length > 0) {
-            const currentFollowed = appStore.get().followedPubkeys.map(f => f.pk);
-            const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({ pk: c.pubkey, followedAt: Date.now() }));
-            if (newFollowed.length > 0) {
-                confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
-                return `Imported ${newFollowed.length} contacts from Nostr.`;
-            } else {
-                return "No new contacts found to import.";
-            }
-        } else {
-            return "No NIP-02 contact list found on relays for your account.";
-        }
-    }, null, "Error importing contacts"));
-
-    $('#publish-contacts-btn', modalContent).onclick = () => {
-        if (!appStore.get().user) {
-            showToast("Please connect your Nostr identity to publish contacts.", 'warning');
-            return;
-        }
-        showConfirmModal(
-            "Publish Contacts",
-            "This will publish your current followed list as a NIP-02 contact list (Kind 3 event) to your connected relays. This will overwrite any existing Kind 3 event for your pubkey. Continue?",
-            withLoading(withToast(async () => {
-                const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' }));
-                await nostrSvc.pubContacts(contactsToPublish);
-            }, null, "Error publishing contacts")),
-            () => showToast("Publish contacts cancelled.", 'info')
-        );
-    };
-};
-
-const setupDataManagementListeners = (modalContent) => {
-    $('#clr-reps-btn', modalContent).onclick = () => {
-        showConfirmModal(
-            "Clear Cached Reports",
-            "Are you sure you want to clear all cached reports from your local database? This will not delete them from relays.",
-            withLoading(withToast(async () => {
-                await dbSvc.clearReps();
-                appStore.set({ reports: [] });
-            }, "Cached reports cleared.", "Error clearing reports")),
-            () => showToast("Clearing reports cancelled.", 'info')
-        );
-    };
-
-    $('#exp-setts-btn', modalContent).onclick = withLoading(withToast(async () => {
-        const settings = await dbSvc.loadSetts();
-        const followedPubkeys = await dbSvc.getFollowedPubkeys();
-        const exportData = { settings, followedPubkeys };
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "nostrmapper_settings.json");
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-    }, "Settings exported.", "Error exporting settings"));
-
-    $('#imp-setts-file', modalContent).onchange = async e => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const importedData = JSON.parse(event.target.result);
-                if (!importedData.settings || !importedData.followedPubkeys) {
-                    throw new Error("Invalid settings file format.");
-                }
-
-                showConfirmModal(
-                    "Import Settings",
-                    "Are you sure you want to import settings? This will overwrite your current settings and followed users.",
-                    withLoading(withToast(async () => {
-                        await dbSvc.saveSetts(importedData.settings);
-                        await dbSvc.clearFollowedPubkeys();
-                        for (const fp of importedData.followedPubkeys) {
-                            await dbSvc.addFollowedPubkey(fp.pk);
-                        }
-                        await confSvc.load();
-                        showToast("Settings imported successfully! Please refresh the page.", 'success', 5000);
-                        setTimeout(() => {
-                            if (confirm("Settings imported. Reload page now?")) {
-                                window.location.reload();
-                            }
-                        }, 2000);
-                    }, null, "Error importing settings")),
-                    () => showToast("Import cancelled.", 'info')
-                );
-            } catch (err) {
-                showToast(`Failed to parse settings file: ${err.message}`, 'error');
-            }
-        };
-        reader.readAsText(file);
-    };
-};
-
 export function SettPanComp() {
     const appState = appStore.get();
 
     const settingsContentRenderer = (modalRoot) => {
         const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
 
+        // Relays Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Relays' }),
             createEl('div', { id: 'rly-list' }),
@@ -405,19 +175,13 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        if (appState.user && (appState.user.authM === 'local' || appState.user.authM === 'import')) {
-            settingsSectionsWrapper.appendChild(createEl('section', {}, [
-                createEl('h3', { textContent: 'Local Key Management' }),
-                renderForm([
-                    { type: 'button', id: 'exp-sk-btn', label: 'Export Private Key' },
-                    { label: 'Old Passphrase:', type: 'password', id: 'chg-pass-old', name: 'oldPassphrase' },
-                    { label: 'New Passphrase:', type: 'password', id: 'chg-pass-new', name: 'newPassphrase' },
-                    { type: 'button', id: 'chg-pass-btn', label: 'Change Passphrase' }
-                ], {}, { id: 'key-management-form' })
-            ]));
+        // Local Key Management Section
+        const keyManagementSection = renderKeyManagementSection(settingsSectionsWrapper);
+        if (keyManagementSection) {
             settingsSectionsWrapper.appendChild(createEl('hr'));
         }
 
+        // Focus Tags Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Focus Tags' }),
             createEl('div', { id: 'focus-tag-list' }),
@@ -429,6 +193,7 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // Categories Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Categories' }),
             createEl('div', { id: 'cat-list' }),
@@ -440,53 +205,21 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // Map Tiles Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Map Tiles' }),
-            renderForm([
-                {
-                    label: 'Tile Server Preset:',
-                    type: 'select',
-                    id: 'tile-preset-sel',
-                    name: 'tilePreset',
-                    value: appState.settings.tilePreset,
-                    options: C.TILE_SERVERS_PREDEFINED.map(p => ({ value: p.name, label: p.name }))
-                },
-                { label: 'Custom Tile URL Template:', type: 'url', id: 'tile-url-in', name: 'tileUrl', value: appState.settings.tileUrl },
-                { label: 'Save Tiles', type: 'button', id: 'save-tile-btn', buttonType: 'button' }
-            ], {}, { id: 'map-tiles-form' })
+            renderMapTilesSection(settingsSectionsWrapper) // Render and append directly
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // Image Host Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Image Host' }),
-            renderForm([
-                {
-                    label: 'Provider:',
-                    type: 'select',
-                    id: 'img-host-sel',
-                    name: 'imgHostProvider',
-                    value: appState.settings.nip96Host ? 'nip96' : (appState.settings.imgHost || C.IMG_UPLOAD_NOSTR_BUILD),
-                    options: [
-                        { value: C.IMG_UPLOAD_NOSTR_BUILD, label: 'nostr.build (Default)' },
-                        { value: 'nip96', label: 'NIP-96 Server' }
-                    ]
-                },
-                {
-                    type: 'custom-html',
-                    id: 'nip96-fields',
-                    class: 'nip96-fields',
-                    content: [
-                        createEl('label', { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' }),
-                        createEl('input', { type: 'url', id: 'nip96-url-in', name: 'nip96Url', value: appState.settings.nip96Host, placeholder: 'https://your.nip96.server' }),
-                        createEl('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
-                        createEl('input', { type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96Token })
-                    ]
-                }
-            ], {}, { id: 'image-host-form' }),
-            createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' })
+            renderImageHostSection(settingsSectionsWrapper) // Render and append directly
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // Mute List Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Mute List' }),
             createEl('div', { id: 'mute-list' }),
@@ -498,20 +231,15 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // Followed Users Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Followed Users (NIP-02)' }),
             createEl('div', { id: 'followed-list' }),
-            renderForm([
-                { label: 'New Followed Pubkey:', type: 'text', id: 'new-followed-pk-input', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
-                { label: 'Add to Followed', type: 'button', id: 'add-followed-btn', buttonType: 'button' },
-                { label: 'Save Followed List', type: 'button', id: 'save-followed-btn', buttonType: 'button' },
-                { type: 'hr' },
-                { label: 'Import NIP-02 Contacts', type: 'button', id: 'import-contacts-btn', buttonType: 'button' },
-                { label: 'Publish NIP-02 Contacts', type: 'button', id: 'publish-contacts-btn', buttonType: 'button' }
-            ], {}, { id: 'followed-list-form' })
+            renderFollowedUsersSection(settingsSectionsWrapper) // Render and append directly
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // Offline Queue Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Offline Queue' }),
             createEl('p', { textContent: 'Events waiting to be published when online.' }),
@@ -519,13 +247,10 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
+        // Data Management Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Data Management' }),
-            renderForm([
-                { type: 'button', id: 'clr-reps-btn', label: 'Clear Cached Reports' },
-                { type: 'button', id: 'exp-setts-btn', label: 'Export Settings' },
-                { label: 'Import Settings:', type: 'file', id: 'imp-setts-file', name: 'importSettingsFile', accept: '.json' }
-            ], {}, { id: 'data-management-form' })
+            renderDataManagementSection(settingsSectionsWrapper) // Render and append directly
         ]));
 
         return settingsSectionsWrapper;
@@ -535,13 +260,15 @@ export function SettPanComp() {
 
     modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
 
+    // Initial rendering of lists
     renderRelays(modalContent);
     renderCategories(modalContent);
     renderFocusTags(modalContent);
     renderMuteList(modalContent);
-    renderFollowedList(modalContent);
+    renderFollowedList(modalContent); // This is for the list itself, not the form
     renderOfflineQueue(modalContent);
 
+    // Setup list management for sections that use it
     setupListManagement(modalContent, {
         addInputId: 'new-rly-url',
         addBtnId: 'add-rly-btn',
@@ -579,19 +306,8 @@ export function SettPanComp() {
         saveBtnId: 'save-mute-list-btn'
     });
 
-    setupListManagement(modalContent, {
-        addInputId: 'new-followed-pk-input',
-        addBtnId: 'add-followed-btn',
-        addLogic: addFollowedPubkeyLogic,
-        listRenderer: () => renderFollowedList(modalContent),
-        saveBtnId: 'save-followed-btn'
-    });
-
-    setupKeyManagementListeners(modalContent);
-    setupMapTilesListeners(modalContent);
-    setupImageHostListeners(modalContent);
-    setupFollowedListUniqueListeners(modalContent);
-    setupDataManagementListeners(modalContent);
+    // Note: Followed users list management is handled within its own module (followedUsers.js)
+    // as it has unique import/publish buttons.
 
     return modalContent;
 }
