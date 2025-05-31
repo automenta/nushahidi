@@ -4,22 +4,15 @@ import {withLoading, withToast} from '../../decorators.js';
 import {renderList} from '../forms.js';
 import {appStore} from '../../store.js';
 
-export const getOfflineQueueEventType = kind => {
+const getOfflineQueueEventType = kind => {
     switch (kind) {
-        case C.NOSTR_KIND_REPORT:
-            return 'Report';
-        case C.NOSTR_KIND_REACTION:
-            return 'Reaction';
-        case C.NOSTR_KIND_NOTE:
-            return 'Comment';
-        case 5:
-            return 'Deletion';
-        case C.NOSTR_KIND_PROFILE:
-            return 'Profile';
-        case C.NOSTR_KIND_CONTACTS:
-            return 'Contacts';
-        default:
-            return `Kind ${kind}`;
+        case C.NOSTR_KIND_REPORT: return 'Report';
+        case C.NOSTR_KIND_REACTION: return 'Reaction';
+        case C.NOSTR_KIND_NOTE: return 'Comment';
+        case 5: return 'Deletion';
+        case C.NOSTR_KIND_PROFILE: return 'Profile';
+        case C.NOSTR_KIND_CONTACTS: return 'Contacts';
+        default: return `Kind ${kind}`;
     }
 };
 
@@ -39,9 +32,12 @@ class OfflineQueueItem {
 }
 
 export class OfflineQueueSection {
-    constructor(config) {
-        this.config = config;
-        this.sectionEl = createEl('div', {class: 'offline-queue-section'});
+    constructor() {
+        this.sectionEl = createEl('section');
+        this.sectionEl.appendChild(createEl('h3', {textContent: 'Offline Queue'}));
+        this.listContainer = createEl('div');
+        this.sectionEl.appendChild(createEl('p', {textContent: 'Events waiting to be published when online.'}));
+        this.sectionEl.appendChild(this.listContainer);
 
         this.renderQueue();
 
@@ -74,10 +70,10 @@ export class OfflineQueueSection {
                 }, null, "Error deleting event")),
             }
         ];
-        this.sectionEl.innerHTML = '';
-        this.sectionEl.appendChild(createEl('p', {textContent: 'Events waiting to be published when online.'}));
-        const listContainer = createEl('div');
-        this.sectionEl.appendChild(listContainer);
-        renderList(listContainer, queueItems, OfflineQueueItem, actionsConfig, 'offline-q-entry');
+        renderList(this.listContainer, queueItems, OfflineQueueItem, actionsConfig, 'offline-q-entry');
+    }
+
+    get element() {
+        return this.sectionEl;
     }
 }

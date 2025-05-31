@@ -9,6 +9,7 @@ import {showPassphraseModal} from '../modals.js';
 export class KeyManagementSection {
     constructor() {
         this.sectionEl = createEl('section');
+        this.sectionEl.appendChild(createEl('h3', {textContent: 'Key Management'}));
         this.form = null;
         this.exportSkBtn = null;
         this.oldPassInput = null;
@@ -81,6 +82,10 @@ export class KeyManagementSection {
         } else {
             this.sectionEl.style.display = '';
         }
+        return this.sectionEl;
+    }
+
+    get element() {
         return this.sectionEl;
     }
 }

@@ -10,8 +10,8 @@ export class ReportList {
 
         this.render(appStore.get());
 
-        this.unsubscribe = appStore.on(newState => {
-            if (newState.filteredReports !== newState.filteredReports || newState.ui.showReportList !== newState.ui.showReportList) {
+        this.unsubscribe = appStore.on((newState, oldState) => {
+            if (newState.filteredReports !== oldState?.filteredReports || newState.ui.showReportList !== oldState?.ui?.showReportList) {
                 this.render(newState);
             }
         });
@@ -19,19 +19,18 @@ export class ReportList {
 
     updateList(reports) {
         this.listElement.innerHTML = '';
-        if (reports.length > 0) {
-            reports.forEach(report => {
-                const reportCard = new ReportCard(report);
-                this.listElement.appendChild(reportCard.element);
-            });
-        } else {
-            this.listElement.innerHTML = '<p>No reports match filters.</p>';
-        }
+        reports.length ?
+            reports.forEach(report => this.listElement.appendChild(new ReportCard(report).element)) :
+            this.listElement.appendChild(createEl('p', {textContent: 'No reports match filters.'}));
     }
 
     render(state) {
         this.updateList(state.filteredReports || []);
         this.listContainer.style.display = state.ui.showReportList ? 'block' : 'none';
+        return this.listContainer;
+    }
+
+    get element() {
         return this.listContainer;
     }
 }

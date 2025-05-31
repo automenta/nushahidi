@@ -1,5 +1,5 @@
 import {appStore} from './store.js';
-import {confSvc, dbSvc, idSvc, mapSvc, nostrSvc, offSvc} from './services.js';
+import {confSvc, dbSvc, idSvc, nostrSvc, offSvc} from './services.js';
 import {App} from './ui/App.js';
 
 async function setupServiceWorker() {

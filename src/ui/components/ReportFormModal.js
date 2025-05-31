@@ -1,7 +1,7 @@
 import {appStore} from '../../store.js';
 import {imgSvc, mapSvc, nostrSvc} from '../../services.js';
 import {C, createEl, generateUUID, geohashEncode, processImageFile, sanitizeHTML, showToast} from '../../utils.js';
-import {renderForm, renderList} from '../forms.js';
+import {renderForm} from '../forms.js';
 import {Modal} from '../modals.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {ImagePreviewItem} from './ImagePreviewItem.js';

@@ -20,4 +20,8 @@ export class GlobalLoadingSpinner {
         this.spinnerEl.style.display = loading ? 'flex' : 'none';
         return this.spinnerEl;
     }
+
+    get element() {
+        return this.spinnerEl;
+    }
 }

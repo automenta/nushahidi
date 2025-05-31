@@ -7,16 +7,9 @@ export class SettingsModal extends Modal {
         const contentRenderer = () => {
             const settingsContent = createEl('div', {class: 'settings-sections'});
             settingsSections.forEach(sectionConfig => {
-                const sectionEl = createEl('section');
-                sectionEl.appendChild(createEl('h3', {textContent: sectionConfig.title}));
-
                 const SectionComponent = sectionConfig.renderer;
                 const sectionInstance = new SectionComponent(sectionConfig);
-                const renderedContent = sectionInstance.element;
-
-                if (Array.isArray(renderedContent)) renderedContent.forEach(el => sectionEl.appendChild(el));
-                else if (renderedContent instanceof Node) sectionEl.appendChild(renderedContent);
-                settingsContent.appendChild(sectionEl);
+                settingsContent.appendChild(sectionInstance.element);
                 settingsContent.appendChild(createEl('hr'));
             });
             settingsContent.appendChild(createEl('button', {type: 'button', class: 'secondary', textContent: 'Close', onclick: () => this.hide(), style: 'margin-top:1rem'}));

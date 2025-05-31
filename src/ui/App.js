@@ -19,14 +19,14 @@ export class App {
         this.root = rootElement;
         this.root.innerHTML = '';
 
-        const headerEl = createEl('header', {class: 'app-header'});
-        const mainEl = createEl('main');
-        const sidebarEl = createEl('div', {class: 'app-sidebar'});
-        const mapContainerEl = createEl('div', {class: 'map-container', 'aria-label': 'Interactive Map'});
-        const footerEl = createEl('footer', {}, createEl('p', {textContent: '© NostrMapper Community'}));
+        this.headerEl = createEl('header', {class: 'app-header'});
+        this.mainEl = createEl('main');
+        this.sidebarEl = createEl('div', {class: 'app-sidebar'});
+        this.mapContainerEl = createEl('div', {class: 'map-container', 'aria-label': 'Interactive Map'});
+        this.footerEl = createEl('footer', {}, createEl('p', {textContent: '© NostrMapper Community'}));
 
-        this.root.append(headerEl, mainEl, footerEl);
-        mainEl.append(mapContainerEl, sidebarEl);
+        this.root.append(this.headerEl, this.mainEl, this.footerEl);
+        this.mainEl.append(this.mapContainerEl, this.sidebarEl);
 
         this.authModal = new AuthModal();
         this.reportFormModal = new ReportFormModal();
@@ -43,19 +43,19 @@ export class App {
             },
             onShowSettings: () => this.settingsModal.show('.settings-sections h3')
         });
-        headerEl.appendChild(this.appHeader.element);
+        this.headerEl.appendChild(this.appHeader.element);
 
         this.sidebarControls = new SidebarControls({
             onCreateReport: () => this.reportFormModal.show('.nstr-rep-form #field-title'),
             onShowSettings: () => this.settingsModal.show('.settings-sections h3')
         });
-        sidebarEl.appendChild(this.sidebarControls.element);
+        this.sidebarEl.appendChild(this.sidebarControls.element);
 
         this.filterControls = new FilterControls();
-        sidebarEl.appendChild(this.filterControls.element);
+        this.sidebarEl.appendChild(this.filterControls.element);
 
         this.reportList = new ReportList();
-        sidebarEl.appendChild(this.reportList.element);
+        this.sidebarEl.appendChild(this.reportList.element);
 
         this.globalLoadingSpinner = new GlobalLoadingSpinner();
         this.root.appendChild(this.globalLoadingSpinner.element);
@@ -64,13 +64,13 @@ export class App {
         applyAllFilters();
         appStore.set(s => ({ui: {...s.ui, showReportList: true}}));
 
-        mapSvc.init(mapContainerEl)
+        mapSvc.init(this.mapContainerEl)
             .then(success => {
-                if (!success) mapContainerEl.innerHTML = '<p style="color:red">Map init failed.</p>';
+                if (!success) this.mapContainerEl.innerHTML = '<p style="color:red">Map init failed.</p>';
             })
             .catch(e => {
                 console.error("Map initialization failed:", e);
-                mapContainerEl.innerHTML = `<p style="color:red">Map init failed: ${e.message}</p>`;
+                this.mapContainerEl.innerHTML = `<p style="color:red">Map init failed: ${e.message}</p>`;
             });
 
         if (!localStorage.getItem(C.ONBOARDING_KEY)) this.onboardingModal.show('.onboarding-modal h2');
@@ -91,10 +91,8 @@ export class App {
             if (shouldReapplyFilters) applyAllFilters();
 
             if (newState.ui.reportIdToView !== oldState?.ui?.reportIdToView) {
-                if (this.reportDetailsModal) {
-                    this.reportDetailsModal.hide();
-                    this.reportDetailsModal = null;
-                }
+                this.reportDetailsModal?.hide();
+                this.reportDetailsModal = null;
                 if (newState.ui.reportIdToView) {
                     const report = newState.reports.find(r => r.id === newState.ui.reportIdToView);
                     if (report) {

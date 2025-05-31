@@ -38,8 +38,7 @@ export class ReportDetailsModal extends Modal {
     }
 
     async renderContent(report, container) {
-        const profilePromise = nostrSvc.fetchProf(report.pk);
-        const profile = await profilePromise;
+        const profile = await nostrSvc.fetchProf(report.pk);
         const currentUserPk = appStore.get().user?.pk;
         const isAuthor = currentUserPk && currentUserPk === report.pk;
         const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);

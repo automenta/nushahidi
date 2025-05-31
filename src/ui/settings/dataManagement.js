@@ -8,6 +8,7 @@ import {showConfirmModal} from '../modals.js';
 export class DataManagementSection {
     constructor() {
         this.sectionEl = createEl('section');
+        this.sectionEl.appendChild(createEl('h3', {textContent: 'Data Management'}));
         this.form = null;
         this.clearReportsBtn = null;
         this.exportSettingsBtn = null;
@@ -91,6 +92,10 @@ export class DataManagementSection {
             };
             reader.readAsText(file);
         };
+        return this.sectionEl;
+    }
+
+    get element() {
         return this.sectionEl;
     }
 }

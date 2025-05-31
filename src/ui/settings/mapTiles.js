@@ -7,6 +7,7 @@ import {renderForm} from '../forms.js';
 export class MapTilesSection {
     constructor() {
         this.sectionEl = createEl('section');
+        this.sectionEl.appendChild(createEl('h3', {textContent: 'Map Tiles'}));
         this.form = null;
         this.tilePresetSel = null;
         this.tileUrlIn = null;
@@ -67,6 +68,10 @@ export class MapTilesSection {
         this.tilePresetSel.value = appState.settings.tilePreset;
         this.tileUrlIn.value = appState.settings.tileUrl;
 
+        return this.sectionEl;
+    }
+
+    get element() {
         return this.sectionEl;
     }
 }

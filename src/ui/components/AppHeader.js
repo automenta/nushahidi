@@ -55,4 +55,8 @@ export class AppHeader {
         this.updateAuthDisplay(state.user?.pk);
         return this.headerEl;
     }
+
+    get element() {
+        return this.headerEl;
+    }
 }

@@ -7,6 +7,7 @@ import {renderForm} from '../forms.js';
 export class ImageHostSection {
     constructor() {
         this.sectionEl = createEl('section');
+        this.sectionEl.appendChild(createEl('h3', {textContent: 'Image Host'}));
         this.form = null;
         this.imgHostSel = null;
         this.nip96Fields = null;
@@ -89,6 +90,10 @@ export class ImageHostSection {
         this.nip96UrlIn.value = appState.settings.nip96H;
         this.nip96TokenIn.value = appState.settings.nip96T;
 
+        return this.sectionEl;
+    }
+
+    get element() {
         return this.sectionEl;
     }
 }

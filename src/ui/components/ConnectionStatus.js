@@ -39,4 +39,8 @@ export class ConnectionStatus {
         }
         return this.container;
     }
+
+    get element() {
+        return this.container;
+    }
 }

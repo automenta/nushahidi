@@ -173,4 +173,8 @@ export class FilterControls {
 
         return this.filterFormElement;
     }
+
+    get element() {
+        return this.filterFormElement;
+    }
 }
