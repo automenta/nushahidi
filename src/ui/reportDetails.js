@@ -162,7 +162,7 @@ function setupInteractionControls(reportId, reportPk, container) {
 
     const commentFormFields = [
         { type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true },
-        { type: 'button', buttonType: 'submit', label: 'Post Comment' }
+        { type: 'button', id: 'post-comment-btn', buttonType: 'submit', label: 'Post Comment' }
     ];
 
     const commentForm = renderForm(commentFormFields, {}, {

@@ -40,8 +40,8 @@ const REPORT_FORM_FIELDS = (categories, initialFormData) => [
     { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' },
     { type: 'custom-html', id: 'upld-photos-preview' },
     { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
-    { label: initialFormData.isEdit ? 'Update Report' : 'Submit', type: 'button', buttonType: 'submit' },
-    { label: 'Cancel', type: 'button', buttonType: 'button', class: 'secondary', onclick: () => hideModal('report-form-modal') }
+    { label: initialFormData.isEdit ? 'Update Report' : 'Submit', type: 'button', id: 'submit-report-btn', buttonType: 'submit' },
+    { label: 'Cancel', type: 'button', id: 'cancel-report-btn', buttonType: 'button', class: 'secondary', onclick: () => hideModal('report-form-modal') }
 ];
 
 const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {

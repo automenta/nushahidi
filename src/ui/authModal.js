@@ -51,7 +51,7 @@ const authFormFields = [
     { type: 'hr' },
     { label: 'Import Private Key (nsec/hex):', type: 'text', id: 'auth-sk' },
     { type: 'button', id: 'import-sk-btn', label: 'Import Key' },
-    { type: 'button', class: 'secondary', label: 'Cancel', onclick: () => hideModal('auth-modal'), style: 'margin-top:1rem' }
+    { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => hideModal('auth-modal'), style: 'margin-top:1rem' }
 ];
 
 function setupAuthModalListeners(form) {
