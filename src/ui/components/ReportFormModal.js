@@ -244,6 +244,7 @@ export class ReportFormModal extends Modal {
             formState.pFLoc = null;
             imagesMetadata.length = 0;
             this.hide();
+            submitBtn.disabled = false; // Re-enable button on success
 
             // After successful submission, navigate to the report details
             appStore.set(s => ({ui: {...s.ui, reportIdToView: signedEvent.id, showReportList: false}}));
