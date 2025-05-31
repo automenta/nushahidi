@@ -3,6 +3,9 @@ import {NavigationRoute, registerRoute} from 'workbox-routing';
 import {NetworkFirst, StaleWhileRevalidate} from 'workbox-strategies';
 import {ExpirationPlugin} from 'workbox-expiration';
 import {BackgroundSyncPlugin} from 'workbox-background-sync';
+import { setLogLevel, LogLevel } from 'workbox-core'; // Import setLogLevel and LogLevel
+
+setLogLevel(LogLevel.SILENT); // Disable all Workbox logs
 
 cleanupOutdatedCaches();
 

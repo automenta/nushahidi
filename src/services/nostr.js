@@ -1,5 +1,5 @@
 import { nip11 } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools/pool';
+import { SimplePool } from 'nostr-tools/lib/pool';
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
