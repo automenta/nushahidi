@@ -12,6 +12,7 @@ export const appStore = (() => {
         online: navigator.onLine,
         drawnShapes: [],
         followedPubkeys: [],
+        offlineQueueCount: 0,
         ui: {
             loading: false,
             modalOpen: null,

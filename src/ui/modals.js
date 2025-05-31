@@ -47,19 +47,23 @@ export class Modal {
 }
 
 export const showConfirmModal = (title, message, onConfirm, onCancel) => {
-    const confirmModal = new Modal('confirm-modal', title, () => {
-        const cancelBtn = createEl('button', { class: 'cancel-button', textContent: 'Cancel' });
-        const confirmBtn = createEl('button', { class: 'confirm-button', textContent: 'Confirm' });
+    return new Promise(resolve => {
+        let confirmModal;
+        const contentRenderer = () => {
+            const cancelBtn = createEl('button', { class: 'cancel-button', textContent: 'Cancel' });
+            const confirmBtn = createEl('button', { class: 'confirm-button', textContent: 'Confirm' });
 
-        cancelBtn.onclick = () => { confirmModal.hide(); onCancel?.(); };
-        confirmBtn.onclick = () => { confirmModal.hide(); onConfirm(); };
+            cancelBtn.onclick = () => { confirmModal.hide(); onCancel?.(); resolve(false); };
+            confirmBtn.onclick = () => { confirmModal.hide(); onConfirm(); resolve(true); };
 
-        return [
-            createEl('p', { innerHTML: sanitizeHTML(message) }),
-            createEl('div', { class: 'confirm-modal-buttons' }, [cancelBtn, confirmBtn])
-        ];
+            return [
+                createEl('p', { innerHTML: sanitizeHTML(message) }),
+                createEl('div', { class: 'confirm-modal-buttons' }, [cancelBtn, confirmBtn])
+            ];
+        };
+        confirmModal = new Modal('confirm-modal', title, contentRenderer);
+        confirmModal.show(confirmModal.root.querySelector('h2'));
     });
-    confirmModal.show(confirmModal.root.querySelector('h2'));
 };
 
 export const showPassphraseModal = (title, message) => {
@@ -67,8 +71,9 @@ export const showPassphraseModal = (title, message) => {
         let passphraseInput;
         let decryptBtn;
         let cancelBtn;
+        let passphraseModal;
 
-        const passphraseModal = new Modal('passphrase-modal', title, () => {
+        const contentRenderer = () => {
             passphraseInput = createEl('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
             decryptBtn = createEl('button', { class: 'confirm-button', textContent: 'Decrypt' });
             cancelBtn = createEl('button', { class: 'cancel-button', textContent: 'Cancel' });
@@ -82,7 +87,8 @@ export const showPassphraseModal = (title, message) => {
                 passphraseInput,
                 createEl('div', { class: 'confirm-modal-buttons' }, [cancelBtn, decryptBtn])
             ];
-        });
+        };
+        passphraseModal = new Modal('passphrase-modal', title, contentRenderer);
         passphraseModal.show(passphraseInput);
     });
 };

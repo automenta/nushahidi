@@ -1,5 +1,4 @@
 import {createEl, formatNpubShort, sanitizeHTML} from '../../utils.js';
-import {ReportDetailsModal} from './ReportDetailsModal.js';
 import {appStore} from '../../store.js';
 
 export function ReportList() {

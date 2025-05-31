@@ -1,6 +1,6 @@
 import {appStore} from './store.js';
 import {confSvc, dbSvc, idSvc, mapSvc, nostrSvc, offSvc} from './services.js';
-import {initUI} from './ui.js';
+import {App} from './ui/App.js';
 
 async function setupServiceWorker() {
     if ('serviceWorker' in navigator) {
@@ -31,10 +31,13 @@ async function initializeApplication() {
 
         if (!await mapSvc.init('map-container')) document.getElementById('map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
 
-        initUI();
+        new App();
 
         const cachedReports = await dbSvc.getAllReps();
         appStore.set({ reports: (Array.isArray(cachedReports) ? cachedReports : []).sort((a, b) => b.at - a.at) });
+
+        const offlineQueueCount = (await dbSvc.getOfflineQ()).length;
+        appStore.set(s => ({ offlineQueueCount }));
 
         await nostrSvc.refreshSubs();
         offSvc.setupSyncLs();

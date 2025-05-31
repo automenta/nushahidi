@@ -14,23 +14,40 @@ export class ReportDetailsModal extends Modal {
         let modalContentContainer;
         const contentRenderer = () => {
             modalContentContainer = createEl('div');
-
-            const profilePromise = nostrSvc.fetchProf(report.pk);
-            profilePromise.then(profile => {
-                const currentUserPk = appStore.get().user?.pk;
-                const isAuthor = currentUserPk && currentUserPk === report.pk;
-                const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
-                const canFollow = currentUserPk && currentUserPk !== report.pk;
-
-                modalContentContainer.innerHTML = this.renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
-
-                this.setupReportDetailEventListeners(report, isAuthor, canFollow, modalContentContainer);
-                this.initializeMiniMap(report, modalContentContainer);
-                this.loadAndDisplayInteractions(report.id, report.pk, modalContentContainer.querySelector('.interactions'));
-            });
+            this.renderContent(report, modalContentContainer);
             return modalContentContainer;
         };
         super('report-detail-container', report.title || 'Report Details', contentRenderer);
+        this.report = report;
+        this.unsubscribe = appStore.on((newState, oldState) => {
+            if (newState.ui.reportIdToView === this.report.id && newState.reports !== oldState?.reports) {
+                const updatedReport = newState.reports.find(r => r.id === this.report.id);
+                if (updatedReport) {
+                    this.report = updatedReport;
+                    this.renderContent(this.report, modalContentContainer);
+                }
+            }
+        });
+    }
+
+    hide() {
+        super.hide();
+        this.unsubscribe();
+    }
+
+    async renderContent(report, container) {
+        const profilePromise = nostrSvc.fetchProf(report.pk);
+        const profile = await profilePromise;
+        const currentUserPk = appStore.get().user?.pk;
+        const isAuthor = currentUserPk && currentUserPk === report.pk;
+        const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
+        const canFollow = currentUserPk && currentUserPk !== report.pk;
+
+        container.innerHTML = this.renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
+
+        this.setupReportDetailEventListeners(report, isAuthor, canFollow, container);
+        this.initializeMiniMap(report, container);
+        this.loadAndDisplayInteractions(report.id, report.pk, container.querySelector('.interactions'));
     }
 
     async submitInteraction(kind, content, reportId, reportPk) {
@@ -41,11 +58,7 @@ export class ReportDetailsModal extends Modal {
             content,
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
-        const updatedReport = appStore.get().reports.find(r => r.id === reportId);
-        if (updatedReport) {
-            appStore.set(s => ({ ui: { ...s.ui, reportIdToView: updatedReport.id } }));
-            this.hide();
-        }
+        // The appStore.on listener in constructor will handle re-rendering
     }
 
     handleReactionSubmit = async event => {
@@ -144,10 +157,11 @@ export class ReportDetailsModal extends Modal {
 
         await withLoading(withToast(async () => {
             isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
-            const updatedReport = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
+            // Re-render the modal to update follow button state
+            const updatedReport = appStore.get().reports.find(r => r.id === this.report.id);
             if (updatedReport) {
-                appStore.set(s => ({ ui: { ...s.ui, reportIdToView: updatedReport.id } }));
-                this.hide();
+                this.report = updatedReport;
+                this.renderContent(this.report, this.root.querySelector('.modal-content'));
             }
             return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
         }, null, "Error toggling follow status", () => btn.disabled = false))();

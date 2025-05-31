@@ -29,6 +29,7 @@ export function OfflineQueueSection(config) {
 
     const renderQueue = async () => {
         const queueItems = await dbSvc.getOfflineQ();
+        appStore.set(s => ({ offlineQueueCount: queueItems.length }));
         const actionsConfig = [
             {
                 label: 'Retry',
