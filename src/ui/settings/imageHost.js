@@ -9,16 +9,16 @@ export class ImageHostSection {
         this.sectionEl = createEl('section');
         this.sectionEl.appendChild(createEl('h3', {textContent: 'Image Host'}));
         this.form = null;
-        this.formFields = {}; // Store references to form fields for granular updates
+        this.formFields = {};
 
-        this.createFormElements(appStore.get()); // Initial creation of form elements
+        this.createFormElements(appStore.get());
         this.sectionEl.appendChild(this.form);
 
         this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.settings.imgH !== oldState?.settings?.imgH ||
                 newState.settings.nip96H !== oldState?.settings?.nip96H ||
                 newState.settings.nip96T !== oldState?.settings?.nip96T) {
-                this.updateFormElements(newState); // Granular update
+                this.updateFormElements(newState);
             }
         });
     }
@@ -41,10 +41,10 @@ export class ImageHostSection {
                 ref: 'nip96FieldsContainer',
                 class: 'nip96-fields',
                 content: [
-                    createEl('label', {for: 'nip96-url-in', textContent: 'NIP-96 Server URL:'}),
-                    createEl('input', {type: 'url', id: 'nip96-url-in', name: 'nip96Url', value: appState.settings.nip96H, placeholder: 'https://your.nip96.server'}),
-                    createEl('label', {for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):'}),
-                    createEl('input', {type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96T})
+                    { tagName: 'label', attributes: { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' } },
+                    { tagName: 'input', attributes: { type: 'url', id: 'nip96-url-in', name: 'nip96Url', value: appState.settings.nip96H, placeholder: 'https://your.nip96.server', ref: 'nip96Url' } },
+                    { tagName: 'label', attributes: { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' } },
+                    { tagName: 'input', attributes: { type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96T, ref: 'nip96Token' } }
                 ]
             },
             {type: 'button', ref: 'saveImgHostBtn', textContent: 'Save Image Host'}
@@ -70,7 +70,7 @@ export class ImageHostSection {
             }
         }, "Image host settings saved.", "Error saving image host settings");
 
-        this.updateFormElements(appState); // Set initial values and display based on appState
+        this.updateFormElements(appState);
     }
 
     updateFormElements(appState) {

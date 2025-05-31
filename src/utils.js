@@ -33,7 +33,7 @@ export const C = {
     RELAY_RETRY_DELAY_MS: 5000
 };
 
-export function createEl(tagName, attributes = {}, children = []) {
+export function createEl(tagName, attributes = {}, children = [], fields = null) {
     const element = document.createElement(tagName);
     Object.entries(attributes).forEach(([key, value]) => {
         if (key.startsWith('on') && typeof value === 'function') element.addEventListener(key.substring(2).toLowerCase(), value);
@@ -46,6 +46,11 @@ export function createEl(tagName, attributes = {}, children = []) {
         else element.setAttribute(key, value);
     });
     element.append(...(Array.isArray(children) ? children : [children]).filter(Boolean).map(child => typeof child === 'string' ? document.createTextNode(child) : child));
+
+    if (fields && attributes.ref) {
+        fields[attributes.ref] = element;
+    }
+
     return element;
 }
 
