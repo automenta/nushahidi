@@ -3,6 +3,9 @@ import { confSvc, idSvc, nostrSvc, mapSvc, dbSvc, offSvc } from './services.js';
 import { initUI } from './ui.js';
 import { $, C } from './utils.js';
 
+// Define gE locally as it's a simple utility and not exported from ui.js
+const gE=(id,p=document)=>$(id,p);
+
 async function main(){
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').then(r=>{r.onupdatefound=()=>{const w=r.installing;w.onstatechange=()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)if(confirm("New version available. Refresh?"))window.location.reload()}}}).catch(e=>console.error("SW Reg Fail:",e))})}
 await confSvc.load();
