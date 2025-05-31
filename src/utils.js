@@ -39,7 +39,10 @@ export function createEl(tagName, attributes = {}, children = []) {
         if (key.startsWith('on') && typeof value === 'function') element.addEventListener(key.substring(2).toLowerCase(), value);
         else if (key === 'textContent') element.textContent = value;
         else if (key === 'innerHTML') element.innerHTML = value;
-        else if (typeof value === 'boolean') value ? element.setAttribute(key, '') : element.removeAttribute(key) : element.setAttribute(key, value);
+        else if (typeof value === 'boolean') {
+            if (value) element.setAttribute(key, '');
+            else element.removeAttribute(key);
+        }
         else element.setAttribute(key, value);
     });
     element.append(...(Array.isArray(children) ? children : [children]).filter(Boolean).map(child => typeof child === 'string' ? document.createTextNode(child) : child));
