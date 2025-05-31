@@ -48,92 +48,242 @@ const updSyncDisp = async () => {
     }
 };
 
-// --- Generic Confirmation Modal ---
-let _confirmModalRoot;
-
-export function showConfirmModal(title, message, onConfirm, onCancel) {
-    if (!_confirmModalRoot) {
-        _confirmModalRoot = cE('div', { class: 'modal-content' });
-        gE('#confirm-modal').appendChild(_confirmModalRoot);
+// --- Generic Modal Factory ---
+/**
+ * Creates a generic modal wrapper with common elements (close button, heading).
+ * @param {string} modalId - The ID of the modal container element (e.g., 'confirm-modal').
+ * @param {string} title - The title for the modal heading.
+ * @param {function(HTMLElement): (HTMLElement|HTMLElement[])} contentRenderer - A function that takes the modal's content root element and appends/returns its specific content.
+ * @returns {HTMLElement} The modal-content div.
+ */
+export function createModalWrapper(modalId, title, contentRenderer) {
+    const modalElement = gE(`#${modalId}`);
+    if (!modalElement) {
+        console.error(`Modal element with ID ${modalId} not found.`);
+        return null;
     }
-    _confirmModalRoot.innerHTML = ''; // Clear previous content
 
-    const closeBtn = cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => { hideModal('confirm-modal'); if (onCancel) onCancel(); } });
-    const heading = cE('h2', { id: 'confirm-modal-heading', textContent: title });
-    const msgPara = cE('p', { innerHTML: message });
-    const buttonContainer = cE('div', { class: 'confirm-modal-buttons' });
+    const modalContent = cE('div', { class: 'modal-content' });
+    modalElement.innerHTML = ''; // Clear previous content
+    modalElement.appendChild(modalContent);
 
-    const confirmBtn = cE('button', {
-        class: 'confirm-button',
-        textContent: 'Confirm',
-        onclick: () => { hideModal('confirm-modal'); onConfirm(); }
+    const closeBtn = cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal(modalId) });
+    const heading = cE('h2', { id: `${modalId}-heading`, textContent: title });
+
+    modalContent.appendChild(closeBtn);
+    modalContent.appendChild(heading);
+
+    // Render specific content
+    const specificContent = contentRenderer(modalContent);
+    if (Array.isArray(specificContent)) {
+        specificContent.forEach(el => modalContent.appendChild(el));
+    } else if (specificContent instanceof Node) {
+        modalContent.appendChild(specificContent);
+    }
+
+    return modalContent; // Return the modal-content div for further manipulation if needed
+}
+
+// --- Generic Confirmation Modal ---
+export function showConfirmModal(title, message, onConfirm, onCancel) {
+    const modalContent = createModalWrapper('confirm-modal', title, (root) => {
+        const msgPara = cE('p', { innerHTML: message });
+        const buttonContainer = cE('div', { class: 'confirm-modal-buttons' });
+
+        const confirmBtn = cE('button', {
+            class: 'confirm-button',
+            textContent: 'Confirm',
+            onclick: () => { hideModal('confirm-modal'); onConfirm(); }
+        });
+        const cancelBtn = cE('button', {
+            class: 'cancel-button',
+            textContent: 'Cancel',
+            onclick: () => { hideModal('confirm-modal'); if (onCancel) onCancel(); }
+        });
+
+        buttonContainer.appendChild(cancelBtn);
+        buttonContainer.appendChild(confirmBtn);
+
+        return [msgPara, buttonContainer];
     });
-    const cancelBtn = cE('button', {
-        class: 'cancel-button',
-        textContent: 'Cancel',
-        onclick: () => { hideModal('confirm-modal'); if (onCancel) onCancel(); }
-    });
-
-    buttonContainer.appendChild(cancelBtn);
-    buttonContainer.appendChild(confirmBtn);
-
-    _confirmModalRoot.appendChild(closeBtn);
-    _confirmModalRoot.appendChild(heading);
-    _confirmModalRoot.appendChild(msgPara);
-    _confirmModalRoot.appendChild(buttonContainer);
 
     showModal('confirm-modal', 'confirm-modal-heading');
 }
 
 // --- Passphrase Input Modal ---
-let _passphraseModalRoot;
 export function showPassphraseModal(title, message) {
     return new Promise((resolve) => {
-        if (!_passphraseModalRoot) {
-            _passphraseModalRoot = cE('div', { class: 'modal-content' });
-            gE('#passphrase-modal').appendChild(_passphraseModalRoot);
-        }
-        _passphraseModalRoot.innerHTML = ''; // Clear previous content
+        const modalContent = createModalWrapper('passphrase-modal', title, (root) => {
+            const msgPara = cE('p', { textContent: message });
+            const passphraseInput = cE('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
+            const buttonContainer = cE('div', { class: 'confirm-modal-buttons' }); // Re-use styles
 
-        const closeBtn = cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => { hideModal('passphrase-modal'); resolve(null); } });
-        const heading = cE('h2', { id: 'passphrase-modal-heading', textContent: title });
-        const msgPara = cE('p', { textContent: message });
-        const passphraseInput = cE('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
-        const buttonContainer = cE('div', { class: 'confirm-modal-buttons' }); // Re-use styles
+            const decryptBtn = cE('button', {
+                class: 'confirm-button',
+                textContent: 'Decrypt',
+                onclick: () => {
+                    const passphrase = passphraseInput.value;
+                    hideModal('passphrase-modal');
+                    resolve(passphrase);
+                }
+            });
+            const cancelBtn = cE('button', {
+                class: 'cancel-button',
+                textContent: 'Cancel',
+                onclick: () => { hideModal('passphrase-modal'); resolve(null); }
+            });
 
-        const decryptBtn = cE('button', {
-            class: 'confirm-button',
-            textContent: 'Decrypt',
-            onclick: () => {
-                const passphrase = passphraseInput.value;
-                hideModal('passphrase-modal');
-                resolve(passphrase);
-            }
+            passphraseInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    decryptBtn.click();
+                }
+            });
+
+            buttonContainer.appendChild(cancelBtn);
+            buttonContainer.appendChild(decryptBtn);
+
+            return [msgPara, passphraseInput, buttonContainer];
         });
-        const cancelBtn = cE('button', {
-            class: 'cancel-button',
-            textContent: 'Cancel',
-            onclick: () => { hideModal('passphrase-modal'); resolve(null); }
-        });
-
-        passphraseInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                decryptBtn.click();
-            }
-        });
-
-        buttonContainer.appendChild(cancelBtn);
-        buttonContainer.appendChild(decryptBtn);
-
-        _passphraseModalRoot.appendChild(closeBtn);
-        _passphraseModalRoot.appendChild(heading);
-        _passphraseModalRoot.appendChild(msgPara);
-        _passphraseModalRoot.appendChild(passphraseInput);
-        _passphraseModalRoot.appendChild(buttonContainer);
 
         showModal('passphrase-modal', 'passphrase-input');
     });
+}
+
+// --- Data-Driven Form Rendering ---
+/**
+ * Renders a form based on a configuration array.
+ * @param {Array<object>} fieldsConfig - Array of field definitions. Each object:
+ *   { type: string, id?: string, name?: string, label?: string, placeholder?: string, value?: any,
+ *     required?: boolean, autocomplete?: string, rows?: number, multiple?: boolean, accept?: string,
+ *     options?: Array<{value: string, label: string, selected?: boolean, onchange?: function}>,
+ *     class?: string, buttonType?: string, onclick?: function, content?: (string|HTMLElement)[] }
+ * @param {object} initialData - Object with initial values for form fields (keyed by 'name').
+ * @param {object} formOptions - Options for the form element itself (e.g., { id: 'my-form', onSubmit: handler }).
+ * @returns {HTMLElement} The generated <form> element.
+ */
+function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
+    const form = cE('form', { id: formOptions.id || 'dynamic-form' });
+    if (formOptions.onSubmit) {
+        form.onsubmit = formOptions.onSubmit;
+    }
+
+    fieldsConfig.forEach(field => {
+        const fieldId = field.id || (field.name ? `field-${field.name}` : null);
+
+        if (field.label && field.type !== 'button' && field.type !== 'custom-html' && field.type !== 'paragraph' && field.type !== 'hr') {
+            form.appendChild(cE('label', { for: fieldId, textContent: field.label }));
+        }
+
+        let inputElement;
+        switch (field.type) {
+            case 'text':
+            case 'password':
+            case 'url':
+            case 'email':
+            case 'search':
+            case 'datetime-local':
+                inputElement = cE('input', {
+                    type: field.type,
+                    id: fieldId,
+                    name: field.name,
+                    placeholder: field.placeholder || '',
+                    value: initialData[field.name] !== undefined ? initialData[field.name] : (field.value || ''),
+                    required: field.required || false,
+                    autocomplete: field.autocomplete || 'off'
+                });
+                break;
+            case 'textarea':
+                inputElement = cE('textarea', {
+                    id: fieldId,
+                    name: field.name,
+                    placeholder: field.placeholder || '',
+                    rows: field.rows || 3,
+                    required: field.required || false,
+                    textContent: initialData[field.name] !== undefined ? initialData[field.name] : (field.value || '')
+                });
+                break;
+            case 'select':
+                inputElement = cE('select', {
+                    id: fieldId,
+                    name: field.name,
+                    required: field.required || false,
+                    class: field.class || ''
+                }, field.options.map(opt => cE('option', {
+                    value: opt.value,
+                    textContent: opt.label,
+                    selected: (initialData[field.name] !== undefined && initialData[field.name] === opt.value) || (field.value !== undefined && field.value === opt.value)
+                })));
+                break;
+            case 'checkbox-group': // For categories
+                inputElement = cE('div', { id: fieldId, class: field.class || '' });
+                field.options.forEach(opt => {
+                    inputElement.appendChild(cE('label', {}, [
+                        cE('input', {
+                            type: 'checkbox',
+                            name: field.name,
+                            value: opt.value,
+                            checked: initialData[field.name]?.includes(opt.value) || false
+                        }),
+                        ` ${sH(opt.label)}`
+                    ]));
+                });
+                break;
+            case 'file':
+                inputElement = cE('input', {
+                    type: 'file',
+                    id: fieldId,
+                    name: field.name,
+                    multiple: field.multiple || false,
+                    accept: field.accept || ''
+                });
+                if (field.onchange) {
+                    inputElement.addEventListener('change', field.onchange);
+                }
+                break;
+            case 'button':
+                inputElement = cE('button', {
+                    type: field.buttonType || 'button',
+                    id: fieldId,
+                    textContent: field.label,
+                    class: field.class || ''
+                });
+                if (field.onclick) {
+                    inputElement.onclick = field.onclick;
+                }
+                break;
+            case 'custom-html': // For things like location display or image preview
+                inputElement = cE('div', { id: fieldId, class: field.class || '' }, field.content || []);
+                break;
+            case 'paragraph':
+                inputElement = cE('p', { class: field.class || '' }, field.content || []);
+                break;
+            case 'hr':
+                inputElement = cE('hr');
+                break;
+            case 'radio-group': // For active focus tag
+                inputElement = cE('div', { id: fieldId, class: field.class || '' });
+                field.options.forEach(opt => {
+                    const radio = cE('input', {
+                        type: 'radio',
+                        name: field.name,
+                        value: opt.value,
+                        checked: (initialData[field.name] !== undefined && initialData[field.name] === opt.value) || (field.value !== undefined && field.value === opt.value) || false,
+                    });
+                    if (opt.onchange) {
+                        radio.onchange = opt.onchange;
+                    }
+                    inputElement.appendChild(cE('label', {}, [radio, ` ${sH(opt.label)}`]));
+                });
+                break;
+            default:
+                console.warn(`Unknown field type: ${field.type}`);
+                continue;
+        }
+        form.appendChild(inputElement);
+    });
+
+    return form;
 }
 
 
@@ -250,60 +400,6 @@ async function handleCommentSubmit(event) {
 // --- MODAL COMPONENTS (Implementations) ---
 
 /**
- * Creates the HTML elements for the report form.
- * @param {object|null} reportToEdit - The report object if editing, null if new.
- * @param {Array<string>} categories - List of available categories.
- * @param {object|null} initialLocation - Initial location for the form.
- * @param {Array<object>} initialImages - Initial images for the form.
- * @returns {Array<HTMLElement>} Array of HTML elements for the form content.
- */
-const _createReportFormElements = (reportToEdit, categories, initialLocation, initialImages) => {
-    return [
-        cE('span', { class: 'close-btn', innerHTML: '&times;', 'data-modal-id': 'report-form-modal', onclick: () => hideModal('report-form-modal') }),
-        cE('h2', { id: 'report-form-heading', textContent: reportToEdit ? 'Edit Report' : 'New Report' }),
-        cE('form', { id: 'nstr-rep-form' }, [
-            cE('label', { for: 'rep-title', textContent: 'Title:' }),
-            cE('input', { type: 'text', id: 'rep-title', name: 'title', value: reportToEdit?.title || '' }),
-
-            cE('label', { for: 'rep-sum', textContent: 'Summary:' }),
-            cE('input', { type: 'text', id: 'rep-sum', name: 'summary', required: true, value: reportToEdit?.sum || '' }),
-
-            cE('label', { for: 'rep-desc', textContent: 'Description (MD):' }),
-            cE('textarea', { id: 'rep-desc', name: 'description', required: true, rows: 3, textContent: reportToEdit?.ct || '' }),
-
-            cE('label', { textContent: 'Location:' }),
-            cE('div', { id: 'map-pick-area' }, ['Selected: ', cE('span', { id: 'pFLoc-coords', textContent: initialLocation ? `${initialLocation.lat.toFixed(5)},${initialLocation.lng.toFixed(5)}` : 'None' })]),
-            cE('button', { type: 'button', id: 'pick-loc-map-btn', textContent: 'Pick Location' }),
-            cE('button', { type: 'button', id: 'use-gps-loc-btn', textContent: 'Use GPS' }),
-
-            cE('label', { for: 'rep-address', textContent: 'Or Enter Address:' }),
-            cE('input', { type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' }),
-            cE('button', { type: 'button', id: 'geocode-address-btn', textContent: 'Geocode Address' }),
-
-            cE('label', { textContent: 'Categories:' }),
-            cE('div', { id: 'cats-cont-form' }, categories.map(cat => cE('label', {}, [cE('input', { type: 'checkbox', name: 'category', value: cat, checked: reportToEdit?.cat?.includes(cat) || false }), ` ${sH(cat)}`]))),
-
-            cE('label', { for: 'rep-ftags', textContent: 'Add. Tags (comma-sep):' }),
-            cE('input', { type: 'text', id: 'rep-ftags', name: 'freeTags', value: reportToEdit?.fTags?.join(', ') || '' }),
-
-            cE('label', { for: 'rep-evType', textContent: 'Event Type:' }),
-            cE('select', { id: 'rep-evType', name: 'eventType' }, ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => cE('option', { value: type.toLowerCase(), textContent: type, selected: reportToEdit?.evType === type.toLowerCase() }))),
-
-            cE('label', { for: 'rep-stat', textContent: 'Status:' }),
-            cE('select', { id: 'rep-stat', name: 'status' }, ['New', 'Active', 'Needs Verification'].map(status => cE('option', { value: status.toLowerCase().replace(' ', '_'), textContent: status, selected: reportToEdit?.stat === status.toLowerCase().replace(' ', '_') }))),
-
-            cE('label', { for: 'rep-photos', textContent: 'Photos (max 5MB each):' }),
-            cE('input', { type: 'file', id: 'rep-photos', multiple: true, accept: 'image/*' }),
-            cE('div', { id: 'upld-photos-preview' }),
-
-            cE('p', { class: 'warning', textContent: 'Reports are public on Nostr.' }),
-            cE('button', { type: 'submit', textContent: reportToEdit ? 'Update Report' : 'Submit' }),
-            cE('button', { type: 'button', class: 'secondary', textContent: 'Cancel', onclick: () => hideModal('report-form-modal') })
-        ])
-    ];
-};
-
-/**
  * Renders the image preview section of the report form.
  * @param {HTMLElement} previewElement - The DOM element to render into.
  * @param {Array<object>} imagesMetadata - Array of image metadata.
@@ -380,13 +476,13 @@ const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDis
 };
 
 /**
- * Sets up the image upload handler for the report form.
- * @param {HTMLElement} formRoot - The root element of the form.
+ * Returns a handler function for the image file input.
  * @param {Array<object>} imagesMetadata - Array to store image metadata.
  * @param {function} renderPreview - Function to re-render image preview.
+ * @returns {function} The onchange event handler for the file input.
  */
-const _setupReportFormImageUpload = (formRoot, imagesMetadata, renderPreview) => {
-    gE('#rep-photos', formRoot).onchange = async e => {
+const _setupReportFormImageUploadHandler = (imagesMetadata, renderPreview) => {
+    return async e => {
         const files = e.target.files;
         appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading for image upload
         try {
@@ -412,13 +508,13 @@ const _setupReportFormImageUpload = (formRoot, imagesMetadata, renderPreview) =>
 
 /**
  * Sets up the form submission handler for the report form.
- * @param {HTMLElement} formRoot - The root element of the form.
+ * @param {HTMLElement} formElement - The form element.
  * @param {object|null} reportToEdit - The report object if editing, null if new.
  * @param {object} formState - Object holding form state (_pFLoc).
  * @param {Array<object>} imagesMetadata - Array of image metadata.
  */
-const _setupReportFormSubmission = (formRoot, reportToEdit, formState, imagesMetadata) => {
-    gE('form', formRoot).onsubmit = async e => {
+const _setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
+    formElement.onsubmit = async e => {
         e.preventDefault();
         const submitBtn = e.target.querySelector('button[type=submit]');
         const formData = new FormData(e.target);
@@ -448,10 +544,11 @@ const _setupReportFormSubmission = (formRoot, reportToEdit, formState, imagesMet
                 });
             }
 
-            // Add categories
-            $$('input[name="category"]:checked', e.target).forEach(checkbox => {
+            // Add categories (checkbox-group will have multiple entries for 'category')
+            const selectedCategories = formData.getAll('category');
+            selectedCategories.forEach(cat => {
                 tags.push(['L', 'report-category']); // NIP-32 label tag
-                tags.push(['l', checkbox.value, 'report-category']); // NIP-32 value tag
+                tags.push(['l', cat, 'report-category']); // NIP-32 value tag
             });
 
             if (data.eventType) tags.push(['event_type', data.eventType]);
@@ -484,7 +581,6 @@ const _setupReportFormSubmission = (formRoot, reportToEdit, formState, imagesMet
 };
 
 function RepFormComp(reportToEdit = null) {
-    const formRoot = cE('div', { class: 'modal-content' });
     const categories = appStore.get().settings.cats;
 
     // Encapsulate form state within this function's scope
@@ -500,9 +596,6 @@ function RepFormComp(reportToEdit = null) {
             uIMeta = [...reportToEdit.imgs];
         }
     }
-
-    // Render form elements
-    _createReportFormElements(reportToEdit, categories, pFLoc, uIMeta).forEach(el => formRoot.appendChild(el));
 
     // Helper to update the location display text
     const renderLocationDisplay = (addressName = '') => {
@@ -523,28 +616,76 @@ function RepFormComp(reportToEdit = null) {
         });
     };
 
-    // Display existing images if editing
-    if (reportToEdit && uIMeta.length > 0) {
+    const initialFormData = {
+        title: reportToEdit?.title,
+        summary: reportToEdit?.sum,
+        description: reportToEdit?.ct,
+        category: reportToEdit?.cat, // For checkbox-group
+        freeTags: reportToEdit?.fTags?.join(', '),
+        eventType: reportToEdit?.evType,
+        status: reportToEdit?.stat
+    };
+
+    const reportFormFields = [
+        { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
+        { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
+        { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
+        { label: 'Location:', type: 'custom-html', id: 'map-pick-area', content: ['Selected: ', cE('span', { id: 'pFLoc-coords', textContent: initialFormData.location || 'None' })] },
+        { label: 'Pick Location', type: 'button', id: 'pick-loc-map-btn', buttonType: 'button' },
+        { label: 'Use GPS', type: 'button', id: 'use-gps-loc-btn', buttonType: 'button' },
+        { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
+        { label: 'Geocode Address', type: 'button', id: 'geocode-address-btn', buttonType: 'button' },
+        {
+            label: 'Categories:',
+            type: 'checkbox-group',
+            id: 'cats-cont-form',
+            name: 'category',
+            class: 'cats-cont-form',
+            options: categories.map(cat => ({ value: cat, label: cat }))
+        },
+        { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
+        {
+            label: 'Event Type:',
+            type: 'select',
+            id: 'rep-evType',
+            name: 'eventType',
+            options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({ value: type.toLowerCase(), label: type }))
+        },
+        {
+            label: 'Status:',
+            type: 'select',
+            id: 'rep-stat',
+            name: 'status',
+            options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
+        },
+        { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*', onchange: _setupReportFormImageUploadHandler(uIMeta, renderImagePreview) },
+        { type: 'custom-html', id: 'upld-photos-preview' },
+        { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
+        { label: reportToEdit ? 'Update Report' : 'Submit', type: 'button', buttonType: 'submit' },
+        { label: 'Cancel', type: 'button', buttonType: 'button', class: 'secondary', onclick: () => hideModal('report-form-modal') }
+    ];
+
+    const formRoot = createModalWrapper('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', (modalContent) => {
+        const form = renderForm(reportFormFields, initialFormData, { id: 'nstr-rep-form' });
+        modalContent.appendChild(form);
+
+        // Attach other handlers after form is rendered
+        _setupReportFormLocationHandlers(form, { pFLoc }, renderLocationDisplay);
+        _setupReportFormSubmission(form, reportToEdit, { pFLoc }, uIMeta);
+
+        // Initial render of image preview and location display
         renderImagePreview();
-    } else {
-        gE('#upld-photos-preview', formRoot).textContent = 'No images selected.';
-    }
+        renderLocationDisplay();
 
-    // Initialize handlers
-    _setupReportFormLocationHandlers(formRoot, { pFLoc }, renderLocationDisplay);
-    _setupReportFormImageUpload(formRoot, uIMeta, renderImagePreview);
-    _setupReportFormSubmission(formRoot, reportToEdit, { pFLoc }, uIMeta);
+        return form; // Return the form element
+    });
 
-    return formRoot;
+    return formRoot; // This is the modal-content div
 }
 
 // AuthModal
 function AuthModalComp() {
-    const modalContent = cE('div', { class: 'modal-content' });
-
-    const elements = [
-        cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal('auth-modal') }),
-        cE('h2', { id: 'auth-modal-heading', textContent: 'Nostr Identity' }),
+    const authModalElementsConfig = (modalContent) => [
         cE('p', {}, [cE('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)']),
         cE('button', { id: 'conn-nip07-btn', textContent: 'Connect NIP-07' }),
         cE('hr'),
@@ -559,7 +700,8 @@ function AuthModalComp() {
         cE('button', { id: 'import-sk-btn', textContent: 'Import Key' }),
         cE('button', { type: 'button', class: 'secondary', textContent: 'Cancel', onclick: () => hideModal('auth-modal'), style: 'margin-top:1rem' })
     ];
-    elements.forEach(el => modalContent.appendChild(el));
+
+    const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', authModalElementsConfig);
 
     gE('#conn-nip07-btn', modalContent).onclick = async () => {
         appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
@@ -620,15 +762,7 @@ function AuthModalComp() {
 
 // SettingsPanel
 function SettPanComp() {
-    const modalContent = cE('div', { class: 'modal-content', style: 'max-width:700px' });
     const appState = appStore.get();
-
-    // Append the close button and heading directly to modalContent
-    modalContent.appendChild(cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal('settings-modal') }));
-    modalContent.appendChild(cE('h2', { id: 'settings-modal-heading', textContent: 'Settings' }));
-
-    // Create the wrapper for sections, which the CSS expects
-    const settingsSectionsWrapper = cE('div', { id: 'settings-sections' });
 
     /**
      * Helper to create a list item with a remove button and confirmation.
@@ -670,7 +804,7 @@ function SettPanComp() {
      * @param {string} confirmMessage - Message for the confirmation modal.
      */
     const _renderList = (containerId, items, formatFn, removeActionFn, itemClass, confirmTitle, confirmMessage) => {
-        const container = gE(containerId, modalContent);
+        const container = gE(containerId, modalContent); // Use modalContent for scoping
         container.innerHTML = '';
         if (items.length === 0) {
             container.textContent = `No ${containerId.replace('-', ' ')}s configured.`;
@@ -682,7 +816,7 @@ function SettPanComp() {
         });
     };
 
-    // Render functions for specific lists
+    // Render functions for specific lists (need to be defined before being called)
     const renderRelays = () => {
         const removeRelayAction = r => {
             const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
@@ -754,120 +888,154 @@ function SettPanComp() {
         _renderList('#followed-list', appStore.get().followedPubkeys, f => formatNpubShort(f.pk), removeFollowedAction, 'followed-entry', 'Unfollow User', 'Are you sure you want to unfollow this user?');
     };
 
-    // Append sections to the settingsSectionsWrapper
-    settingsSectionsWrapper.appendChild(cE('section', {}, [
-        cE('h3', { textContent: 'Relays' }),
-        cE('div', { id: 'rly-list' }),
-        cE('input', { type: 'url', id: 'new-rly-url', placeholder: 'wss://new.relay.com' }),
-        cE('button', { id: 'add-rly-btn', textContent: 'Add Relay' }),
-        cE('button', { id: 'save-rlys-btn', textContent: 'Save & Reconnect Relays' })
-    ]));
-    settingsSectionsWrapper.appendChild(cE('hr'));
+    const settingsContentRenderer = (modalRoot) => {
+        const settingsSectionsWrapper = cE('div', { id: 'settings-sections' });
 
-    if (appState.user && (appState.user.authM === 'local' || appState.user.authM === 'import')) {
+        // Section: Relays
         settingsSectionsWrapper.appendChild(cE('section', {}, [
-            cE('h3', { textContent: 'Local Key Management' }),
-            cE('button', { id: 'exp-sk-btn', textContent: 'Export Private Key' }),
-            cE('br'),
-            cE('label', { for: 'chg-pass-old', textContent: 'Old Passphrase:' }),
-            cE('input', { type: 'password', id: 'chg-pass-old' }),
-            cE('label', { for: 'chg-pass-new', textContent: 'New Passphrase:' }),
-            cE('input', { type: 'password', id: 'chg-pass-new' }),
-            cE('button', { id: 'chg-pass-btn', textContent: 'Change Passphrase' })
+            cE('h3', { textContent: 'Relays' }),
+            cE('div', { id: 'rly-list' }),
+            renderForm([
+                { label: 'New Relay URL:', type: 'url', id: 'new-rly-url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
+                { label: 'Add Relay', type: 'button', id: 'add-rly-btn', buttonType: 'button' },
+                { label: 'Save & Reconnect Relays', type: 'button', id: 'save-rlys-btn', buttonType: 'button' }
+            ], {}, { id: 'relay-form' }) // Give form an ID if needed for specific handlers
         ]));
         settingsSectionsWrapper.appendChild(cE('hr'));
-    }
 
-    settingsSectionsWrapper.appendChild(cE('section', {}, [ // Focus Tags Section
-        cE('h3', { textContent: 'Focus Tags' }),
-        cE('div', { id: 'focus-tag-list' }),
-        cE('input', { type: 'text', id: 'new-focus-tag-input', placeholder: '#NewFocusTag' }),
-        cE('button', { id: 'add-focus-tag-btn', textContent: 'Add Focus Tag' }),
-        cE('button', { id: 'save-focus-tags-btn', textContent: 'Save Focus Tags' })
-    ]));
-    settingsSectionsWrapper.appendChild(cE('hr'));
+        if (appState.user && (appState.user.authM === 'local' || appState.user.authM === 'import')) {
+            settingsSectionsWrapper.appendChild(cE('section', {}, [
+                cE('h3', { textContent: 'Local Key Management' }),
+                cE('button', { id: 'exp-sk-btn', textContent: 'Export Private Key' }),
+                cE('br'),
+                renderForm([
+                    { label: 'Old Passphrase:', type: 'password', id: 'chg-pass-old', name: 'oldPassphrase' },
+                    { label: 'New Passphrase:', type: 'password', id: 'chg-pass-new', name: 'newPassphrase' },
+                    { label: 'Change Passphrase', type: 'button', id: 'chg-pass-btn', buttonType: 'button' }
+                ], {}, { id: 'passphrase-form' })
+            ]));
+            settingsSectionsWrapper.appendChild(cE('hr'));
+        }
 
-    settingsSectionsWrapper.appendChild(cE('section', {}, [
-        cE('h3', { textContent: 'Categories' }),
-        cE('div', { id: 'cat-list' }),
-        cE('input', { type: 'text', id: 'new-cat-name', placeholder: 'New Category' }),
-        cE('button', { id: 'add-cat-btn', textContent: 'Add Category' }),
-        cE('button', { id: 'save-cats-btn', textContent: 'Save Categories' })
-    ]));
-    settingsSectionsWrapper.appendChild(cE('hr'));
+        settingsSectionsWrapper.appendChild(cE('section', {}, [ // Focus Tags Section
+            cE('h3', { textContent: 'Focus Tags' }),
+            cE('div', { id: 'focus-tag-list' }),
+            renderForm([
+                { label: 'New Focus Tag:', type: 'text', id: 'new-focus-tag-input', name: 'newFocusTag', placeholder: '#NewFocusTag' },
+                { label: 'Add Focus Tag', type: 'button', id: 'add-focus-tag-btn', buttonType: 'button' },
+                { label: 'Save Focus Tags', type: 'button', id: 'save-focus-tags-btn', buttonType: 'button' }
+            ], {}, { id: 'focus-tag-form' })
+        ]));
+        settingsSectionsWrapper.appendChild(cE('hr'));
 
-    settingsSectionsWrapper.appendChild(cE('section', {}, [ // Map Tiles Section
-        cE('h3', { textContent: 'Map Tiles' }),
-        cE('label', { for: 'tile-preset-sel', textContent: 'Tile Server Preset:' }),
-        cE('select', { id: 'tile-preset-sel' },
-            C.TILE_SERVERS_PREDEFINED.map(p => cE('option', { value: p.name, textContent: p.name }))
-        ),
-        cE('label', { for: 'tile-url-in', textContent: 'Custom Tile URL Template:' }),
-        cE('input', { type: 'url', id: 'tile-url-in', value: appState.settings.tileUrl }),
-        cE('button', { id: 'save-tile-btn', textContent: 'Save Tiles' })
-    ]));
-    settingsSectionsWrapper.appendChild(cE('hr'));
+        settingsSectionsWrapper.appendChild(cE('section', {}, [
+            cE('h3', { textContent: 'Categories' }),
+            cE('div', { id: 'cat-list' }),
+            renderForm([
+                { label: 'New Category Name:', type: 'text', id: 'new-cat-name', name: 'newCategory', placeholder: 'New Category' },
+                { label: 'Add Category', type: 'button', id: 'add-cat-btn', buttonType: 'button' },
+                { label: 'Save Categories', type: 'button', id: 'save-cats-btn', buttonType: 'button' }
+            ], {}, { id: 'category-form' })
+        ]));
+        settingsSectionsWrapper.appendChild(cE('hr'));
 
-    settingsSectionsWrapper.appendChild(cE('section', {}, [
-        cE('h3', { textContent: 'Image Host' }),
-        cE('label', { for: 'img-host-sel', textContent: 'Provider:' }),
-        cE('select', { id: 'img-host-sel' }, [
-            cE('option', { value: C.IMG_UPLOAD_NOSTR_BUILD, textContent: 'nostr.build (Default)' }),
-            cE('option', { value: 'nip96', textContent: 'NIP-96 Server' })
-        ]),
-        cE('div', { id: 'nip96-fields', style: appState.settings.nip96Host ? '' : 'display:none' }, [
-            cE('label', { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' }),
-            cE('input', { type: 'url', id: 'nip96-url-in', value: appState.settings.nip96Host, placeholder: 'https://your.nip96.server' }),
-            cE('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
-            cE('input', { type: 'text', id: 'nip96-token-in', value: appState.settings.nip96Token })
-        ]),
-        cE('button', { id: 'save-img-host-btn', textContent: 'Save Image Host' })
-    ]));
-    settingsSectionsWrapper.appendChild(cE('hr'));
+        settingsSectionsWrapper.appendChild(cE('section', {}, [ // Map Tiles Section
+            cE('h3', { textContent: 'Map Tiles' }),
+            renderForm([
+                {
+                    label: 'Tile Server Preset:',
+                    type: 'select',
+                    id: 'tile-preset-sel',
+                    name: 'tilePreset',
+                    value: appState.settings.tilePreset,
+                    options: C.TILE_SERVERS_PREDEFINED.map(p => ({ value: p.name, label: p.name }))
+                },
+                { label: 'Custom Tile URL Template:', type: 'url', id: 'tile-url-in', name: 'tileUrl', value: appState.settings.tileUrl },
+                { label: 'Save Tiles', type: 'button', id: 'save-tile-btn', buttonType: 'button' }
+            ], {}, { id: 'map-tiles-form' })
+        ]));
+        settingsSectionsWrapper.appendChild(cE('hr'));
 
-    settingsSectionsWrapper.appendChild(cE('section', {}, [ // Mute List Section
-        cE('h3', { textContent: 'Mute List' }),
-        cE('div', { id: 'mute-list' }),
-        cE('input', { type: 'text', id: 'new-mute-pk-input', placeholder: 'npub... or hex pubkey' }),
-        cE('button', { id: 'add-mute-btn', textContent: 'Add to Mute List' }),
-        cE('button', { id: 'save-mute-list-btn', textContent: 'Save Mute List' })
-    ]));
-    settingsSectionsWrapper.appendChild(cE('hr'));
+        settingsSectionsWrapper.appendChild(cE('section', {}, [
+            cE('h3', { textContent: 'Image Host' }),
+            renderForm([
+                {
+                    label: 'Provider:',
+                    type: 'select',
+                    id: 'img-host-sel',
+                    name: 'imgHostProvider',
+                    value: appState.settings.nip96Host ? 'nip96' : (appState.settings.imgHost || C.IMG_UPLOAD_NOSTR_BUILD),
+                    options: [
+                        { value: C.IMG_UPLOAD_NOSTR_BUILD, label: 'nostr.build (Default)' },
+                        { value: 'nip96', label: 'NIP-96 Server' }
+                    ]
+                },
+                {
+                    type: 'custom-html',
+                    id: 'nip96-fields',
+                    class: 'nip96-fields',
+                    content: [
+                        cE('label', { for: 'nip96-url-in', textContent: 'NIP-96 Server URL:' }),
+                        cE('input', { type: 'url', id: 'nip96-url-in', name: 'nip96Url', value: appState.settings.nip96Host, placeholder: 'https://your.nip96.server' }),
+                        cE('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
+                        cE('input', { type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96Token })
+                    ]
+                },
+                { label: 'Save Image Host', type: 'button', id: 'save-img-host-btn', buttonType: 'button' }
+            ], {}, { id: 'image-host-form' })
+        ]));
+        settingsSectionsWrapper.appendChild(cE('hr'));
 
-    settingsSectionsWrapper.appendChild(cE('section', {}, [ // New: Followed Users Section
-        cE('h3', { textContent: 'Followed Users (NIP-02)' }),
-        cE('div', { id: 'followed-list' }),
-        cE('input', { type: 'text', id: 'new-followed-pk-input', placeholder: 'npub... or hex pubkey' }),
-        cE('button', { id: 'add-followed-btn', textContent: 'Add to Followed' }),
-        cE('button', { id: 'save-followed-btn', textContent: 'Save Followed List' }),
-        cE('hr'),
-        cE('button', { id: 'import-contacts-btn', textContent: 'Import NIP-02 Contacts' }),
-        cE('button', { id: 'publish-contacts-btn', textContent: 'Publish NIP-02 Contacts' })
-    ]));
-    settingsSectionsWrapper.appendChild(cE('hr'));
+        settingsSectionsWrapper.appendChild(cE('section', {}, [ // Mute List Section
+            cE('h3', { textContent: 'Mute List' }),
+            cE('div', { id: 'mute-list' }),
+            renderForm([
+                { label: 'New Muted Pubkey:', type: 'text', id: 'new-mute-pk-input', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
+                { label: 'Add to Mute List', type: 'button', id: 'add-mute-btn', buttonType: 'button' },
+                { label: 'Save Mute List', type: 'button', id: 'save-mute-list-btn', buttonType: 'button' }
+            ], {}, { id: 'mute-list-form' })
+        ]));
+        settingsSectionsWrapper.appendChild(cE('hr'));
 
-    settingsSectionsWrapper.appendChild(cE('section', {}, [
-        cE('h3', { textContent: 'Data Management' }),
-        cE('button', { id: 'clr-reps-btn', textContent: 'Clear Cached Reports' }),
-        cE('button', { id: 'exp-setts-btn', textContent: 'Export Settings' }),
-        cE('label', { for: 'imp-setts-file', textContent: 'Import Settings:' }),
-        cE('input', { type: 'file', id: 'imp-setts-file', accept: '.json' })
-    ]));
+        settingsSectionsWrapper.appendChild(cE('section', {}, [ // New: Followed Users Section
+            cE('h3', { textContent: 'Followed Users (NIP-02)' }),
+            cE('div', { id: 'followed-list' }),
+            renderForm([
+                { label: 'New Followed Pubkey:', type: 'text', id: 'new-followed-pk-input', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
+                { label: 'Add to Followed', type: 'button', id: 'add-followed-btn', buttonType: 'button' },
+                { label: 'Save Followed List', type: 'button', id: 'save-followed-btn', buttonType: 'button' },
+                { type: 'hr' },
+                { label: 'Import NIP-02 Contacts', type: 'button', id: 'import-contacts-btn', buttonType: 'button' },
+                { label: 'Publish NIP-02 Contacts', type: 'button', id: 'publish-contacts-btn', buttonType: 'button' }
+            ], {}, { id: 'followed-list-form' })
+        ]));
+        settingsSectionsWrapper.appendChild(cE('hr'));
 
-    // Append the settingsSectionsWrapper to the modalContent
-    modalContent.appendChild(settingsSectionsWrapper);
+        settingsSectionsWrapper.appendChild(cE('section', {}, [
+            cE('h3', { textContent: 'Data Management' }),
+            cE('button', { id: 'clr-reps-btn', textContent: 'Clear Cached Reports' }),
+            cE('button', { id: 'exp-setts-btn', textContent: 'Export Settings' }),
+            renderForm([
+                { label: 'Import Settings:', type: 'file', id: 'imp-setts-file', name: 'importSettingsFile', accept: '.json' }
+            ], {}, { id: 'data-management-form' })
+        ]));
+
+        return settingsSectionsWrapper;
+    };
+
+    const modalContent = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
 
     // Append the final close button
     modalContent.appendChild(cE('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
 
-    // Render lists
+    // Render lists (must be called after modalContent is in DOM)
     renderRelays();
     renderCategories();
     renderFocusTags();
     renderMuteList();
     renderFollowedList();
 
-    // Setup Event Listeners for Settings Panel
+    // Setup Event Listeners for Settings Panel (must be called after modalContent is in DOM)
     const setupRelayListeners = () => {
         gE('#add-rly-btn', modalContent).onclick = () => {
             const input = gE('#new-rly-url', modalContent);
