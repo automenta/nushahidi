@@ -375,7 +375,7 @@ footer {
 }
 
 .modal-content button[type=submit],
-.modal-content button:not(.secondary):not(.remove-relay-btn):not(.remove-category-btn):not(.remove-mute-btn):not(.confirm-button):not(.cancel-button):not(.remove-image-btn) {
+.modal-content button:not(.secondary):not(.remove-relay-btn):not(.remove-category-btn):not(.remove-mute-btn):not(.confirm-button):not(.cancel-button):not(.remove-image-btn):not(.remove-focus-tag-btn):not(.remove-followed-btn) {
     background-color: var(--primary-color);
     color: var(--light-text);
     padding: .65rem .9rem;
@@ -516,7 +516,9 @@ footer {
 
 .relay-entry,
 .category-entry,
-.mute-entry {
+.mute-entry,
+.focus-tag-entry, /* Added */
+.followed-entry /* Added */ {
     display: flex;
     align-items: center;
     gap: .4rem;
@@ -537,7 +539,9 @@ footer {
 
 .remove-relay-btn,
 .remove-category-btn,
-.remove-mute-btn {
+.remove-mute-btn,
+.remove-focus-tag-btn, /* Added */
+.remove-followed-btn /* Added */ {
     background-color: var(--danger-color);
     color: var(--light-text);
     padding: .15rem .4rem;
