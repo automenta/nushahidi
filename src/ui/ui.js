@@ -1,7 +1,7 @@
 import {appStore} from './store.js';
 import {idSvc} from './services.js';
 import {C, createEl} from './utils.js';
-import {showModal} from './modals.js';
+import {showConfirmModal, showModal, Modal} from './modals.js';
 import {FilterControls, applyAllFilters} from './components/FilterControls.js';
 import {ReportList} from './components/ReportList.js';
 import {ConnectionStatus} from './components/ConnectionStatus.js';
@@ -13,23 +13,22 @@ import {ReportFormModal} from './components/ReportFormModal.js';
 import {SettingsModal} from './components/SettingsModal.js';
 
 const OnboardingModalComponent = () => {
-    let onboardingModalElement;
-
-    const hideOnboarding = () => {
-        localStorage.setItem(C.ONBOARDING_KEY, 'true');
-        onboardingModalElement.hide();
-    };
-
-    onboardingModalElement = new Modal('onboarding-info', 'Welcome to NostrMapper!', (contentRoot) => {
+    const onboardingModalElement = new Modal('onboarding-info', 'Welcome to NostrMapper!', (contentRoot, modalRoot) => {
         const gotItBtn = createEl('button', { textContent: 'Got It!' });
         gotItBtn.addEventListener('click', hideOnboarding);
+        modalRoot.querySelector('.close-btn')?.addEventListener('click', hideOnboarding);
         return [
             createEl('p', { textContent: 'NostrMapper is a decentralized mapping application built on Nostr. Report incidents, observations, and aid requests directly to the Nostr network.' }),
             createEl('p', { textContent: 'Your reports are public and uncensorable. Connect your Nostr identity to start contributing!' }),
             gotItBtn
         ];
     });
-    onboardingModalElement.root.querySelector('.close-btn')?.addEventListener('click', hideOnboarding);
+
+    const hideOnboarding = () => {
+        localStorage.setItem(C.ONBOARDING_KEY, 'true');
+        onboardingModalElement.hide();
+    };
+
     return onboardingModalElement;
 };
 
@@ -48,7 +47,7 @@ export function initUI() {
         onAuthToggle: () => {
             appStore.get().user ?
                 showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
-                authModal.show('#conn-nip07-btn');
+                authModal.show('conn-nip07-btn');
         },
         onShowSettings: () => settingsModal.show()
     });

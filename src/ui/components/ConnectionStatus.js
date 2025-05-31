@@ -1,7 +1,6 @@
 import {appStore} from '../../store.js';
 import {createEl} from '../../utils.js';
 import {dbSvc} from '../../services.js';
-import {showModal} from '../modals.js';
 
 export function ConnectionStatus(props) {
     const { onShowSettings } = props;

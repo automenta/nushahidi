@@ -21,15 +21,11 @@ export function ReportList() {
                 cardWrapper.innerHTML = renderReportCard(report);
                 const cardElement = cardWrapper.firstElementChild;
                 cardElement.addEventListener('click', () => {
-                    const reportDetailsModal = new ReportDetailsModal(report);
-                    reportDetailsModal.show('detail-title');
-                    appStore.set(s => ({ ui: { ...s.ui, showReportList: false } }));
+                    appStore.set(s => ({ ui: { ...s.ui, reportIdToView: report.id, showReportList: false } }));
                 });
                 cardElement.addEventListener('keydown', e => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                        const reportDetailsModal = new ReportDetailsModal(report);
-                        reportDetailsModal.show('detail-title');
-                        appStore.set(s => ({ ui: { ...s.ui, showReportList: false } }));
+                        appStore.set(s => ({ ui: { ...s.ui, reportIdToView: report.id, showReportList: false } }));
                     }
                 });
                 listElement.appendChild(cardElement);

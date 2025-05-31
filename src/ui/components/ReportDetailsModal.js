@@ -43,8 +43,7 @@ export class ReportDetailsModal extends Modal {
         });
         const updatedReport = appStore.get().reports.find(r => r.id === reportId);
         if (updatedReport) {
-            const newModal = new ReportDetailsModal(updatedReport);
-            newModal.show('detail-title');
+            appStore.set(s => ({ ui: { ...s.ui, reportIdToView: updatedReport.id } }));
             this.hide();
         }
     }
@@ -111,7 +110,7 @@ export class ReportDetailsModal extends Modal {
     }
 
     setupReportDetailEventListeners(rep, isAuthor, canFollow, detailContainer) {
-        detailContainer.querySelector('.back-to-list-btn').onclick = () => { this.hide(); appStore.set(s => ({ ui: { ...s.ui, showReportList: true } })) };
+        detailContainer.querySelector('.back-to-list-btn').onclick = () => { this.hide(); appStore.set(s => ({ ui: { ...s.ui, showReportList: true, reportIdToView: null } })) };
 
         if (isAuthor) {
             detailContainer.querySelector('.edit-button').onclick = () => {
@@ -125,7 +124,7 @@ export class ReportDetailsModal extends Modal {
                     withLoading(withToast(async () => {
                         await nostrSvc.deleteEv(rep.id);
                         this.hide();
-                        appStore.set(s => ({ ui: { ...s.ui, showReportList: true } }));
+                        appStore.set(s => ({ ui: { ...s.ui, showReportList: true, reportIdToView: null } }));
                         applyAllFilters();
                     }, null, "Failed to delete report")),
                     () => showToast("Report deletion cancelled.", 'info')
@@ -147,8 +146,7 @@ export class ReportDetailsModal extends Modal {
             isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
             const updatedReport = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
             if (updatedReport) {
-                const newModal = new ReportDetailsModal(updatedReport);
-                newModal.show('detail-title');
+                appStore.set(s => ({ ui: { ...s.ui, reportIdToView: updatedReport.id } }));
                 this.hide();
             }
             return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
