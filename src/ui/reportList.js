@@ -2,7 +2,7 @@ import { appStore } from '../store.js';
 import { $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
 import { showReportDetails } from './reportDetails.js';
 
-const rendRepCard = report => {
+const renderReportCard = report => {
     const summary = report.sum || (report.ct ? report.ct.substring(0, 100) + '...' : 'N/A');
     return `<div class="report-card" data-rep-id="${sanitizeHTML(report.id)}" role="button" tabindex="0" aria-labelledby="card-title-${report.id}">
         <h3 id="card-title-${report.id}">${sanitizeHTML(report.title || 'Report')}</h3><p>${sanitizeHTML(summary)}</p>
@@ -19,7 +19,7 @@ export const rendRepList = reports => {
     if (reports.length > 0) {
         reports.forEach(report => {
             const cardWrapper = createEl('div');
-            cardWrapper.innerHTML = rendRepCard(report);
+            cardWrapper.innerHTML = renderReportCard(report);
             const cardElement = cardWrapper.firstElementChild;
             cardElement.onclick = () => showReportDetails(report);
             cardElement.onkeydown = e => (e.key === 'Enter' || e.key === ' ') ? showReportDetails(report) : null;

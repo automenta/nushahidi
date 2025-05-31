@@ -31,7 +31,7 @@ const addReportToStoreAndDb = async (signedEvent) => {
     });
 };
 
-const _connectRelay = async (url, attempt = 1) => {
+const connectRelay = async (url, attempt = 1) => {
     try {
         const relay = relayInit(url);
         relay.on('connect', async () => {
@@ -44,13 +44,13 @@ const _connectRelay = async (url, attempt = 1) => {
         relay.on('disconnect', () => {
             updRlyStore(relay.url, 'disconnected');
             showToast(`Disconnected from ${url}`, 'warning', 2000);
-            setTimeout(() => _connectRelay(url, 1), C.RELAY_RETRY_DELAY_MS);
+            setTimeout(() => connectRelay(url, 1), C.RELAY_RETRY_DELAY_MS);
         });
         relay.on('error', () => {
             updRlyStore(relay.url, 'error');
             showToast(`Error connecting to ${url}`, 'error', 2000);
             if (attempt < C.MAX_RELAY_RETRIES) {
-                setTimeout(() => _connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
+                setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
             }
         });
         await relay.connect();
@@ -58,12 +58,12 @@ const _connectRelay = async (url, attempt = 1) => {
         updRlyStore(url, 'error');
         showToast(`Failed to connect to ${url}: ${e.message}`, 'error', 2000);
         if (attempt < C.MAX_RELAY_RETRIES) {
-            setTimeout(() => _connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
+            setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
         }
     }
 };
 
-const _buildReportFilter = (appState, relayConfig, mapGeohashes) => {
+const buildReportFilter = (appState, relayConfig, mapGeohashes) => {
     const focusTag = appState.currentFocusTag;
     const followedPubkeys = appState.followedPubkeys.map(f => f.pk);
 
@@ -87,13 +87,13 @@ const _buildReportFilter = (appState, relayConfig, mapGeohashes) => {
     return filter;
 };
 
-const _handleSubscriptionEvent = async (event) => {
+const handleSubscriptionEvent = async (event) => {
     const report = parseReport(event);
     if (appStore.get().settings.mute.includes(report.pk)) return;
     await addReportToStoreAndDb(event);
 };
 
-const _publishEventOnline = async (signedEvent) => {
+const publishEventOnline = async (signedEvent) => {
     try {
         const response = await fetch('/api/publishNostrEvent', {
             method: 'POST',
@@ -116,12 +116,12 @@ const _publishEventOnline = async (signedEvent) => {
     }
 };
 
-const _queueEventOffline = async (signedEvent) => {
+const queueEventOffline = async (signedEvent) => {
     await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
     showToast("Offline. Event added to queue for later publishing.", 'info');
 };
 
-const _fetchProfileLogic = async (pubkey) => {
+const fetchProfileLogic = async (pubkey) => {
     let profile = await dbSvc.getProf(pubkey);
     if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile;
 
@@ -156,7 +156,7 @@ const _fetchProfileLogic = async (pubkey) => {
     return profile;
 };
 
-const _fetchInteractionsLogic = async (reportId) => {
+const fetchInteractionsLogic = async (reportId) => {
     const filters = [
         { kinds: [C.NOSTR_KIND_REACTION], "#e": [reportId] },
         { kinds: [C.NOSTR_KIND_NOTE], "#e": [reportId] }
@@ -197,7 +197,7 @@ const _fetchInteractionsLogic = async (reportId) => {
     })).sort((a, b) => a.created_at - b.created_at);
 };
 
-const _publishContactsLogic = async (contacts) => {
+const publishContactsLogic = async (contacts) => {
     const user = appStore.get().user;
     if (!user) throw new Error("No Nostr identity connected to publish contacts.");
 
@@ -217,7 +217,7 @@ const _publishContactsLogic = async (contacts) => {
     return nostrSvc.pubEv(eventData);
 };
 
-const _fetchContactsLogic = async () => {
+const fetchContactsLogic = async () => {
     const user = appStore.get().user;
     if (!user) return [];
 
@@ -247,7 +247,7 @@ export const nostrSvc = {
         appStore.get().relays.forEach(async rConf => {
             if (_nostrRlys.has(rConf.url) && _nostrRlys.get(rConf.url).status === 1) return;
             if (!rConf.read && !rConf.write) return;
-            _connectRelay(rConf.url);
+            connectRelay(rConf.url);
         });
     },
 
@@ -272,12 +272,12 @@ export const nostrSvc = {
             const relayConfig = appStore.get().relays.find(rc => rc.url === relay.url);
             if (relay.status !== 1 || !relayConfig?.read) return;
 
-            const currentFilter = _buildReportFilter(appState, relayConfig, mapGeohashes);
+            const currentFilter = buildReportFilter(appState, relayConfig, mapGeohashes);
             const subscriptionId = `reps-${relay.url}-${Date.now()}`;
             try {
                 const sub = relay.sub([currentFilter]);
 
-                sub.on('event', _handleSubscriptionEvent);
+                sub.on('event', handleSubscriptionEvent);
                 sub.on('eose', () => {});
 
                 _nostrSubs.set(subscriptionId, { sub, rU: relay.url, filt: currentFilter, type: 'reports' });
@@ -314,9 +314,9 @@ export const nostrSvc = {
         }
 
         if (appStore.get().online) {
-            await _publishEventOnline(signedEvent);
+            await publishEventOnline(signedEvent);
         } else {
-            await _queueEventOffline(signedEvent);
+            await queueEventOffline(signedEvent);
         }
         return signedEvent;
     },
@@ -338,11 +338,11 @@ export const nostrSvc = {
         return signedDeletionEvent;
     }, "Report deletion event sent (NIP-09).", "Failed to delete report")),
 
-    fetchProf: withLoading(withToast(_fetchProfileLogic, null, "Error fetching profile")),
+    fetchProf: withLoading(withToast(fetchProfileLogic, null, "Error fetching profile")),
 
-    fetchInteractions: withLoading(withToast(_fetchInteractionsLogic, null, "Error fetching interactions")),
+    fetchInteractions: withLoading(withToast(fetchInteractionsLogic, null, "Error fetching interactions")),
 
-    pubContacts: withLoading(withToast(_publishContactsLogic, "NIP-02 contact list published!", "Error publishing contacts")),
+    pubContacts: withLoading(withToast(publishContactsLogic, "NIP-02 contact list published!", "Error publishing contacts")),
 
-    fetchContacts: withLoading(withToast(_fetchContactsLogic, null, "Error fetching contacts"))
+    fetchContacts: withLoading(withToast(fetchContactsLogic, null, "Error fetching contacts"))
 };

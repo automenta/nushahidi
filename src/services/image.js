@@ -12,7 +12,7 @@ export const imgSvc = {
             throw new Error(`File too large (max ${C.IMG_SIZE_LIMIT_BYTES / 1024 / 1024}MB).`);
         }
 
-        let uploadUrl = imgHost;
+        let uploadUrl;
         let headers = {};
         let body;
 
@@ -21,12 +21,8 @@ export const imgSvc = {
             if (nip96Token) headers['Authorization'] = `Bearer ${nip96Token}`;
             body = file;
             headers['Content-Type'] = file.type;
-        } else if (!imgHost || imgHost === C.IMG_UPLOAD_NOSTR_BUILD) {
-            uploadUrl = C.IMG_UPLOAD_NOSTR_BUILD;
-            const formData = new FormData();
-            formData.append('file', file);
-            body = formData;
         } else {
+            uploadUrl = imgHost || C.IMG_UPLOAD_NOSTR_BUILD;
             const formData = new FormData();
             formData.append('file', file);
             body = formData;

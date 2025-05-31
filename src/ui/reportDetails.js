@@ -56,28 +56,38 @@ async function handleCommentSubmit(event) {
     }))();
 }
 
-const renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
-    const imagesHtml = (report.imgs || []).map(img =>
+function renderReportImages(images) {
+    return (images || []).map(img =>
         `<img src="${sanitizeHTML(img.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`
     ).join('');
-    const descriptionHtml = marked.parse(sanitizeHTML(report.ct || ''));
+}
 
+function renderAuthorInfo(report, profile, isFollowed, canFollow) {
     const authorDisplay = profile?.name || (profile?.nip05 ? sanitizeHTML(profile.nip05) : formatNpubShort(report.pk));
     const authorPicture = profile?.picture ? `<img src="${sanitizeHTML(profile.picture)}" alt="Profile Picture" class="profile-picture">` : '';
     const authorAbout = profile?.about ? `<p class="profile-about">${sanitizeHTML(profile.about)}</p>` : '';
     const authorNip05 = profile?.nip05 ? `<span class="nip05-verified">${sanitizeHTML(profile.nip05)} ✅</span>` : '';
 
     return `
-        <button id="back-to-list-btn" class="small-button">&lt; List</button>
-        ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right;">Edit Report</button>` : ''}
-        ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
-        <h2 id="detail-title">${sanitizeHTML(report.title || 'Report')}</h2>
         <div class="report-author-info">
             ${authorPicture}
             <p><strong>By:</strong> <a href="https://njump.me/${nip19.npubEncode(report.pk)}" target="_blank" rel="noopener noreferrer">${authorDisplay}</a> ${authorNip05}</p>
             ${authorAbout}
             ${canFollow ? `<button id="follow-toggle-btn" class="small-button ${isFollowed ? 'unfollow-button' : 'follow-button'}" data-pubkey="${sanitizeHTML(report.pk)}">${isFollowed ? 'Unfollow' : 'Follow'}</button>` : ''}
         </div>
+    `;
+}
+
+const renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
+    const imagesHtml = renderReportImages(report.imgs);
+    const descriptionHtml = marked.parse(sanitizeHTML(report.ct || ''));
+
+    return `
+        <button id="back-to-list-btn" class="small-button">&lt; List</button>
+        ${isAuthor ? `<button id="edit-report-btn" class="small-button edit-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right;">Edit Report</button>` : ''}
+        ${isAuthor ? `<button id="delete-report-btn" class="small-button delete-button" data-report-id="${sanitizeHTML(report.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
+        <h2 id="detail-title">${sanitizeHTML(report.title || 'Report')}</h2>
+        ${renderAuthorInfo(report, profile, isFollowed, canFollow)}
         <p><strong>Date:</strong> ${new Date(report.at * 1000).toLocaleString()}</p>
         <p><strong>Summary:</strong> ${sanitizeHTML(report.sum || 'N/A')}</p>
         <p><strong>Description:</strong></p><div class="markdown-content" tabindex="0">${descriptionHtml}</div>
@@ -228,6 +238,14 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
     }, null, "Error loading interactions"))();
 }
 
+function initializeMiniMap(report) {
+    if (report.lat && report.lon && typeof L !== 'undefined') {
+        const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);
+        L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
+        setTimeout(() => { miniMap.invalidateSize(); }, 0);
+    }
+}
+
 export const showReportDetails = async report => {
     const detailContainer = $('#report-detail-container');
     const listContainer = $('#report-list-container');
@@ -248,11 +266,6 @@ export const showReportDetails = async report => {
     detailContainer.focus();
 
     setupReportDetailEventListeners(report, isAuthor, canFollow, detailContainer, listContainer);
-
-    if (report.lat && report.lon && typeof L !== 'undefined') {
-        const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);
-        L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
-        setTimeout(() => { miniMap.invalidateSize(); }, 0);
-    }
+    initializeMiniMap(report);
     loadAndDisplayInteractions(report.id, report.pk, $(`#interactions-for-${report.id}`, detailContainer));
 };

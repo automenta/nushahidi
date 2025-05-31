@@ -8,7 +8,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
         form.onsubmit = formOptions.onSubmit;
     }
 
-    fieldsConfig.forEach(field => {
+    for (const field of fieldsConfig) {
         const fieldId = field.id || (field.name ? `field-${field.name}` : null);
 
         if (field.label && field.type !== 'button' && field.type !== 'custom-html' && field.type !== 'paragraph' && field.type !== 'hr' && field.type !== 'checkbox' && field.type !== 'h4') {
@@ -140,7 +140,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                 return;
         }
         form.appendChild(inputElement);
-    });
+    }
 
     return form;
 }

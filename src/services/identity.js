@@ -55,8 +55,7 @@ export const idSvc = {
             showToast("Passphrase too short (min 8 chars).", 'warning');
             return null;
         }
-        let skHex;
-        skHex = nsecToHex(skInput);
+        const skHex = nsecToHex(skInput);
         if (!isNostrId(skHex)) throw new Error("Invalid Nostr private key format.");
 
         const pk = getPk(skHex);
@@ -119,19 +118,26 @@ export const idSvc = {
         if (!user) throw new Error("No Nostr identity connected. Please connect or create one.");
 
         if (user.authM === 'nip07') {
-            if (!window.nostr?.signEvent) throw new Error("NIP-07 extension not found or not enabled.");
-            try {
-                return await window.nostr.signEvent(event);
-            } catch (e) {
-                throw new Error("NIP-07 signing failed: " + e.message);
-            }
+            return this.signEventNip07(event);
         } else if (user.authM === 'local' || user.authM === 'import') {
-            const sk = await idSvc.getSk(true);
-            if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
-            const signedEvent = { ...event, pubkey: user.pk, id: getEvH(event), sig: signEvNostr(event, sk) };
-            return signedEvent;
+            return this.signEventLocal(event, user.pk);
         } else {
             throw new Error("Unsupported authentication method.");
         }
+    },
+
+    async signEventNip07(event) {
+        if (!window.nostr?.signEvent) throw new Error("NIP-07 extension not found or not enabled.");
+        try {
+            return await window.nostr.signEvent(event);
+        } catch (e) {
+            throw new Error("NIP-07 signing failed: " + e.message);
+        }
+    },
+
+    async signEventLocal(event, pubkey) {
+        const sk = await idSvc.getSk(true);
+        if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
+        return { ...event, pubkey, id: getEvH(event), sig: signEvNostr(event, sk) };
     }
 };

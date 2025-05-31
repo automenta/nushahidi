@@ -3,9 +3,7 @@ import { confSvc, idSvc, nostrSvc, mapSvc, dbSvc, offSvc } from './services.js';
 import { initUI } from './ui.js';
 import { showToast } from './utils.js';
 
-async function main() {
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-
+async function setupServiceWorker() {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js')
@@ -26,7 +24,10 @@ async function main() {
                 .catch(error => console.error("SW Registration Failed:", error));
         });
     }
+}
 
+async function initializeApplication() {
+    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
     try {
         await confSvc.load();
         await idSvc.init();
@@ -51,4 +52,7 @@ async function main() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', main);
+document.addEventListener('DOMContentLoaded', () => {
+    setupServiceWorker();
+    initializeApplication();
+});

@@ -5,6 +5,45 @@ import { renderForm, renderList } from './forms.js';
 import { createModalWrapper, showModal, hideModal } from './modals.js';
 import { withLoading, withToast } from '../decorators.js';
 
+const REPORT_FORM_FIELDS = (categories, initialFormData, updateImagePreview, updateLocationDisplay) => [
+    { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
+    { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
+    { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
+    { label: 'Location:', type: 'custom-html', id: 'map-pick-area', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', textContent: initialFormData.location || 'None' })] },
+    { label: 'Pick Location', type: 'button', id: 'pick-loc-map-btn', buttonType: 'button' },
+    { label: 'Use GPS', type: 'button', id: 'use-gps-loc-btn', buttonType: 'button' },
+    { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
+    { label: 'Geocode Address', type: 'button', id: 'geocode-address-btn', buttonType: 'button' },
+    {
+        label: 'Categories:',
+        type: 'checkbox-group',
+        id: 'cats-cont-form',
+        name: 'category',
+        class: 'cats-cont-form',
+        options: categories.map(cat => ({ value: cat, label: cat }))
+    },
+    { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
+    {
+        label: 'Event Type:',
+        type: 'select',
+        id: 'rep-evType',
+        name: 'eventType',
+        options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({ value: type.toLowerCase(), label: type }))
+    },
+    {
+        label: 'Status:',
+        type: 'select',
+        id: 'rep-stat',
+        name: 'status',
+        options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
+    },
+    { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*', onchange: setupReportFormImageUploadHandler(initialFormData.uIMeta, updateImagePreview) },
+    { type: 'custom-html', id: 'upld-photos-preview' },
+    { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
+    { label: initialFormData.isEdit ? 'Update Report' : 'Submit', type: 'button', buttonType: 'submit' },
+    { label: 'Cancel', type: 'button', buttonType: 'button', class: 'secondary', onclick: () => hideModal('report-form-modal') }
+];
+
 const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     previewElement.innerHTML = '';
     if (imagesMetadata.length === 0) {
@@ -162,10 +201,12 @@ export function RepFormComp(reportToEdit = null) {
         }
     }
 
+    const formState = { pFLoc, uIMeta };
+
     const updateLocationDisplay = (addressName = '') => {
         const coordsEl = $('#pFLoc-coords', formRoot);
-        if (pFLoc) {
-            coordsEl.textContent = `${pFLoc.lat.toFixed(5)},${pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}`;
+        if (formState.pFLoc) {
+            coordsEl.textContent = `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}`;
         } else {
             coordsEl.textContent = 'None';
         }
@@ -173,8 +214,8 @@ export function RepFormComp(reportToEdit = null) {
 
     const updateImagePreview = () => {
         const previewElement = $('#upld-photos-preview', formRoot);
-        renderImagePreview(previewElement, uIMeta, (index) => {
-            uIMeta.splice(index, 1);
+        renderImagePreview(previewElement, formState.uIMeta, (index) => {
+            formState.uIMeta.splice(index, 1);
             updateImagePreview();
         });
     };
@@ -186,54 +227,17 @@ export function RepFormComp(reportToEdit = null) {
         category: reportToEdit?.cat,
         freeTags: reportToEdit?.fTags?.join(', '),
         eventType: reportToEdit?.evType,
-        status: reportToEdit?.stat
+        status: reportToEdit?.stat,
+        isEdit: !!reportToEdit,
+        uIMeta: formState.uIMeta
     };
 
-    const reportFormFields = [
-        { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
-        { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
-        { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
-        { label: 'Location:', type: 'custom-html', id: 'map-pick-area', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', textContent: initialFormData.location || 'None' })] },
-        { label: 'Pick Location', type: 'button', id: 'pick-loc-map-btn', buttonType: 'button' },
-        { label: 'Use GPS', type: 'button', id: 'use-gps-loc-btn', buttonType: 'button' },
-        { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
-        { label: 'Geocode Address', type: 'button', id: 'geocode-address-btn', buttonType: 'button' },
-        {
-            label: 'Categories:',
-            type: 'checkbox-group',
-            id: 'cats-cont-form',
-            name: 'category',
-            class: 'cats-cont-form',
-            options: categories.map(cat => ({ value: cat, label: cat }))
-        },
-        { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
-        {
-            label: 'Event Type:',
-            type: 'select',
-            id: 'rep-evType',
-            name: 'eventType',
-            options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({ value: type.toLowerCase(), label: type }))
-        },
-        {
-            label: 'Status:',
-            type: 'select',
-            id: 'rep-stat',
-            name: 'status',
-            options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
-        },
-        { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*', onchange: setupReportFormImageUploadHandler(uIMeta, updateImagePreview) },
-        { type: 'custom-html', id: 'upld-photos-preview' },
-        { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
-        { label: reportToEdit ? 'Update Report' : 'Submit', type: 'button', buttonType: 'submit' },
-        { label: 'Cancel', type: 'button', buttonType: 'button', class: 'secondary', onclick: () => hideModal('report-form-modal') }
-    ];
-
     const formRoot = createModalWrapper('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', (modalContent) => {
-        const form = renderForm(reportFormFields, initialFormData, { id: 'nstr-rep-form' });
+        const form = renderForm(REPORT_FORM_FIELDS(categories, initialFormData, updateImagePreview, updateLocationDisplay), initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
 
-        setupReportFormLocationHandlers(form, { pFLoc }, updateLocationDisplay);
-        setupReportFormSubmission(form, reportToEdit, { pFLoc }, uIMeta);
+        setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
+        setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
 
         updateImagePreview();
         updateLocationDisplay();

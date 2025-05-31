@@ -32,19 +32,42 @@ const createDbStoreCrud = (storeName) => ({
 });
 
 export const dbSvc = {
-    ...createDbStoreCrud(C.STORE_REPORTS),
-    ...createDbStoreCrud(C.STORE_PROFILES),
-    ...createDbStoreCrud(C.STORE_SETTINGS),
-    ...createDbStoreCrud(C.STORE_OFFLINE_QUEUE),
-    ...createDbStoreCrud(C.STORE_DRAWN_SHAPES),
-    ...createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS),
+    getRep: createDbStoreCrud(C.STORE_REPORTS).get,
+    getAllReps: createDbStoreCrud(C.STORE_REPORTS).getAll,
+    addRep: createDbStoreCrud(C.STORE_REPORTS).add,
+    rmRep: createDbStoreCrud(C.STORE_REPORTS).rm,
+    clearReps: createDbStoreCrud(C.STORE_REPORTS).clear,
+
+    getProf: createDbStoreCrud(C.STORE_PROFILES).get,
+    getAllProfiles: createDbStoreCrud(C.STORE_PROFILES).getAll,
+    addProf: createDbStoreCrud(C.STORE_PROFILES).add,
+    rmProf: createDbStoreCrud(C.STORE_PROFILES).rm,
+    clearProfiles: createDbStoreCrud(C.STORE_PROFILES).clear,
+
+    getSettings: createDbStoreCrud(C.STORE_SETTINGS).get,
+    getAllSettings: createDbStoreCrud(C.STORE_SETTINGS).getAll,
+    addSettings: createDbStoreCrud(C.STORE_SETTINGS).add,
+    rmSettings: createDbStoreCrud(C.STORE_SETTINGS).rm,
+    clearSettings: createDbStoreCrud(C.STORE_SETTINGS).clear,
+
+    getOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).getAll,
+    addOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).add,
+    rmOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).rm,
+    clearOfflineQ: createDbStoreCrud(C.STORE_OFFLINE_QUEUE).clear,
+
+    getDrawnShape: createDbStoreCrud(C.STORE_DRAWN_SHAPES).get,
+    getAllDrawnShapes: createDbStoreCrud(C.STORE_DRAWN_SHAPES).getAll,
+    addDrawnShape: createDbStoreCrud(C.STORE_DRAWN_SHAPES).add,
+    rmDrawnShape: createDbStoreCrud(C.STORE_DRAWN_SHAPES).rm,
+    clearDrawnShapes: createDbStoreCrud(C.STORE_DRAWN_SHAPES).clear,
+
+    getFollowedPubkeys: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).getAll,
+    addFollowedPubkey: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).add,
+    rmFollowedPubkey: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).rm,
+    clearFollowedPubkeys: createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS).clear,
 
     saveSetts: async s => (await getDbStore(C.STORE_SETTINGS, 'readwrite')).put({ id: 'appSettings', ...s }),
     loadSetts: async () => (await getDbStore(C.STORE_SETTINGS)).get('appSettings'),
-    addOfflineQ: async e => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).add(e),
-    rmOfflineQ: async qid => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).delete(qid),
-    addFollowedPubkey: async (pk) => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).put({ pk, followedAt: Date.now() }),
-    rmFollowedPubkey: async (pk) => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).delete(pk),
 
     async pruneDb() {
         const now = Date.now();

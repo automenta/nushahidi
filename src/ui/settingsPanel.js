@@ -2,7 +2,7 @@ import { appStore } from '../store.js';
 import { idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
 import { C, $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
 import { createModalWrapper, hideModal } from './modals.js';
-import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
+import { setupAddRemoveListSection, renderList } from './forms.js';
 import {
     createListSectionRenderer,
     addRelayLogic,
@@ -17,7 +17,7 @@ import { renderMapTilesSection } from './settings/mapTiles.js';
 import { renderImageHostSection } from './settings/imageHost.js';
 import { renderFollowedUsersSection, renderFollowedList, setupFollowedListUniqueListeners } from './settings/followedUsers.js';
 import { renderDataManagementSection } from './settings/dataManagement.js';
-
+import { renderForm } from './forms.js';
 
 const renderRelays = createListSectionRenderer('rly-list',
     r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` }),
@@ -97,143 +97,159 @@ const renderMuteList = createListSectionRenderer('mute-list',
     'mute-entry'
 );
 
-const renderOfflineQueue = async (modalContent) => {
-    const queueItems = await dbSvc.getOfflineQ();
-
-    const getEventType = (kind) => {
-        switch (kind) {
-            case C.NOSTR_KIND_REPORT: return 'Report';
-            case C.NOSTR_KIND_REACTION: return 'Reaction';
-            case C.NOSTR_KIND_NOTE: return 'Comment';
-            case 5: return 'Deletion';
-            case C.NOSTR_KIND_PROFILE: return 'Profile';
-            case C.NOSTR_KIND_CONTACTS: return 'Contacts';
-            default: return `Kind ${kind}`;
-        }
-    };
-
-    const offlineQueueItemRenderer = item => {
-        const eventType = getEventType(item.event.kind);
-        const timestamp = new Date(item.ts).toLocaleString();
-        const contentSnippet = item.event.content.substring(0, 50) + (item.event.content.length > 50 ? '...' : '');
-        const eventIdSnippet = item.event.id.substring(0, 8);
-        return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
-    };
-
-    const offlineQueueActionsConfig = [
-        {
-            label: 'Retry',
-            className: 'retry-offline-q-btn',
-            onClick: async (item) => {
-                await nostrSvc.pubEv(item.event);
-                await dbSvc.rmOfflineQ(item.qid);
-                renderOfflineQueue(modalContent);
-            }
-        },
-        {
-            label: 'Delete',
-            className: 'remove-offline-q-btn',
-            onClick: async (item) => {
-                await dbSvc.rmOfflineQ(item.qid);
-                renderOfflineQueue(modalContent);
-            }
-        }
-    ];
-
-    renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig, 'offline-q-entry', modalContent);
+const getOfflineQueueEventType = (kind) => {
+    switch (kind) {
+        case C.NOSTR_KIND_REPORT: return 'Report';
+        case C.NOSTR_KIND_REACTION: return 'Reaction';
+        case C.NOSTR_KIND_NOTE: return 'Comment';
+        case 5: return 'Deletion';
+        case C.NOSTR_KIND_PROFILE: return 'Profile';
+        case C.NOSTR_KIND_CONTACTS: return 'Contacts';
+        default: return `Kind ${kind}`;
+    }
 };
 
-export function SettPanComp() {
-    const settingsContentRenderer = (modalRoot) => {
-        const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
+const offlineQueueItemRenderer = item => {
+    const eventType = getOfflineQueueEventType(item.event.kind);
+    const timestamp = new Date(item.ts).toLocaleString();
+    const contentSnippet = item.event.content.substring(0, 50) + (item.event.content.length > 50 ? '...' : '');
+    const eventIdSnippet = item.event.id.substring(0, 8);
+    return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
+};
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Relays' }),
-            createEl('div', { id: 'rly-list' }),
-            renderForm([
-                { label: 'New Relay URL:', type: 'url', id: 'new-rly-url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
-                { label: 'Add Relay', type: 'button', id: 'add-rly-btn', buttonType: 'button' },
-                { label: 'Save & Reconnect Relays', type: 'button', id: 'save-rlys-btn', buttonType: 'button' }
-            ], {}, { id: 'relay-form' })
-        ]));
-        settingsSectionsWrapper.appendChild(createEl('hr'));
-
-        const keyManagementSection = renderKeyManagementSection(settingsSectionsWrapper);
-        if (keyManagementSection) {
-            settingsSectionsWrapper.appendChild(createEl('hr'));
+const offlineQueueActionsConfig = (modalContent) => [
+    {
+        label: 'Retry',
+        className: 'retry-offline-q-btn',
+        onClick: async (item) => {
+            await nostrSvc.pubEv(item.event);
+            await dbSvc.rmOfflineQ(item.qid);
+            renderOfflineQueue(modalContent);
         }
+    },
+    {
+        label: 'Delete',
+        className: 'remove-offline-q-btn',
+        onClick: async (item) => {
+            await dbSvc.rmOfflineQ(item.qid);
+            renderOfflineQueue(modalContent);
+        }
+    }
+];
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Focus Tags' }),
-            createEl('div', { id: 'focus-tag-list' }),
-            renderForm([
-                { label: 'New Focus Tag:', type: 'text', id: 'new-focus-tag-input', name: 'newFocusTag', placeholder: '#NewFocusTag' },
-                { label: 'Add Focus Tag', type: 'button', id: 'add-focus-tag-btn', buttonType: 'button' },
-                { label: 'Save Focus Tags', type: 'button', id: 'save-focus-tags-btn', buttonType: 'button' }
-            ], {}, { id: 'focus-tag-form' })
-        ]));
+const renderOfflineQueue = async (modalContent) => {
+    const queueItems = await dbSvc.getOfflineQ();
+    renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig(modalContent), 'offline-q-entry', modalContent);
+};
+
+function renderRelaySection(wrapper) {
+    wrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Relays' }),
+        createEl('div', { id: 'rly-list' }),
+        renderForm([
+            { label: 'New Relay URL:', type: 'url', id: 'new-rly-url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
+            { label: 'Add Relay', type: 'button', id: 'add-rly-btn', buttonType: 'button' },
+            { label: 'Save & Reconnect Relays', type: 'button', id: 'save-rlys-btn', buttonType: 'button' }
+        ], {}, { id: 'relay-form' })
+    ]));
+    wrapper.appendChild(createEl('hr'));
+}
+
+function renderFocusTagsSection(wrapper) {
+    wrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Focus Tags' }),
+        createEl('div', { id: 'focus-tag-list' }),
+        renderForm([
+            { label: 'New Focus Tag:', type: 'text', id: 'new-focus-tag-input', name: 'newFocusTag', placeholder: '#NewFocusTag' },
+            { label: 'Add Focus Tag', type: 'button', id: 'add-focus-tag-btn', buttonType: 'button' },
+            { label: 'Save Focus Tags', type: 'button', id: 'save-focus-tags-btn', buttonType: 'button' }
+        ], {}, { id: 'focus-tag-form' })
+    ]));
+    wrapper.appendChild(createEl('hr'));
+}
+
+function renderCategoriesSection(wrapper) {
+    wrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Categories' }),
+        createEl('div', { id: 'cat-list' }),
+        renderForm([
+            { label: 'New Category Name:', type: 'text', id: 'new-cat-name', name: 'newCategory', placeholder: 'New Category' },
+            { label: 'Add Category', type: 'button', id: 'add-cat-btn', buttonType: 'button' },
+            { label: 'Save Categories', type: 'button', id: 'save-cats-btn', buttonType: 'button' }
+        ], {}, { id: 'category-form' })
+    ]));
+    wrapper.appendChild(createEl('hr'));
+}
+
+function renderMuteListSection(wrapper) {
+    wrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Mute List' }),
+        createEl('div', { id: 'mute-list' }),
+        renderForm([
+            { label: 'New Muted Pubkey:', type: 'text', id: 'new-mute-pk-input', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
+            { label: 'Add to Mute List', type: 'button', id: 'add-mute-btn', buttonType: 'button' },
+            { label: 'Save Mute List', type: 'button', id: 'save-mute-list-btn', buttonType: 'button' }
+        ], {}, { id: 'mute-list-form' })
+    ]));
+    wrapper.appendChild(createEl('hr'));
+}
+
+function renderFollowedUsersSectionWrapper(wrapper) {
+    wrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Followed Users (NIP-02)' }),
+        createEl('div', { id: 'followed-list' }),
+        renderFollowedUsersSection(wrapper)
+    ]));
+    wrapper.appendChild(createEl('hr'));
+}
+
+function renderOfflineQueueSection(wrapper) {
+    wrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Offline Queue' }),
+        createEl('p', { textContent: 'Events waiting to be published when online.' }),
+        createEl('div', { id: 'offline-queue-list' })
+    ]));
+    wrapper.appendChild(createEl('hr'));
+}
+
+const settingsContentRenderer = (modalRoot) => {
+    const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
+
+    renderRelaySection(settingsSectionsWrapper);
+
+    const keyManagementSection = renderKeyManagementSection(settingsSectionsWrapper);
+    if (keyManagementSection) {
         settingsSectionsWrapper.appendChild(createEl('hr'));
+    }
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Categories' }),
-            createEl('div', { id: 'cat-list' }),
-            renderForm([
-                { label: 'New Category Name:', type: 'text', id: 'new-cat-name', name: 'newCategory', placeholder: 'New Category' },
-                { label: 'Add Category', type: 'button', id: 'add-cat-btn', buttonType: 'button' },
-                { label: 'Save Categories', type: 'button', id: 'save-cats-btn', buttonType: 'button' }
-            ], {}, { id: 'category-form' })
-        ]));
-        settingsSectionsWrapper.appendChild(createEl('hr'));
+    renderFocusTagsSection(settingsSectionsWrapper);
+    renderCategoriesSection(settingsSectionsWrapper);
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Map Tiles' }),
-            renderMapTilesSection(settingsSectionsWrapper)
-        ]));
-        settingsSectionsWrapper.appendChild(createEl('hr'));
+    settingsSectionsWrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Map Tiles' }),
+        renderMapTilesSection(settingsSectionsWrapper)
+    ]));
+    settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Image Host' }),
-            renderImageHostSection(settingsSectionsWrapper)
-        ]));
-        settingsSectionsWrapper.appendChild(createEl('hr'));
+    settingsSectionsWrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Image Host' }),
+        renderImageHostSection(settingsSectionsWrapper)
+    ]));
+    settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Mute List' }),
-            createEl('div', { id: 'mute-list' }),
-            renderForm([
-                { label: 'New Muted Pubkey:', type: 'text', id: 'new-mute-pk-input', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
-                { label: 'Add to Mute List', type: 'button', id: 'add-mute-btn', buttonType: 'button' },
-                { label: 'Save Mute List', type: 'button', id: 'save-mute-list-btn', buttonType: 'button' }
-            ], {}, { id: 'mute-list-form' })
-        ]));
-        settingsSectionsWrapper.appendChild(createEl('hr'));
+    renderMuteListSection(settingsSectionsWrapper);
+    renderFollowedUsersSectionWrapper(settingsSectionsWrapper);
+    renderOfflineQueueSection(settingsSectionsWrapper);
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Followed Users (NIP-02)' }),
-            createEl('div', { id: 'followed-list' }),
-            renderFollowedUsersSection(settingsSectionsWrapper)
-        ]));
-        settingsSectionsWrapper.appendChild(createEl('hr'));
+    settingsSectionsWrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Data Management' }),
+        renderDataManagementSection(settingsSectionsWrapper)
+    ]));
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Offline Queue' }),
-            createEl('p', { textContent: 'Events waiting to be published when online.' }),
-            createEl('div', { id: 'offline-queue-list' })
-        ]));
-        settingsSectionsWrapper.appendChild(createEl('hr'));
+    return settingsSectionsWrapper;
+};
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [
-            createEl('h3', { textContent: 'Data Management' }),
-            renderDataManagementSection(settingsSectionsWrapper)
-        ]));
-
-        return settingsSectionsWrapper;
-    };
-
-    const modalContent = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
-
-    modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
-
+function setupSettingsListListeners(modalContent) {
     renderRelays(modalContent);
     renderCategories(modalContent);
     renderFocusTags(modalContent);
@@ -291,6 +307,14 @@ export function SettPanComp() {
         saveBtnId: 'save-followed-btn'
     });
     setupFollowedListUniqueListeners(modalContent);
+}
+
+export function SettPanComp() {
+    const modalContent = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
+
+    modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
+
+    setupSettingsListListeners(modalContent);
 
     return modalContent;
 }

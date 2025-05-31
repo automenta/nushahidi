@@ -5,14 +5,38 @@ import { C, $, createEl, sanitizeHTML, debounce, npubToHex } from '../utils.js';
 import { renderForm } from './forms.js';
 import { rendRepList } from './reportList.js';
 
-const _isMuted = (report, mutedPubkeys) => !mutedPubkeys.includes(report.pk);
+const filterFormFields = [
+    { type: 'h4', content: ['Filter Reports'] },
+    { label: 'Search reports...', type: 'search', id: 'search-query-input', name: 'searchQuery', placeholder: 'Search reports text' },
+    { label: 'Focus Tag:', type: 'text', id: 'focus-tag-input', name: 'focusTag', readOnly: true },
+    {
+        label: 'Category:',
+        type: 'select',
+        id: 'filter-category',
+        name: 'filterCategory',
+        options: [{ value: '', label: 'All' }, ...appStore.get().settings.cats.map(cat => ({ value: cat, label: cat }))]
+    },
+    { label: 'Author (npub/hex):', type: 'text', id: 'filter-author', name: 'filterAuthor', placeholder: 'Author pubkey' },
+    { label: 'From:', type: 'datetime-local', id: 'filter-time-start', name: 'filterTimeStart' },
+    { label: 'To:', type: 'datetime-local', id: 'filter-time-end', name: 'filterTimeEnd' },
+    { type: 'button', id: 'apply-filters-btn', label: 'Apply', class: 'apply-filters-btn' },
+    { type: 'button', id: 'reset-filters-btn', label: 'Reset', class: 'reset-filters-btn' },
+    { type: 'hr' },
+    { type: 'h4', content: ['Map Drawing Filters'] },
+    { type: 'custom-html', id: 'map-draw-controls' },
+    { label: 'Enable Spatial Filter', type: 'checkbox', id: 'spatial-filter-toggle', name: 'spatialFilterEnabled' },
+    { label: 'Show Only Followed Users', type: 'checkbox', id: 'followed-only-toggle', name: 'followedOnlyFilter' },
+    { type: 'button', id: 'clear-drawn-shapes-btn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
+];
 
-const _matchesFocusTag = (report, currentFocusTag) => {
+const isMuted = (report, mutedPubkeys) => !mutedPubkeys.includes(report.pk);
+
+const matchesFocusTag = (report, currentFocusTag) => {
     const focusTagMatch = currentFocusTag?.startsWith('#') ? currentFocusTag.substring(1) : currentFocusTag;
     return focusTagMatch === 'NostrMapper_Global' || report.fTags.includes(focusTagMatch);
 };
 
-const _matchesSearchQuery = (report, searchQuery) => {
+const matchesSearchQuery = (report, searchQuery) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return report.title?.toLowerCase().includes(query) ||
@@ -20,24 +44,24 @@ const _matchesSearchQuery = (report, searchQuery) => {
            report.ct?.toLowerCase().includes(query);
 };
 
-const _matchesCategory = (report, categoryFilter) => {
+const matchesCategory = (report, categoryFilter) => {
     if (!categoryFilter) return true;
     return report.cat.includes(categoryFilter);
 };
 
-const _matchesAuthor = (report, authorFilter) => {
+const matchesAuthor = (report, authorFilter) => {
     if (!authorFilter) return true;
     const authorHex = npubToHex(authorFilter);
     return report.pk === authorHex;
 };
 
-const _matchesTimeRange = (report, timeStart, timeEnd) => {
+const matchesTimeRange = (report, timeStart, timeEnd) => {
     if (timeStart && report.at < timeStart) return false;
     if (timeEnd && report.at > timeEnd) return false;
     return true;
 };
 
-const _matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
+const matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
     if (!spatialFilterEnabled || drawnShapes.length === 0) return true;
     if (!report.lat || !report.lon) return false;
 
@@ -50,7 +74,7 @@ const _matchesSpatialFilter = (report, spatialFilterEnabled, drawnShapes) => {
     return false;
 };
 
-const _matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => {
+const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => {
     if (!followedOnlyFilter) return true;
     return followedPubkeys.map(f => f.pk).includes(report.pk);
 };
@@ -63,14 +87,14 @@ export const applyAllFilters = () => {
     const { q: searchQuery, cat: categoryFilter, auth: authorFilter, tStart: timeStart, tEnd: timeEnd } = filters;
 
     const filteredReports = allReports.filter(report =>
-        _isMuted(report, mutedPubkeys) &&
-        _matchesFocusTag(report, currentFocusTag) &&
-        _matchesSearchQuery(report, searchQuery) &&
-        _matchesCategory(report, categoryFilter) &&
-        _matchesAuthor(report, authorFilter) &&
-        _matchesTimeRange(report, timeStart, timeEnd) &&
-        _matchesSpatialFilter(report, spatialFilterEnabled, drawnShapes) &&
-        _matchesFollowedOnly(report, followedOnlyFilter, followedPubkeys)
+        isMuted(report, mutedPubkeys) &&
+        matchesFocusTag(report, currentFocusTag) &&
+        matchesSearchQuery(report, searchQuery) &&
+        matchesCategory(report, categoryFilter) &&
+        matchesAuthor(report, authorFilter) &&
+        matchesTimeRange(report, timeStart, timeEnd) &&
+        matchesSpatialFilter(report, spatialFilterEnabled, drawnShapes) &&
+        matchesFollowedOnly(report, followedOnlyFilter, followedPubkeys)
     ).sort((a, b) => b.at - a.at);
 
     rendRepList(filteredReports);
@@ -196,27 +220,3 @@ export const initFilterControls = () => {
         mapDrawControlsDiv.appendChild(drawControl.onAdd(mapSvc.get()));
     }
 };
-
-const filterFormFields = [
-    { type: 'h4', content: ['Filter Reports'] },
-    { label: 'Search reports...', type: 'search', id: 'search-query-input', name: 'searchQuery', placeholder: 'Search reports text' },
-    { label: 'Focus Tag:', type: 'text', id: 'focus-tag-input', name: 'focusTag', readOnly: true },
-    {
-        label: 'Category:',
-        type: 'select',
-        id: 'filter-category',
-        name: 'filterCategory',
-        options: [{ value: '', label: 'All' }, ...appStore.get().settings.cats.map(cat => ({ value: cat, label: cat }))]
-    },
-    { label: 'Author (npub/hex):', type: 'text', id: 'filter-author', name: 'filterAuthor', placeholder: 'Author pubkey' },
-    { label: 'From:', type: 'datetime-local', id: 'filter-time-start', name: 'filterTimeStart' },
-    { label: 'To:', type: 'datetime-local', id: 'filter-time-end', name: 'filterTimeEnd' },
-    { type: 'button', id: 'apply-filters-btn', label: 'Apply', class: 'apply-filters-btn' },
-    { type: 'button', id: 'reset-filters-btn', label: 'Reset', class: 'reset-filters-btn' },
-    { type: 'hr' },
-    { type: 'h4', content: ['Map Drawing Filters'] },
-    { type: 'custom-html', id: 'map-draw-controls' },
-    { label: 'Enable Spatial Filter', type: 'checkbox', id: 'spatial-filter-toggle', name: 'spatialFilterEnabled' },
-    { label: 'Show Only Followed Users', type: 'checkbox', id: 'followed-only-toggle', name: 'followedOnlyFilter' },
-    { type: 'button', id: 'clear-drawn-shapes-btn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
-];

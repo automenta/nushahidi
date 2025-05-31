@@ -7,8 +7,8 @@ import { showConfirmModal } from '../ui/modals.js';
 import { dbSvc } from './db.js';
 import { confSvc } from './config.js';
 
-let _map, _mapRepsLyr = L.layerGroup(),
-    _mapTileLyr;
+let _map, _mapRepsLyr = L.layerGroup();
+let _mapTileLyr;
 let _drawnItems;
 let _drawControl;
 
@@ -47,6 +47,18 @@ const handleDrawDeleted = async e => {
     showToast("Shape deleted!", 'info');
 };
 
+function setupMapEventListeners() {
+    _map.on('moveend zoomend', () => {
+        const bounds = _map.getBounds();
+        const geohashes = getGhPrefixes(bounds);
+        appStore.set({ mapBnds: bounds, mapGhs: geohashes });
+    });
+
+    _map.on(L.Draw.Event.CREATED, handleDrawCreated);
+    _map.on(L.Draw.Event.EDITED, handleDrawEdited);
+    _map.on(L.Draw.Event.DELETED, handleDrawDeleted);
+}
+
 export const mapSvc = {
     init(id = 'map-container') {
         const tileUrl = confSvc.getTileServer();
@@ -81,16 +93,7 @@ export const mapSvc = {
 
         appStore.set({ map: _map });
 
-        _map.on('moveend zoomend', () => {
-            const bounds = _map.getBounds();
-            const geohashes = getGhPrefixes(bounds);
-            appStore.set({ mapBnds: bounds, mapGhs: geohashes });
-        });
-
-        _map.on(L.Draw.Event.CREATED, handleDrawCreated);
-        _map.on(L.Draw.Event.EDITED, handleDrawEdited);
-        _map.on(L.Draw.Event.DELETED, handleDrawDeleted);
-
+        setupMapEventListeners();
         this.loadDrawnShapes();
 
         return _map;
