@@ -255,6 +255,19 @@ function RepFormComp(reportToEdit = null) {
     _repFormRoot = cE('div', { class: 'modal-content' });
     const categories = appStore.get().settings.cats;
 
+    // Pre-fill location and images if editing
+    if (reportToEdit) {
+        if (reportToEdit.lat && reportToEdit.lon) {
+            _pFLoc = { lat: reportToEdit.lat, lng: reportToEdit.lon };
+        }
+        if (reportToEdit.imgs && reportToEdit.imgs.length > 0) {
+            _uIMeta = [...reportToEdit.imgs];
+        }
+    } else {
+        _pFLoc = null;
+        _uIMeta = [];
+    }
+
     // Helper to create the form structure
     const createReportFormStructure = () => {
         return [
@@ -271,7 +284,7 @@ function RepFormComp(reportToEdit = null) {
                 cE('textarea', { id: 'rep-desc', name: 'description', required: true, rows: 3, textContent: reportToEdit?.ct || '' }),
 
                 cE('label', { textContent: 'Location:' }),
-                cE('div', { id: 'map-pick-area' }, ['Selected: ', cE('span', { id: 'pFLoc-coords', textContent: 'None' })]),
+                cE('div', { id: 'map-pick-area' }, ['Selected: ', cE('span', { id: 'pFLoc-coords', textContent: _pFLoc ? `${_pFLoc.lat.toFixed(5)},${_pFLoc.lng.toFixed(5)}` : 'None' })]),
                 cE('button', { type: 'button', id: 'pick-loc-map-btn', textContent: 'Pick Location' }),
                 cE('button', { type: 'button', id: 'use-gps-loc-btn', textContent: 'Use GPS' }),
 
@@ -304,25 +317,13 @@ function RepFormComp(reportToEdit = null) {
 
     createReportFormStructure().forEach(el => _repFormRoot.appendChild(el));
 
-    // Pre-fill location and images if editing
-    if (reportToEdit) {
-        if (reportToEdit.lat && reportToEdit.lon) {
-            _pFLoc = { lat: reportToEdit.lat, lng: reportToEdit.lon };
-            gE('#pFLoc-coords', _repFormRoot).textContent = `${_pFLoc.lat.toFixed(5)},${_pFLoc.lng.toFixed(5)}`;
-        }
-        if (reportToEdit.imgs && reportToEdit.imgs.length > 0) {
-            _uIMeta = [...reportToEdit.imgs];
-            const previewElement = gE('#upld-photos-preview', _repFormRoot);
-            previewElement.innerHTML = '';
-            _uIMeta.forEach(img => {
-                previewElement.innerHTML += `<p>${sH(img.url.substring(img.url.lastIndexOf('/') + 1))} (existing)</p>`;
-            });
-        }
-    } else {
-        _pFLoc = null;
-        _uIMeta = [];
-        if (gE('#pFLoc-coords', _repFormRoot)) gE('#pFLoc-coords', _repFormRoot).textContent = 'None';
-        if (gE('#upld-photos-preview', _repFormRoot)) gE('#upld-photos-preview', _repFormRoot).innerHTML = '';
+    // Display existing images if editing
+    if (reportToEdit && _uIMeta.length > 0) {
+        const previewElement = gE('#upld-photos-preview', _repFormRoot);
+        previewElement.innerHTML = '';
+        _uIMeta.forEach(img => {
+            previewElement.innerHTML += `<p>${sH(img.url.substring(img.url.lastIndexOf('/') + 1))} (existing)</p>`;
+        });
     }
 
 
