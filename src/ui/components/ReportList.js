@@ -1,12 +1,10 @@
 import {createEl, formatNpubShort, sanitizeHTML} from '../../utils.js';
 import {ReportDetailsModal} from './ReportDetailsModal.js';
-import {showModal} from '../modals.js';
 import {appStore} from '../../store.js';
 
 export function ReportList() {
-    const listContainer = createEl('div', { class: 'report-list-container' }); // Removed ID
-    const listElement = createEl('div', { class: 'report-list' }); // Removed ID
-    listContainer.appendChild(listElement);
+    let listContainer;
+    let listElement;
 
     const renderReportCard = report => `
         <div class="report-card" data-rep-id="${sanitizeHTML(report.id)}" role="button" tabindex="0" aria-labelledby="card-title-${report.id}">
@@ -23,14 +21,14 @@ export function ReportList() {
                 cardWrapper.innerHTML = renderReportCard(report);
                 const cardElement = cardWrapper.firstElementChild;
                 cardElement.addEventListener('click', () => {
-                    const reportDetailsModalElement = ReportDetailsModal(report);
-                    showModal(reportDetailsModalElement, 'detail-title');
+                    const reportDetailsModal = new ReportDetailsModal(report);
+                    reportDetailsModal.show('detail-title');
                     appStore.set(s => ({ ui: { ...s.ui, showReportList: false } }));
                 });
                 cardElement.addEventListener('keydown', e => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                        const reportDetailsModalElement = ReportDetailsModal(report);
-                        showModal(reportDetailsModalElement, 'detail-title');
+                        const reportDetailsModal = new ReportDetailsModal(report);
+                        reportDetailsModal.show('detail-title');
                         appStore.set(s => ({ ui: { ...s.ui, showReportList: false } }));
                     }
                 });
@@ -41,21 +39,22 @@ export function ReportList() {
         }
     };
 
-    appStore.on(newState => {
-        // Only update if filteredReports actually changed to avoid unnecessary re-renders
-        if (newState.filteredReports !== appStore.get().filteredReports) {
-            updateList(newState.filteredReports);
+    const render = (state) => {
+        if (!listContainer) {
+            listContainer = createEl('div', { class: 'report-list-container' });
+            listElement = createEl('div', { class: 'report-list' });
+            listContainer.appendChild(listElement);
         }
-        // Only update display style if showReportList changed
-        if (newState.ui.showReportList !== appStore.get().ui.showReportList) {
-            listContainer.style.display = newState.ui.showReportList ? 'block' : 'none';
+        updateList(state.filteredReports || []);
+        listContainer.style.display = state.ui.showReportList ? 'block' : 'none';
+        return listContainer;
+    };
+
+    appStore.on(newState => {
+        if (newState.filteredReports !== appStore.get().filteredReports || newState.ui.showReportList !== appStore.get().ui.showReportList) {
+            render(newState);
         }
     });
 
-    // Initial render
-    updateList(appStore.get().filteredReports || []);
-    listContainer.style.display = appStore.get().ui.showReportList ? 'block' : 'none';
-
-
-    return listContainer;
+    return render(appStore.get());
 }

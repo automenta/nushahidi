@@ -1,43 +1,34 @@
 import {appStore} from '../store.js';
 import {C, createEl} from '../utils.js';
-import {hideModal, showModal, Modal} from './modals.js';
+import {showModal} from './modals.js';
 import {FilterControls, applyAllFilters} from './components/FilterControls.js';
 import {ReportList} from './components/ReportList.js';
 import {ConnectionStatus} from './components/ConnectionStatus.js';
 import {GlobalLoadingSpinner} from './components/GlobalLoadingSpinner.js';
 import {AppHeader} from './components/AppHeader.js';
 import {ReportDetailsModal} from './components/ReportDetailsModal.js';
-
-const ensureContainerExists = (id, parent = document.body) => {
-    let container = document.getElementById(id);
-    if (!container) {
-        container = createEl('div', { id: id });
-        parent.appendChild(container);
-    }
-    return container;
-};
+import {AuthModal} from './components/AuthModal.js';
+import {ReportFormModal} from './components/ReportFormModal.js';
+import {SettingsModal} from './components/SettingsModal.js';
 
 const OnboardingModalComponent = () => {
     let onboardingModalElement;
 
     const hideOnboarding = () => {
         localStorage.setItem(C.ONBOARDING_KEY, 'true');
-        hideModal(onboardingModalElement);
+        onboardingModalElement.hide();
     };
 
-    onboardingModalElement = Modal('onboarding-info', 'Welcome to NostrMapper!', (contentRoot, modalEl) => {
+    onboardingModalElement = new Modal('onboarding-info', 'Welcome to NostrMapper!', (contentRoot) => {
         const gotItBtn = createEl('button', { textContent: 'Got It!' });
-        const closeBtn = modalEl.querySelector('.close-btn');
-
-        closeBtn?.addEventListener('click', hideOnboarding);
         gotItBtn.addEventListener('click', hideOnboarding);
-
         return [
             createEl('p', { textContent: 'NostrMapper is a decentralized mapping application built on Nostr. Report incidents, observations, and aid requests directly to the Nostr network.' }),
             createEl('p', { textContent: 'Your reports are public and uncensorable. Connect your Nostr identity to start contributing!' }),
             gotItBtn
         ];
     });
+    onboardingModalElement.root.querySelector('.close-btn')?.addEventListener('click', hideOnboarding);
     return onboardingModalElement;
 };
 
@@ -46,16 +37,16 @@ export function initUI() {
     if (!root) return;
     root.innerHTML = '';
 
-    ensureContainerExists('filter-controls');
-    ensureContainerExists('report-list-container');
-    ensureContainerExists('report-list', document.getElementById('report-list-container'));
+    const authModal = new AuthModal();
+    const reportFormModal = new ReportFormModal();
+    const settingsModal = new SettingsModal();
+    const onboardingModal = OnboardingModalComponent();
 
-    const appHeader = AppHeader();
+    const appHeader = AppHeader(authModal, reportFormModal, settingsModal);
     const filterControls = FilterControls();
     const reportList = ReportList();
-    const connectionStatus = ConnectionStatus();
+    const connectionStatus = ConnectionStatus(settingsModal);
     const globalLoadingSpinner = GlobalLoadingSpinner();
-    const onboardingModalElement = OnboardingModalComponent();
 
     root.append(
         appHeader,
@@ -82,8 +73,8 @@ export function initUI() {
             if (newState.ui.reportIdToView) {
                 const report = newState.reports.find(r => r.id === newState.ui.reportIdToView);
                 if (report) {
-                    const reportDetailsModalElement = ReportDetailsModal(report);
-                    showModal(reportDetailsModalElement, 'detail-title');
+                    const reportDetailsModal = new ReportDetailsModal(report);
+                    reportDetailsModal.show('detail-title');
                 }
             }
         }
@@ -92,5 +83,5 @@ export function initUI() {
     applyAllFilters();
     appStore.set(s => ({ ui: { ...s.ui, showReportList: true } }));
 
-    if (!localStorage.getItem(C.ONBOARDING_KEY)) showModal(onboardingModalElement);
+    if (!localStorage.getItem(C.ONBOARDING_KEY)) onboardingModal.show();
 }

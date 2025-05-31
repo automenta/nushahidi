@@ -137,7 +137,7 @@ export const renderList = (containerElement, items, itemRenderer, actionsConfig,
     containerElement.innerHTML = '';
 
     if (!items.length) {
-        containerElement.textContent = `No items configured.`; // Generic message
+        containerElement.textContent = `No items configured.`;
         return;
     }
 

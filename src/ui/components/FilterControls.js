@@ -4,7 +4,6 @@ import {mapSvc, nostrSvc} from '../../services.js';
 import {C, debounce, npubToHex, createEl, sanitizeHTML} from '../../utils.js';
 import {renderForm} from '../forms.js';
 
-// This function will now update the store, and ReportList will react to store changes.
 export const applyAllFilters = () => {
     const { reports: allReports, settings, currentFocusTag, drawnShapes, ui, followedPubkeys } = appStore.get();
     const { mute: mutedPubkeys } = settings;
@@ -22,7 +21,7 @@ export const applyAllFilters = () => {
         matchesFollowedOnly(report, followedOnlyFilter, followedPubkeys)
     ).sort((a, b) => b.at - a.at);
 
-    appStore.set({ filteredReports }); // Update the store with filtered reports
+    appStore.set({ filteredReports });
     mapSvc.updReps(filteredReports);
 };
 export const debouncedApplyAllFilters = debounce(applyAllFilters, 350);
@@ -42,7 +41,7 @@ const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => !fo
 
 
 export function FilterControls() {
-    let filterFormElement; // This will hold the root form element of the component
+    let filterFormElement;
 
     const updateFilterState = (key, value) => appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
 
@@ -111,7 +110,6 @@ export function FilterControls() {
 
         const newForm = renderForm(filterFormFields, initialFilterData, { id: 'filter-form' });
 
-        // Setup event listeners scoped to the new form
         setupFilterInput(newForm, 'search-query-input', 'q', applyAllFilters, true);
         setupFilterSelect(newForm, 'filter-category', 'cat');
         setupFilterInput(newForm, 'filter-author', 'auth', applyAllFilters, true);
@@ -129,8 +127,6 @@ export function FilterControls() {
                 },
                 currentFocusTag: C.FOCUS_TAG_DEFAULT
             }));
-            // Re-render the form to reflect reset values
-            // This will be handled by the appStore.on listener below
         };
 
         const spatialFilterToggle = newForm.querySelector('#spatial-filter-toggle');
@@ -159,9 +155,6 @@ export function FilterControls() {
     filterFormElement = renderFilterForm(appStore.get());
 
     appStore.on((newState, oldState) => {
-        // Only re-render the form if categories or currentFocusTag change,
-        // or if filters are reset (which changes multiple filter values at once).
-        // This ensures the select options and focus tag input are updated.
         const categoriesChanged = newState.settings?.cats !== oldState?.settings?.cats;
         const focusTagChanged = newState.currentFocusTag !== oldState?.currentFocusTag;
         const filtersReset = JSON.stringify(newState.ui.filters) !== JSON.stringify(oldState?.ui?.filters) &&

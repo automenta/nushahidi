@@ -2,15 +2,12 @@ import {appStore} from '../../store.js';
 import {createEl} from '../../utils.js';
 import {dbSvc} from '../../services.js';
 import {showModal} from '../modals.js';
-import {SettingsModal} from './SettingsModal.js';
 
-export function ConnectionStatus() {
+export function ConnectionStatus(settingsModal) {
     let statusEl;
     let onlineStatusSpan;
     let syncStatusSpan;
     let offlineQueueCountSpan;
-
-    const settingsModalElement = SettingsModal();
 
     const updateDisplay = async (online, reports) => {
         onlineStatusSpan.textContent = online ? 'Online' : 'Offline';
@@ -22,7 +19,7 @@ export function ConnectionStatus() {
         if (!online) {
             syncStatusSpan.textContent = `Sync Status: Offline (${pendingEvents} pending)`;
             offlineQueueCountSpan.textContent = pendingEvents > 0 ? ` (${pendingEvents})` : '';
-            offlineQueueCountSpan.onclick = () => showModal(settingsModalElement);
+            offlineQueueCountSpan.onclick = () => settingsModal && showModal(settingsModal);
             offlineQueueCountSpan.style.cursor = pendingEvents > 0 ? 'pointer' : 'default';
         } else {
             syncStatusSpan.textContent = `Sync Status: Online (${reports.length} reports)`;
@@ -46,7 +43,7 @@ export function ConnectionStatus() {
 
     appStore.on((newState, oldState) => {
         if (newState.online !== oldState?.online || newState.reports !== oldState?.reports) {
-            render(newState);
+            updateDisplay(newState.online, newState.reports);
         }
     });
 

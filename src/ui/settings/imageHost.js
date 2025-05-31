@@ -15,7 +15,7 @@ export const ImageHostSection = () => {
 
     const render = (appState) => {
         if (!sectionEl) {
-            sectionEl = document.createElement('section');
+            sectionEl = createEl('section');
             const imageHostFormFields = [
                 {
                     label: 'Provider:',

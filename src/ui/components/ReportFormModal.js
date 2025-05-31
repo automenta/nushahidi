@@ -2,96 +2,130 @@ import {appStore} from '../../store.js';
 import {imgSvc, mapSvc, nostrSvc} from '../../services.js';
 import {C, createEl, generateUUID, geohashEncode, processImageFile, sanitizeHTML, showToast} from '../../utils.js';
 import {renderForm, renderList} from '../forms.js';
-import {Modal, hideModal, showModal} from '../modals.js';
+import {Modal} from '../modals.js';
 import {withLoading, withToast} from '../../decorators.js';
 
-export function ReportFormModal(reportToEdit = null) {
-    let reportFormModalElement;
-    let modalContentContainer;
+export class ReportFormModal extends Modal {
+    constructor(reportToEdit = null) {
+        const categories = appStore.get().settings.cats;
+        const formState = {
+            pFLoc: reportToEdit?.lat && reportToEdit?.lon ? { lat: reportToEdit.lat, lng: reportToEdit.lon } : null,
+            uIMeta: reportToEdit?.imgs?.length ? [...reportToEdit.imgs] : []
+        };
 
-    const categories = appStore.get().settings.cats;
+        const initialFormData = {
+            title: reportToEdit?.title,
+            summary: reportToEdit?.sum,
+            description: reportToEdit?.ct,
+            category: reportToEdit?.cat,
+            freeTags: reportToEdit?.fTags?.join(', '),
+            eventType: reportToEdit?.evType,
+            status: reportToEdit?.stat,
+            isEdit: !!reportToEdit,
+            uIMeta: formState.uIMeta,
+            location: formState.pFLoc ? `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}` : 'None'
+        };
 
-    const formState = {
-        pFLoc: reportToEdit?.lat && reportToEdit?.lon ? { lat: reportToEdit.lat, lng: reportToEdit.lon } : null,
-        uIMeta: reportToEdit?.imgs?.length ? [...reportToEdit.imgs] : []
-    };
+        let modalContentContainer;
+        let form;
+        let pFLocCoordsEl;
+        let upldPhotosPreviewEl;
 
-    const initialFormData = {
-        title: reportToEdit?.title,
-        summary: reportToEdit?.sum,
-        description: reportToEdit?.ct,
-        category: reportToEdit?.cat,
-        freeTags: reportToEdit?.fTags?.join(', '),
-        eventType: reportToEdit?.evType,
-        status: reportToEdit?.stat,
-        isEdit: !!reportToEdit,
-        uIMeta: formState.uIMeta,
-        location: formState.pFLoc ? `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}` : 'None'
-    };
+        const getReportFormFields = (cats, initialData) => [
+            { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
+            { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
+            { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
+            { label: 'Location:', type: 'custom-html', id: 'map-pick-area', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
+            { label: 'Pick Location', type: 'button', id: 'pick-loc-map-btn', buttonType: 'button' },
+            { label: 'Use GPS', type: 'button', id: 'use-gps-loc-btn', buttonType: 'button' },
+            { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
+            { label: 'Geocode Address', type: 'button', id: 'geocode-address-btn', buttonType: 'button' },
+            {
+                label: 'Categories:',
+                type: 'checkbox-group',
+                id: 'cats-cont-form',
+                name: 'category',
+                class: 'cats-cont-form',
+                options: (cats || []).map(cat => ({ value: cat, label: cat }))
+            },
+            { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
+            {
+                label: 'Event Type:',
+                type: 'select',
+                id: 'rep-evType',
+                name: 'eventType',
+                options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({ value: type.toLowerCase(), label: type }))
+            },
+            {
+                label: 'Status:',
+                type: 'select',
+                id: 'rep-stat',
+                name: 'status',
+                options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
+            },
+            { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' },
+            { type: 'custom-html', id: 'upld-photos-preview' },
+            { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
+            { label: initialData.isEdit ? 'Update Report' : 'Submit', type: 'button', id: 'submit-report-btn', buttonType: 'submit' },
+            { label: 'Cancel', type: 'button', id: 'cancel-report-btn', buttonType: 'button', class: 'secondary', onclick: () => this.hide() }
+        ];
 
-    const getReportFormFields = (cats, initialData) => [
-        { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
-        { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
-        { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
-        { label: 'Location:', type: 'custom-html', id: 'map-pick-area', content: ['Selected: ', createEl('span', { id: 'pFLoc-coords', textContent: initialData.location || 'None' })] },
-        { label: 'Pick Location', type: 'button', id: 'pick-loc-map-btn', buttonType: 'button' },
-        { label: 'Use GPS', type: 'button', id: 'use-gps-loc-btn', buttonType: 'button' },
-        { label: 'Or Enter Address:', type: 'text', id: 'rep-address', name: 'address', placeholder: 'e.g., 1600 Amphitheatre Pkwy' },
-        { label: 'Geocode Address', type: 'button', id: 'geocode-address-btn', buttonType: 'button' },
-        {
-            label: 'Categories:',
-            type: 'checkbox-group',
-            id: 'cats-cont-form',
-            name: 'category',
-            class: 'cats-cont-form',
-            options: (cats || []).map(cat => ({ value: cat, label: cat }))
-        },
-        { label: 'Add. Tags (comma-sep):', type: 'text', id: 'rep-ftags', name: 'freeTags' },
-        {
-            label: 'Event Type:',
-            type: 'select',
-            id: 'rep-evType',
-            name: 'eventType',
-            options: ['Observation', 'Incident', 'Request', 'Offer', 'Other'].map(type => ({ value: type.toLowerCase(), label: type }))
-        },
-        {
-            label: 'Status:',
-            type: 'select',
-            id: 'rep-stat',
-            name: 'status',
-            options: ['New', 'Active', 'Needs Verification'].map(status => ({ value: status.toLowerCase().replace(' ', '_'), label: status }))
-        },
-        { label: 'Photos (max 5MB each):', type: 'file', id: 'rep-photos', name: 'photos', multiple: true, accept: 'image/*' },
-        { type: 'custom-html', id: 'upld-photos-preview' },
-        { type: 'paragraph', class: 'warning', content: ['Reports are public on Nostr.'] },
-        { label: initialData.isEdit ? 'Update Report' : 'Submit', type: 'button', id: 'submit-report-btn', buttonType: 'submit' },
-        { label: 'Cancel', type: 'button', id: 'cancel-report-btn', buttonType: 'button', class: 'secondary', onclick: () => hideModal(reportFormModalElement) }
-    ];
+        const renderImagePreview = (imagesMetadata) => {
+            upldPhotosPreviewEl.innerHTML = '';
+            if (!imagesMetadata.length) {
+                upldPhotosPreviewEl.textContent = 'No images selected.';
+                return;
+            }
 
-    const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
-        previewElement.innerHTML = '';
-        if (!imagesMetadata.length) {
-            previewElement.textContent = 'No images selected.';
-            return;
-        }
+            const imageItemRenderer = img => createEl('span', { textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1)) });
+            const imageActionsConfig = [{
+                label: 'x',
+                className: 'remove-image-btn',
+                onClick: (item, index) => {
+                    formState.uIMeta.splice(index, 1);
+                    renderImagePreview(formState.uIMeta);
+                }
+            }];
 
-        const imageItemRenderer = img => createEl('span', { textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1)) });
-        const imageActionsConfig = [{
-            label: 'x',
-            className: 'remove-image-btn',
-            onClick: (item, index) => onRemoveImage(index)
-        }];
+            renderList(
+                upldPhotosPreviewEl,
+                imagesMetadata,
+                imageItemRenderer,
+                imageActionsConfig,
+                'uploaded-image-item'
+            );
+        };
 
-        renderList(
-            previewElement,
-            imagesMetadata,
-            imageItemRenderer,
-            imageActionsConfig,
-            'uploaded-image-item'
-        );
-    };
+        const updateLocationDisplay = (addressName = '') => {
+            if (pFLocCoordsEl) {
+                pFLocCoordsEl.textContent = formState.pFLoc ?
+                    `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}` :
+                    'None';
+            }
+        };
 
-    const buildReportTags = (formData, formState, imagesMetadata, reportToEdit, currentFocusTag) => {
+        const contentRenderer = () => {
+            modalContentContainer = createEl('div');
+            form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
+            modalContentContainer.appendChild(form);
+
+            pFLocCoordsEl = form.querySelector('#pFLoc-coords');
+            upldPhotosPreviewEl = form.querySelector('#upld-photos-preview');
+
+            form.querySelector('#rep-photos').onchange = this.setupReportFormImageUploadHandler(formState.uIMeta, renderImagePreview, form);
+            this.setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
+            this.setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
+
+            renderImagePreview(formState.uIMeta);
+            updateLocationDisplay();
+
+            return modalContentContainer;
+        };
+
+        super('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', contentRenderer);
+    }
+
+    buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag) {
         const data = Object.fromEntries(formData.entries());
         const tags = [['g', geohashEncode(formState.pFLoc.lat, formState.pFLoc.lng)]];
 
@@ -119,20 +153,20 @@ export function ReportFormModal(reportToEdit = null) {
         tags.push(['d', reportToEdit?.d || generateUUID()]);
 
         return tags;
-    };
+    }
 
-    const setupReportFormLocationHandlers = (formElement, formState, updateLocationDisplay) => {
+    setupReportFormLocationHandlers(formElement, formState, updateLocationDisplay) {
         const pickLocMapBtn = formElement.querySelector('#pick-loc-map-btn');
         const useGpsLocBtn = formElement.querySelector('#use-gps-loc-btn');
         const geocodeAddressBtn = formElement.querySelector('#geocode-address-btn');
         const repAddressInput = formElement.querySelector('#rep-address');
 
         pickLocMapBtn.onclick = () => {
-            hideModal(reportFormModalElement);
+            this.hide();
             mapSvc.enPickLoc(latlng => {
                 formState.pFLoc = latlng;
                 updateLocationDisplay();
-                showModal(reportFormModalElement, 'rep-title');
+                this.show('rep-title');
             });
         };
 
@@ -165,9 +199,9 @@ export function ReportFormModal(reportToEdit = null) {
                 throw new Error("Location not found.");
             }
         }, null, "Geocoding error"));
-    };
+    }
 
-    const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview, formElement) => async e => {
+    setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => async e => {
         for (const file of e.target.files) {
             await withLoading(withToast(async () => {
                 const processedImage = await processImageFile(file);
@@ -178,13 +212,13 @@ export function ReportFormModal(reportToEdit = null) {
                     dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
                     hHex: processedImage.hash
                 });
-                updatePreview(formElement);
+                updatePreview(imagesMetadata);
                 return `Image ${file.name} uploaded.`;
             }, null, `Failed to upload ${file.name}`))();
         }
     };
 
-    const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
+    setupReportFormSubmission(formElement, reportToEdit, formState, imagesMetadata) {
         formElement.onsubmit = withLoading(withToast(async e => {
             e.preventDefault();
             const submitBtn = e.target.querySelector('button[type=submit]');
@@ -196,7 +230,7 @@ export function ReportFormModal(reportToEdit = null) {
             submitBtn.disabled = true;
 
             const currentFocusTag = appStore.get().currentFocusTag;
-            const tags = buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag);
+            const tags = this.buildReportTags(formData, formState, imagesMetadata, reportToEdit, currentFocusTag);
 
             await nostrSvc.pubEv({ kind: C.NOSTR_KIND_REPORT, content: data.description, tags });
             e.target.reset();
@@ -204,48 +238,10 @@ export function ReportFormModal(reportToEdit = null) {
             formElement.querySelector('#upld-photos-preview').innerHTML = '';
             formState.pFLoc = null;
             imagesMetadata.length = 0;
-            hideModal(reportFormModalElement);
+            this.hide();
             return 'Report sent!';
         }, null, "Report submission error", e => {
             formElement.querySelector('button[type=submit]').disabled = false;
         }));
-    };
-
-    const contentRenderer = () => {
-        modalContentContainer = createEl('div');
-        const form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
-        modalContentContainer.appendChild(form);
-
-        const updateLocationDisplay = (addressName = '') => {
-            const coordsEl = modalContentContainer.querySelector('#pFLoc-coords');
-            if (coordsEl) {
-                coordsEl.textContent = formState.pFLoc ?
-                    `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}` :
-                    'None';
-            }
-        };
-
-        const updateImagePreview = () => {
-            const previewElement = modalContentContainer.querySelector('#upld-photos-preview');
-            if (previewElement) {
-                renderImagePreview(previewElement, formState.uIMeta, index => {
-                    formState.uIMeta.splice(index, 1);
-                    updateImagePreview();
-                });
-            }
-        };
-
-        form.querySelector('#rep-photos').onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview, form);
-        setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
-        setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
-
-        updateImagePreview();
-        updateLocationDisplay();
-
-        return modalContentContainer;
-    };
-
-    reportFormModalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', contentRenderer);
-
-    return reportFormModalElement;
+    }
 }

@@ -1,6 +1,6 @@
 import {appStore} from '../../store.js';
 import {confSvc, dbSvc} from '../../services.js';
-import {showToast} from '../../utils.js';
+import {showToast, createEl} from '../../utils.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showConfirmModal} from '../modals.js';
@@ -14,7 +14,7 @@ export const DataManagementSection = () => {
 
     const render = () => {
         if (!sectionEl) {
-            sectionEl = document.createElement('section');
+            sectionEl = createEl('section');
             const dataManagementFormFields = [
                 { type: 'button', id: 'clr-reps-btn', label: 'Clear Cached Reports' },
                 { type: 'button', id: 'exp-setts-btn', label: 'Export Settings' },

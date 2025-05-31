@@ -41,7 +41,6 @@ export function ConfigurableListSetting(config) {
     listRenderer();
 
     if (config.uniqueListenersSetup && form) {
-        // Pass specific elements to the setup function
         const importContactsBtn = form.querySelector('#import-contacts-btn');
         const publishContactsBtn = form.querySelector('#publish-contacts-btn');
         if (importContactsBtn && publishContactsBtn) {

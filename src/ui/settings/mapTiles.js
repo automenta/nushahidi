@@ -13,7 +13,7 @@ export const MapTilesSection = () => {
 
     const render = (appState) => {
         if (!sectionEl) {
-            sectionEl = document.createElement('section');
+            sectionEl = createEl('section');
             const mapTilesFormFields = [
                 {
                     label: 'Tile Server Preset:',
