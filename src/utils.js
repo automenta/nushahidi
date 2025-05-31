@@ -1,6 +1,5 @@
 import { nip19 } from 'nostr-tools';
 import ngeohash from 'ngeohash';
-import { showConfirmModal } from './ui.js'; // New import for renderList
 
 export const C = { // Constants
     NOSTR_KIND_REPORT: 30315,
@@ -62,25 +61,6 @@ export function createEl(tagName, attributes = {}, children = []) {
 
     return element;
 }
-
-export const showModal = (id, focusElId) => {
-    const modal = $(`#${id}`);
-    if (modal) {
-        modal.style.display = 'block';
-        modal.setAttribute('aria-hidden', 'false');
-        if (focusElId) $(focusElId, modal)?.focus();
-    }
-    appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: id } }));
-};
-
-export const hideModal = (id) => {
-    const modal = $(`#${id}`);
-    if (modal) {
-        modal.style.display = 'none';
-        modal.setAttribute('aria-hidden', 'true');
-    }
-    appStore.set(s => ({ ...s.ui, modalOpen: null }));
-};
 
 export const sanitizeHTML = s => (s == null ? '' : String(s).replace(/[&<>"']/g, m => {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
@@ -208,72 +188,6 @@ export const getImgDims = file => new Promise((resolve, reject) => {
 
 export const formatNpubShort = pk => nip19.npubEncode(pk).substring(0, 12) + '...';
 export const isNostrId = id => /^[0-9a-f]{64}$/.test(id);
-
-/**
- * Renders a list of items into a specified container with flexible item rendering and actions.
- * @param {string} containerId - The ID of the container element.
- * @param {Array<object>} items - Array of items to render.
- * @param {function(object, number): (string|HTMLElement)} itemRenderer - Function to render a single item's display content.
- *                                                                 Should return a string (HTML) or a DOM element.
- * @param {Array<object>} actionsConfig - Array of action button configurations for each item.
- *   Each action object: {
- *     label: string,
- *     className: string,
- *     onClick: function(item: object, index: number), // Now passes index
- *     confirm?: { title: string, message: string } // Optional confirmation modal config
- *   }
- * @param {string} itemWrapperClass - CSS class for the div wrapping each item.
- * @param {HTMLElement} [scopeElement=document] - The element to scope queries for containerId.
- */
-export const renderList = (containerId, items, itemRenderer, actionsConfig, itemWrapperClass, scopeElement = document) => {
-    const container = $(`#${containerId}`, scopeElement);
-    if (!container) {
-        console.warn(`Container with ID ${containerId} not found for list rendering.`);
-        return;
-    }
-    container.innerHTML = '';
-
-    if (items.length === 0) {
-        container.textContent = `No ${containerId.replace('-', ' ')}s configured.`;
-        return;
-    }
-
-    items.forEach((item, index) => { // Added index here
-        const itemContent = itemRenderer(item, index); // Pass index to itemRenderer
-        const itemDiv = createEl('div', { class: itemWrapperClass });
-
-        if (typeof itemContent === 'string') {
-            itemDiv.innerHTML = itemContent;
-        } else if (itemContent instanceof Node) {
-            itemDiv.appendChild(itemContent);
-        } else {
-            console.warn('itemRenderer must return a string or HTMLElement.');
-            return;
-        }
-
-        actionsConfig.forEach(action => {
-            const actionBtn = createEl('button', {
-                type: 'button', // Ensure it's a button, not submit
-                class: action.className,
-                textContent: action.label,
-                onclick: () => {
-                    if (action.confirm) {
-                        showConfirmModal(
-                            action.confirm.title,
-                            action.confirm.message,
-                            () => action.onClick(item, index), // Pass index to onClick
-                            () => showToast("Action cancelled.", 'info')
-                        );
-                    } else {
-                        action.onClick(item, index); // Pass index to onClick
-                    }
-                }
-            });
-            itemDiv.appendChild(actionBtn);
-        });
-        container.appendChild(itemDiv);
-    });
-};
 
 // New: Toast Notification System
 export function showToast(message, type = 'info', duration = 3000, valueToCopy = null) {
