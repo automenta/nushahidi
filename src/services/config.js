@@ -69,7 +69,8 @@ const applySettingsToStore = (settings, followedPubkeys) => {
         currentFocusTag: currentFocusTag,
         followedPubkeys: followedPubkeys || [],
         settings: {
-            ...appStore.get().settings,
+            // Use a more generic merge for settings sub-object
+            ...appStore.get().settings, // Keep existing if not overwritten
             tileUrl: tileUrl,
             tilePreset: tilePreset,
             cats: settings.cats,
@@ -101,24 +102,8 @@ export const confSvc = {
             await updateFollowedPubkeysInDb(partialSettings.followedPubkeys);
         }
 
-        const appStoreUpdate = {
-            relays: updatedSettings.rls || appStore.get().relays,
-            focusTags: updatedSettings.focusTags || appStore.get().focusTags,
-            currentFocusTag: updatedSettings.currentFocusTag || appStore.get().currentFocusTag,
-            followedPubkeys: partialSettings.followedPubkeys !== undefined ? partialSettings.followedPubkeys : appStore.get().followedPubkeys,
-            settings: {
-                ...appStore.get().settings,
-                tileUrl: updatedSettings.tileUrl || appStore.get().settings.tileUrl,
-                tilePreset: updatedSettings.tilePreset || appStore.get().settings.tilePreset,
-                cats: updatedSettings.cats || appStore.get().settings.cats,
-                mute: updatedSettings.mute || appStore.get().settings.mute,
-                imgHost: updatedSettings.imgH || appStore.get().settings.imgHost,
-                nip96Host: updatedSettings.nip96H || appStore.get().settings.nip96Host,
-                nip96Token: updatedSettings.nip96T || appStore.get().settings.nip96Token
-            },
-            user: updatedSettings.id ? { pk: updatedSettings.id.pk, authM: updatedSettings.id.authM } : appStore.get().user
-        };
-        appStore.set(appStoreUpdate);
+        // After saving to DB, reload and apply all settings to the store
+        await this.load(); // This will call applySettingsToStore
     },
 
     setRlys: rls => confSvc.save({ rls }),
@@ -129,7 +114,7 @@ export const confSvc = {
     rmMute: pk => confSvc.save({ mute: appStore.get().settings.mute.filter(p => p !== pk) }),
     saveId: id => confSvc.save({ id }),
     getId: async () => (await dbSvc.loadSetts())?.id,
-    clearId: () => { appStore.set({ user: null }); confSvc.save({ id: null }) },
+    clearId: () => confSvc.save({ id: null }),
     setTileUrl: url => confSvc.save({ tileUrl: url, tilePreset: 'Custom' }),
     setTilePreset: (preset, url) => confSvc.save({ tilePreset: preset, tileUrl: url }),
     getTileServer: () => appStore.get().settings.tileUrl,
