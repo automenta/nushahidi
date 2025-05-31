@@ -3,6 +3,7 @@ import 'leaflet.markercluster'; // Import the MarkerCluster plugin
 import { generatePrivateKey as genSk, getPublicKey as getPk, nip19, getEventHash as getEvH, signEvent as signEvNostr, relayInit,nip11 } from 'nostr-tools';
 import { appStore } from './store.js';
 import { C, $, encrypt, decrypt, sha256, npubToHex, geohashEncode, parseReport, getGhPrefixes, nsecToHex, isNostrId, showToast } from './utils.js';
+import { showPassphraseModal } from './ui.js'; // Import the new modal function
 
 let _db; /* db instance */
 const getDbStore=async(sN,m='readonly')=>{if(!_db){_db=await new Promise((rs,rj)=>{const rq=indexedDB.open(C.DB_NAME,C.DB_VERSION);rq.onerror=e=>rj(e.target.error);rq.onsuccess=e=>rs(e.target.result);rq.onupgradeneeded=e=>{const s=e.target.result;if(!s.objectStoreNames.contains(C.STORE_REPORTS))s.createObjectStore(C.STORE_REPORTS,{keyPath:'id'});if(!s.objectStoreNames.contains(C.STORE_PROFILES))s.createObjectStore(C.STORE_PROFILES,{keyPath:'pk'});if(!s.objectStoreNames.contains(C.STORE_SETTINGS))s.createObjectStore(C.STORE_SETTINGS,{keyPath:'id'});if(!s.objectStoreNames.contains(C.STORE_OFFLINE_QUEUE))s.createObjectStore(C.STORE_OFFLINE_QUEUE,{autoIncrement:!0,keyPath:'qid'})}})}return _db.transaction(sN,m).objectStore(sN)};
@@ -167,7 +168,33 @@ export const idSvc={ /* idSvc: identityService */
     }
   },
   async impSk(skIn,pass){if(!pass||pass.length<8)return showToast("Passphrase too short (min 8 chars).", 'warning'),null;let skHex;try{skHex=nsecToHex(skIn);if(!isNostrId(skHex))throw new Error("Invalid Nostr private key format.")}catch(e){return showToast(e.message, 'error'),null}const pk=getPk(skHex);try{const eSk=await encrypt(skHex,pass),i={pk,authM:'import',eSk};await confSvc.saveId(i);appStore.set({user:{pk,authM:'import'}});_locSk=skHex;showToast("Private key imported successfully.", 'success');return{pk,sk:skHex}}catch(e){showToast(`Key import error: ${e.message}`, 'error');return null}},
-  async getSk(promptP=true){const u=appStore.get().user;if(!u||u.authM==='nip07')return null;if(_locSk)return _locSk;const i=await confSvc.getId();if(!i?.eSk)return null;if(!promptP)return null;const ps=prompt("Enter passphrase to decrypt private key:");if(!ps)return null;try{const dSk=await decrypt(i.eSk,ps);_locSk=dSk;return dSk}catch(e){showToast("Decryption failed. Incorrect passphrase?", 'error');return null}},
+  async getSk(promptP=true){
+    const u=appStore.get().user;
+    if(!u||u.authM==='nip07')return null;
+    if(_locSk)return _locSk;
+    const i=await confSvc.getId();
+    if(!i?.eSk)return null;
+    if(!promptP)return null;
+
+    // Replaced prompt with custom modal
+    const ps = await showPassphraseModal(
+        "Decrypt Private Key",
+        "Enter your passphrase to decrypt your private key:"
+    );
+
+    if(!ps) {
+        showToast("Decryption cancelled.", 'info');
+        return null;
+    }
+    try{
+        const dSk=await decrypt(i.eSk,ps);
+        _locSk=dSk;
+        return dSk
+    }catch(e){
+        showToast("Decryption failed. Incorrect passphrase?", 'error');
+        return null
+    }
+  },
   async chgPass(oP,nP){const i=await confSvc.getId();if(!i?.eSk||(i.authM!=='local'&&i.authM!=='import'))throw new Error("No local key to change passphrase for.");let dSk;try{dSk=await decrypt(i.eSk,oP)}catch(e){throw new Error("Old passphrase incorrect.")}if(!dSk)throw new Error("Decryption failed.");const nESk=await encrypt(dSk,nP);await confSvc.saveId({...i,eSk:nESk});_locSk=dSk;showToast("Passphrase changed successfully.", 'success')},
   logout(){_locSk=null;confSvc.clearId();showToast("Logged out successfully.", 'info')},
   currU:()=>appStore.get().user,

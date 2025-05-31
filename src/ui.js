@@ -48,6 +48,57 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
     showModal('confirm-modal', 'confirm-modal-heading');
 }
 
+// --- Passphrase Input Modal ---
+let _passphraseModalRoot;
+export function showPassphraseModal(title, message) {
+    return new Promise((resolve) => {
+        if (!_passphraseModalRoot) {
+            _passphraseModalRoot = cE('div', { class: 'modal-content' });
+            gE('#passphrase-modal').appendChild(_passphraseModalRoot);
+        }
+        _passphraseModalRoot.innerHTML = ''; // Clear previous content
+
+        const closeBtn = cE('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => { hideModal('passphrase-modal'); resolve(null); } });
+        const heading = cE('h2', { id: 'passphrase-modal-heading', textContent: title });
+        const msgPara = cE('p', { textContent: message });
+        const passphraseInput = cE('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
+        const buttonContainer = cE('div', { class: 'confirm-modal-buttons' }); // Re-use styles
+
+        const decryptBtn = cE('button', {
+            class: 'confirm-button',
+            textContent: 'Decrypt',
+            onclick: () => {
+                const passphrase = passphraseInput.value;
+                hideModal('passphrase-modal');
+                resolve(passphrase);
+            }
+        });
+        const cancelBtn = cE('button', {
+            class: 'cancel-button',
+            textContent: 'Cancel',
+            onclick: () => { hideModal('passphrase-modal'); resolve(null); }
+        });
+
+        passphraseInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                decryptBtn.click();
+            }
+        });
+
+        buttonContainer.appendChild(cancelBtn);
+        buttonContainer.appendChild(decryptBtn);
+
+        _passphraseModalRoot.appendChild(closeBtn);
+        _passphraseModalRoot.appendChild(heading);
+        _passphraseModalRoot.appendChild(msgPara);
+        _passphraseModalRoot.appendChild(passphraseInput);
+        _passphraseModalRoot.appendChild(buttonContainer);
+
+        showModal('passphrase-modal', 'passphrase-input');
+    });
+}
+
 
 // --- Report Detail Interactions ---
 async function loadAndDisplayInteractions(reportId, reportPk, container) {

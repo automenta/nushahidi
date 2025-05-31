@@ -44,14 +44,33 @@ export const formatNpubShort = pk => nip19.npubEncode(pk).substring(0,12)+'...';
 export const isNostrId = id => /^[0-9a-f]{64}$/.test(id);
 
 // New: Toast Notification System
-export function showToast(message, type = 'info', duration = 3000) {
+export function showToast(message, type = 'info', duration = 3000, valueToCopy = null) {
     const toastContainer = $('#toast-container');
     if (!toastContainer) {
         console.warn('Toast container not found. Message:', message);
         return;
     }
 
-    const toast = createEl('div', { class: `toast toast-${type}`, textContent: message });
+    const toast = createEl('div', { class: `toast toast-${type}` });
+    toast.appendChild(createEl('span', { textContent: message })); // Wrap message in a span
+
+    if (valueToCopy) {
+        const copyButton = createEl('button', {
+            class: 'copy-button',
+            textContent: 'Copy'
+        });
+        copyButton.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(valueToCopy);
+                showToast('Copied to clipboard!', 'success', 1500);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                showToast('Failed to copy to clipboard.', 'error', 1500);
+            }
+        };
+        toast.appendChild(copyButton);
+    }
+
     toastContainer.appendChild(toast);
 
     // Force reflow to enable CSS transition
