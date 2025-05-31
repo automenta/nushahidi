@@ -42,7 +42,7 @@ const matchesFollowedOnly = (report, followedOnlyFilter, followedPubkeys) => !fo
 
 export class FilterControls {
     constructor() {
-        this.filterFormElement = null;
+        this.filterFormElement = createEl('div', { class: 'filter-controls-container' });
         this.mapDrawControlsDiv = null;
 
         this.render(appStore.get());
@@ -126,7 +126,7 @@ export class FilterControls {
             followedOnlyFilter: appState.ui.followedOnlyFilter
         };
 
-        const newForm = renderForm(filterFormFields, initialFilterData, { id: 'filter-form' });
+        const newForm = renderForm(filterFormFields, initialFilterData, { class: 'filter-form' });
 
         this.setupFilterInput(newForm, 'search-query-input', 'q', applyAllFilters, true);
         this.setupFilterSelect(newForm, 'filter-category', 'cat');
@@ -164,17 +164,12 @@ export class FilterControls {
 
         newForm.querySelector('#clear-drawn-shapes-btn').onclick = mapSvc.clearAllDrawnShapes;
 
-        const mapDrawControlsDiv = newForm.querySelector('#map-draw-controls');
-        if (this.mapDrawControlsDiv && this.mapDrawControlsDiv.parentNode) {
-            this.mapDrawControlsDiv.parentNode.removeChild(this.mapDrawControlsDiv);
-        }
-        this.mapDrawControlsDiv = mapDrawControlsDiv;
-        this.mapDrawControlsDiv.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
+        const mapDrawControlsContainer = newForm.querySelector('#map-draw-controls');
+        mapDrawControlsContainer.innerHTML = ''; // Clear previous controls if re-rendering
+        mapDrawControlsContainer.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 
-        if (this.filterFormElement && this.filterFormElement.parentNode) {
-            this.filterFormElement.replaceWith(newForm);
-        }
-        this.filterFormElement = newForm;
+        this.filterFormElement.innerHTML = ''; // Clear previous content
+        this.filterFormElement.appendChild(newForm);
 
         return this.filterFormElement;
     }

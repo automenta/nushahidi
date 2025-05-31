@@ -29,11 +29,14 @@ async function initializeApplication() {
         await confSvc.load();
         await idSvc.init();
 
+        const appRoot = document.getElementById('app');
+        if (!appRoot) throw new Error("App root element not found!");
+
         const mapContainer = document.getElementById('map-container');
         if (!mapContainer) throw new Error("Map container element not found!");
         if (!await mapSvc.init('map-container')) mapContainer.innerHTML = '<p style="color:red">Map init failed.</p>';
 
-        new App();
+        new App(appRoot);
 
         const cachedReports = await dbSvc.getAllReps();
         appStore.set({ reports: (Array.isArray(cachedReports) ? cachedReports : []).sort((a, b) => b.at - a.at) });

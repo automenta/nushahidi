@@ -1,5 +1,5 @@
 import { appStore } from '../store.js';
-import { idSvc, mapSvc } from '../services.js';
+import { idSvc } from '../services.js';
 import { C, createEl } from '../utils.js';
 import { showConfirmModal } from './modals.js';
 import { FilterControls, applyAllFilters } from './components/FilterControls.js';
@@ -13,9 +13,8 @@ import { SettingsModal } from './components/SettingsModal.js';
 import { OnboardingModal } from './components/OnboardingModal.js';
 
 export class App {
-    constructor() {
-        this.root = document.getElementById('app');
-        if (!this.root) throw new Error("App root element not found!");
+    constructor(rootElement) {
+        this.root = rootElement;
         this.root.innerHTML = '';
 
         this.authModal = new AuthModal();

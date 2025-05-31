@@ -9,6 +9,11 @@ import { nip19 } from 'nostr-tools';
 let _locSk = null;
 
 export const idSvc = {
+    async init() {
+        const identity = await confSvc.getId();
+        appStore.set({ user: identity });
+    },
+
     nip07: withLoading(withToast(async () => {
         if (!window.nostr?.getPublicKey) {
             showToast("NIP-07 extension not found. Please install Alby or nos2x.", 'warning');
