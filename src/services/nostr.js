@@ -202,24 +202,45 @@ const fetchContactsLogic = async () => {
 
 export const nostrSvc = {
     async connRlys() {
-        // Ensure _pool is initialized and has the expected methods.
-        // If _pool is null, or if its 'on' method is not a function (indicating corruption or wrong type),
-        // then re-initialize it.
-        if (!_pool || typeof _pool.on !== 'function') {
-            _pool = new SimplePool();
-            // Attach listeners only once when the pool is created
-            _pool.on('relay:connect', (url) => {
-                updRlyStore(url, 'connected');
-                showToast(`Connected to ${url}`, 'success', 2000);
-            });
-            _pool.on('relay:disconnect', (url) => {
-                updRlyStore(url, 'disconnected');
-                showToast(`Disconnected from ${url}`, 'warning', 2000);
-            });
-            _pool.on('relay:error', (url) => {
-                updRlyStore(url, 'error');
-                showToast(`Error connecting to ${url}`, 'error', 2000);
-            });
+        // Check if _pool is already a valid SimplePool instance
+        if (_pool && typeof _pool.on === 'function') {
+            // If it's valid, proceed to connect/manage relays
+            // No need to re-initialize or re-attach listeners
+        } else {
+            // If _pool is null or invalid, attempt to initialize it
+            try {
+                _pool = new SimplePool();
+                // Immediately check if the newly created _pool is valid
+                if (typeof _pool.on !== 'function') {
+                    console.error("SimplePool constructor returned an invalid object. Forcing re-initialization.");
+                    _pool = null; // Reset to null to ensure next call tries again
+                    throw new Error("Nostr SimplePool failed to initialize correctly.");
+                }
+
+                // Attach listeners only once when the pool is successfully created
+                _pool.on('relay:connect', (url) => {
+                    updRlyStore(url, 'connected');
+                    showToast(`Connected to ${url}`, 'success', 2000);
+                });
+                _pool.on('relay:disconnect', (url) => {
+                    updRlyStore(url, 'disconnected');
+                    showToast(`Disconnected from ${url}`, 'warning', 2000);
+                });
+                _pool.on('relay:error', (url) => {
+                    updRlyStore(url, 'error');
+                    showToast(`Error connecting to ${url}`, 'error', 2000);
+                });
+            } catch (e) {
+                console.error("Error initializing Nostr SimplePool:", e);
+                showToast(`Critical Nostr error: ${e.message}. Please refresh.`, 'error', 0);
+                throw e; // Re-throw to stop further execution if pool init fails
+            }
+        }
+
+        // If _pool is still null here, it means initialization failed.
+        // This check is crucial before attempting to use _pool.
+        if (!_pool) {
+            throw new Error("Nostr SimplePool is not initialized. Cannot connect relays.");
         }
 
         const currentRelaysInStore = appStore.get().relays;
