@@ -17,38 +17,6 @@ export function getSettingItems(listId) {
     }
 }
 
-export function renderConfigurableListSetting(wrapper, config) {
-    wrapper.appendChild(createEl('section', {}, [
-        createEl('h3', { textContent: config.title }),
-        createEl('div', { id: config.listId }),
-        config.formFields ? renderForm(config.formFields, {}, { id: config.formId }) : null
-    ].filter(Boolean)));
-    wrapper.appendChild(createEl('hr'));
-
-    const listRenderer = () => {
-        const items = config.getItems();
-        renderList(config.listId, items || [], config.itemRenderer, config.actionsConfig, config.itemWrapperClass, wrapper);
-    };
-
-    if (config.addInputId && config.addBtnId && config.addLogic) {
-        setupAddRemoveListSection({
-            modalContent: wrapper,
-            addInputId: config.addInputId,
-            addBtnId: config.addBtnId,
-            addLogic: config.addLogic,
-            listRenderer,
-            saveBtnId: config.saveBtnId,
-            onSaveCallback: config.onSaveCallback,
-            successMsg: config.addSuccessMsg,
-            errorMsg: config.addErrorMsg
-        });
-    }
-
-    listRenderer();
-
-    config.uniqueListenersSetup?.(wrapper);
-}
-
 export const setupFollowedListUniqueListeners = modalContent => {
     $('#import-contacts-btn', modalContent).onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) throw new Error("Please connect your Nostr identity to import contacts.");

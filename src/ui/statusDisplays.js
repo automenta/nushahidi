@@ -1,8 +1,8 @@
 import {appStore} from '../store.js';
 import {dbSvc} from '../services.js';
 import {$, createEl, formatNpubShort, sanitizeHTML} from '../utils.js';
-import {showReportDetails} from './reportDetails.js';
-import {applyAllFilters} from './filters.js';
+import {ReportDetailsModal} from './components/ReportDetailsModal.js';
+import {applyAllFilters} from './components/FilterControls.js';
 import {showModal} from './modals.js';
 
 export const updateAuthDisplay = pk => {
@@ -76,7 +76,15 @@ export const handleModalFocus = (newModalId, oldModalId) => {
 };
 
 export const handleReportViewing = (reportId, reports) => {
-    if (reportId) showReportDetails(reports.find(r => r.id === reportId));
+    if (reportId) {
+        const report = reports.find(r => r.id === reportId);
+        if (report) {
+            const detailModal = ReportDetailsModal(report);
+            $('#report-detail-container').innerHTML = '';
+            $('#report-detail-container').appendChild(detailModal);
+            showModal('report-detail-container', 'detail-title');
+        }
+    }
 };
 
 export const updateGlobalLoadingSpinner = isLoading => {

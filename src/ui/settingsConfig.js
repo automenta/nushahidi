@@ -14,6 +14,7 @@ import {
 } from './settingsUtils.js';
 import {renderDataManagementSection} from './settings/dataManagement.js';
 import {offlineQueueActionsConfig, offlineQueueItemRenderer, renderOfflineQueue} from './settings/offlineQueue.js';
+import {ConfigurableListSetting} from './components/ConfigurableListSetting.js';
 
 const createAddLogicHandler = (confSvcMethod, itemExistsChecker, itemExistsErrorMsg) => async inputValue => {
     if (!inputValue) throw new Error("Input cannot be empty.");
@@ -87,7 +88,8 @@ export const settingsSections = [
         onSaveCallback: reconnectRelays,
         getItems: () => appStore.get().relays,
         addSuccessMsg: "Relay added.",
-        addErrorMsg: "Error adding relay"
+        addErrorMsg: "Error adding relay",
+        renderer: ConfigurableListSetting
     },
     {
         type: 'section',
@@ -114,7 +116,8 @@ export const settingsSections = [
         onSaveCallback: () => nostrSvc.refreshSubs(),
         getItems: () => appStore.get().focusTags,
         addSuccessMsg: "Focus tag added.",
-        addErrorMsg: "Error adding focus tag"
+        addErrorMsg: "Error adding focus tag",
+        renderer: ConfigurableListSetting
     },
     {
         type: 'list',
@@ -135,7 +138,8 @@ export const settingsSections = [
         saveBtnId: 'save-cats-btn',
         getItems: () => appStore.get().settings.cats,
         addSuccessMsg: "Category added.",
-        addErrorMsg: "Error adding category"
+        addErrorMsg: "Error adding category",
+        renderer: ConfigurableListSetting
     },
     {
         type: 'section',
@@ -166,7 +170,8 @@ export const settingsSections = [
         saveBtnId: 'save-mute-list-btn',
         getItems: () => appStore.get().settings.mute,
         addSuccessMsg: "Pubkey added to mute list.",
-        addErrorMsg: "Error adding pubkey to mute list"
+        addErrorMsg: "Error adding pubkey to mute list",
+        renderer: ConfigurableListSetting
     },
     {
         type: 'list',
@@ -191,7 +196,8 @@ export const settingsSections = [
         uniqueListenersSetup: setupFollowedListUniqueListeners,
         getItems: () => appStore.get().followedPubkeys,
         addSuccessMsg: "User added to followed list.",
-        addErrorMsg: "Error adding user to followed list"
+        addErrorMsg: "Error adding user to followed list",
+        renderer: ConfigurableListSetting
     },
     {
         type: 'offline-queue',
@@ -200,7 +206,16 @@ export const settingsSections = [
         itemRenderer: offlineQueueItemRenderer,
         actionsConfig: modalContent => offlineQueueActionsConfig(modalContent),
         itemWrapperClass: 'offline-q-entry',
-        customRenderLogic: renderOfflineQueue
+        customRenderLogic: renderOfflineQueue,
+        renderer: (wrapper, section) => {
+            const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
+            sectionEl.append(
+                createEl('p', { textContent: 'Events waiting to be published when online.' }),
+                createEl('div', { id: section.listId })
+            );
+            wrapper.appendChild(sectionEl);
+            section.customRenderLogic(wrapper);
+        }
     },
     {
         type: 'section',

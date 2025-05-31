@@ -1,7 +1,7 @@
 import {appStore} from '../store.js';
 import {$, createEl, sanitizeHTML} from '../utils.js';
 
-export function createModalWrapper(modalId, title, contentRenderer) {
+export function Modal(modalId, title, contentRenderer) {
     const modalElement = $(`#${modalId}`);
     if (!modalElement) return console.error(`Modal element with ID ${modalId} not found.`);
 
@@ -22,7 +22,7 @@ export function createModalWrapper(modalId, title, contentRenderer) {
 }
 
 export function showConfirmModal(title, message, onConfirm, onCancel) {
-    createModalWrapper('confirm-modal', title, root => [
+    Modal('confirm-modal', title, root => [
         createEl('p', { innerHTML: sanitizeHTML(message) }),
         createEl('div', { class: 'confirm-modal-buttons' }, [
             createEl('button', { class: 'cancel-button', textContent: 'Cancel', onclick: () => { hideModal('confirm-modal'); onCancel?.(); } }),
@@ -34,7 +34,7 @@ export function showConfirmModal(title, message, onConfirm, onCancel) {
 
 export function showPassphraseModal(title, message) {
     return new Promise(resolve => {
-        createModalWrapper('passphrase-modal', title, root => {
+        Modal('passphrase-modal', title, root => {
             const passphraseInput = createEl('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
             const decryptBtn = createEl('button', {
                 class: 'confirm-button', textContent: 'Decrypt',
