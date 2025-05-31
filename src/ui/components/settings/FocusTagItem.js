@@ -16,11 +16,13 @@ export class FocusTagItem {
     };
 
     render() {
+        const radioId = `focus-tag-radio-${sanitizeHTML(this.focusTag.tag.replace(/[^a-zA-Z0-9]/g, ''))}`;
         return createEl('div', {}, [
             createEl('span', { textContent: `${sanitizeHTML(this.focusTag.tag)}${this.focusTag.active ? ' (Active)' : ''}` }),
-            createEl('label', {}, [
+            createEl('label', { for: radioId }, [
                 createEl('input', {
                     type: 'radio',
+                    id: radioId,
                     name: 'activeFocusTag',
                     value: this.focusTag.tag,
                     checked: this.focusTag.active,

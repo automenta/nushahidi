@@ -3,8 +3,9 @@ import {createEl} from '../../utils.js';
 
 export class GlobalLoadingSpinner {
     constructor() {
-        this.spinnerEl = createEl('div', { class: 'spinner-overlay' });
+        this.spinnerEl = createEl('div', { class: 'global-spinner' }); // Use class
         this.spinnerEl.appendChild(createEl('div', { class: 'spinner' }));
+        this.spinnerEl.appendChild(createEl('p', { textContent: 'Loading...' }));
 
         this.render(appStore.get().ui.loading);
 

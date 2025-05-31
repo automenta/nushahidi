@@ -10,14 +10,14 @@ export class ConfigurableListSetting {
     constructor(config) {
         this.config = config;
         this.sectionEl = createEl('section');
-        this.listContainer = createEl('div', { id: config.listId });
+        this.listContainer = createEl('div', { class: 'configurable-list-container' }); // Use a class instead of ID
         this.form = null;
 
         this.sectionEl.appendChild(createEl('h3', { textContent: config.title }));
         this.sectionEl.appendChild(this.listContainer);
 
         if (config.formFields) {
-            this.form = renderForm(config.formFields, {}, { id: config.formId });
+            this.form = renderForm(config.formFields, {}, { class: 'configurable-list-form' }); // Use a class instead of ID
             this.sectionEl.appendChild(this.form);
         }
 

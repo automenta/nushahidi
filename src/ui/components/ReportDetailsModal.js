@@ -11,21 +11,22 @@ import {ReportFormModal} from './ReportFormModal.js';
 
 export class ReportDetailsModal extends Modal {
     constructor(report, reportFormModal) {
-        let modalContentContainer;
-        const contentRenderer = () => {
-            modalContentContainer = createEl('div');
-            this.renderContent(report, modalContentContainer);
-            return modalContentContainer;
+        const contentRenderer = (contentRoot, modalRoot) => {
+            this.modalContentContainer = createEl('div');
+            this.renderContent(report, this.modalContentContainer);
+            return this.modalContentContainer;
         };
-        super('report-detail-container', report.title || 'Report Details', contentRenderer);
+        super('report-detail-modal', report.title || 'Report Details', contentRenderer);
         this.report = report;
         this.reportFormModal = reportFormModal;
+        this.modalContentContainer = null; // Will be set by contentRenderer
+
         this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.ui.reportIdToView === this.report.id && newState.reports !== oldState?.reports) {
                 const updatedReport = newState.reports.find(r => r.id === this.report.id);
                 if (updatedReport) {
                     this.report = updatedReport;
-                    this.renderContent(this.report, this.root.querySelector('.modal-content'));
+                    this.renderContent(this.report, this.modalContentContainer);
                 }
             }
         });
@@ -110,7 +111,7 @@ export class ReportDetailsModal extends Modal {
             <button class="small-button back-to-list-btn">&lt; List</button>
             ${isAuthor ? `<button class="small-button edit-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right;">Edit Report</button>` : ''}
             ${isAuthor ? `<button class="small-button delete-button" data-report-id="${sanitizeHTML(rep.id)}" style="float:right; margin-right: 0.5rem;">Delete Report</button>` : ''}
-            <h2 id="detail-title">${sanitizeHTML(rep.title || 'Report')}</h2>
+            <h2 class="detail-title">${sanitizeHTML(rep.title || 'Report')}</h2>
             ${this.renderAuthorInfo(rep, profile, isFollowed, canFollow)}
             <p><strong>Date:</strong> ${new Date(rep.at * 1000).toLocaleString()}</p>
             <p><strong>Summary:</strong> ${sanitizeHTML(rep.sum || 'N/A')}</p>
@@ -159,7 +160,7 @@ export class ReportDetailsModal extends Modal {
             const updatedReport = appStore.get().reports.find(r => r.id === this.report.id);
             if (updatedReport) {
                 this.report = updatedReport;
-                this.renderContent(this.report, this.root.querySelector('.modal-content'));
+                this.renderContent(this.report, this.modalContentContainer);
             }
             return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
         }, null, "Error toggling follow status", () => btn.disabled = false))();

@@ -21,11 +21,15 @@ export class AppHeader {
 
         this.headerEl.append(
             createEl('h1', { textContent: 'NostrMapper' }),
-            this.createReportBtn,
-            this.authButton,
-            this.settingsButton,
-            this.userDisplay,
-            this.connectionStatusComponent.element
+            createEl('div', { class: 'header-controls' }, [
+                this.createReportBtn,
+                this.authButton,
+                this.settingsButton
+            ]),
+            createEl('div', { class: 'status-and-user' }, [
+                this.userDisplay,
+                this.connectionStatusComponent.element
+            ])
         );
 
         this.render(appStore.get());

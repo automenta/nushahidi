@@ -55,7 +55,7 @@ const CRYPTO = { ALG: 'AES-GCM', IV_L: 12, SALT_L: 16, ITER: 1e5 };
 
 async function deriveKey(passphrase, salt) {
     const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']);
-    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: CRYPTO.ITER, hash: 'SHA-256' }, keyMaterial, { name: CRYRO.ALG, length: 256 }, true, ['encrypt', 'decrypt']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: CRYPTO.ITER, hash: 'SHA-256' }, keyMaterial, { name: CRYPTO.ALG, length: 256 }, true, ['encrypt', 'decrypt']);
 }
 
 export async function encrypt(data, passphrase) {

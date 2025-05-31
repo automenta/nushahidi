@@ -4,22 +4,14 @@ import {settingsSections} from '../settingsConfig.js';
 
 export class SettingsModal extends Modal {
     constructor() {
-        let settingsContent;
-        const contentRenderer = () => {
-            settingsContent = createEl('div', { class: 'settings-sections' });
+        const contentRenderer = (contentRoot, modalRoot) => {
+            const settingsContent = createEl('div', { class: 'settings-sections' });
             settingsSections.forEach(sectionConfig => {
                 const sectionEl = createEl('section');
                 sectionEl.appendChild(createEl('h3', { textContent: sectionConfig.title }));
 
-                let renderedContent;
-                if (sectionConfig.type === 'offline-queue') {
-                    sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
-                    const sectionInstance = new sectionConfig.renderer(sectionConfig);
-                    renderedContent = sectionInstance.element;
-                } else {
-                    const sectionInstance = new sectionConfig.renderer(sectionConfig);
-                    renderedContent = sectionInstance.element;
-                }
+                const sectionInstance = new sectionConfig.renderer(sectionConfig);
+                const renderedContent = sectionInstance.element;
 
                 if (Array.isArray(renderedContent)) renderedContent.forEach(el => sectionEl.appendChild(el));
                 else if (renderedContent instanceof Node) sectionEl.appendChild(renderedContent);

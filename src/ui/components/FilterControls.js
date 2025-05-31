@@ -109,7 +109,7 @@ export class FilterControls {
             { type: 'button', id: 'reset-filters-btn', label: 'Reset', class: 'reset-filters-btn' },
             { type: 'hr' },
             { type: 'h4', content: ['Map Drawing Filters'] },
-            { type: 'custom-html', id: 'map-draw-controls' },
+            { type: 'custom-html', class: 'map-draw-controls' }, // Use class
             { label: 'Enable Spatial Filter', type: 'checkbox', id: 'spatial-filter-toggle', name: 'spatialFilterEnabled' },
             { label: 'Show Only Followed Users', type: 'checkbox', id: 'followed-only-toggle', name: 'followedOnlyFilter' },
             { type: 'button', id: 'clear-drawn-shapes-btn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
@@ -164,7 +164,7 @@ export class FilterControls {
 
         newForm.querySelector('#clear-drawn-shapes-btn').onclick = mapSvc.clearAllDrawnShapes;
 
-        const mapDrawControlsContainer = newForm.querySelector('#map-draw-controls');
+        const mapDrawControlsContainer = newForm.querySelector('.map-draw-controls'); // Use class
         mapDrawControlsContainer.innerHTML = '';
         mapDrawControlsContainer.appendChild(mapSvc.getDrawControl().onAdd(mapSvc.get()));
 

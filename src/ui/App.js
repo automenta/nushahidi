@@ -17,12 +17,25 @@ export class App {
         this.root = rootElement;
         this.root.innerHTML = '';
 
+        // Create main layout elements
+        this.headerEl = createEl('header');
+        this.mainEl = createEl('main');
+        this.sidebarEl = createEl('div', { id: 'sidebar' });
+        this.mapContainerEl = createEl('div', { id: 'map-container', 'aria-label': 'Interactive Map' });
+        this.footerEl = createEl('footer', {}, createEl('p', { textContent: '© NostrMapper Community' }));
+
+        // Append main layout elements to root
+        this.root.append(this.headerEl, this.mainEl, this.footerEl);
+        this.mainEl.append(this.mapContainerEl, this.sidebarEl);
+
+        // Instantiate modals (they append themselves to document.body)
         this.authModal = new AuthModal();
         this.reportFormModal = new ReportFormModal();
         this.settingsModal = new SettingsModal();
         this.onboardingModal = new OnboardingModal();
-        this.reportDetailsModal = null;
+        this.reportDetailsModal = null; // Managed dynamically
 
+        // Instantiate main UI components and append their elements
         this.appHeader = new AppHeader({
             onCreateReport: () => this.reportFormModal.show('rep-title'),
             onAuthToggle: () => {
@@ -32,16 +45,23 @@ export class App {
             },
             onShowSettings: () => this.settingsModal.show()
         });
-        this.filterControls = new FilterControls();
-        this.reportList = new ReportList();
-        this.globalLoadingSpinner = new GlobalLoadingSpinner();
+        this.headerEl.appendChild(this.appHeader.element);
 
-        this.root.append(
-            this.appHeader.element,
-            this.filterControls.element,
-            this.reportList.element,
-            this.globalLoadingSpinner.element
-        );
+        // Sidebar controls (New Report, Settings)
+        const sidebarControls = createEl('div', { class: 'sidebar-controls' }, [
+            createEl('button', { textContent: 'New Report', onclick: () => this.reportFormModal.show('rep-title') }),
+            createEl('button', { textContent: 'Settings', onclick: () => this.settingsModal.show() })
+        ]);
+        this.sidebarEl.appendChild(sidebarControls);
+
+        this.filterControls = new FilterControls();
+        this.sidebarEl.appendChild(this.filterControls.element);
+
+        this.reportList = new ReportList();
+        this.sidebarEl.appendChild(this.reportList.element);
+
+        this.globalLoadingSpinner = new GlobalLoadingSpinner();
+        this.root.appendChild(this.globalLoadingSpinner.element); // Spinner is global, appended to root
 
         this.setupEventListeners();
         applyAllFilters();

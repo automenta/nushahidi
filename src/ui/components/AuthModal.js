@@ -7,7 +7,6 @@ import {withLoading, withToast} from '../../decorators.js';
 
 export class AuthModal extends Modal {
     constructor() {
-        let form;
         let connNip07Btn;
         let authPassInput;
         let createProfBtn;
@@ -15,7 +14,7 @@ export class AuthModal extends Modal {
         let importSkBtn;
         let cancelAuthModalBtn;
 
-        const contentRenderer = () => {
+        const contentRenderer = (contentRoot, modalRoot) => {
             const authFormFields = [
                 { type: 'paragraph', content: [createEl('strong', { textContent: 'Recommended: ' }), 'Use NIP-07 (Alby, etc.)'] },
                 { type: 'button', id: 'conn-nip07-btn', label: 'Connect NIP-07' },
@@ -30,7 +29,7 @@ export class AuthModal extends Modal {
                 { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => this.hide(), style: 'margin-top:1rem' }
             ];
 
-            form = renderForm(authFormFields, {}, {id: 'auth-form'});
+            const form = renderForm(authFormFields, {}, {id: 'auth-form'});
 
             connNip07Btn = form.querySelector('#conn-nip07-btn');
             authPassInput = form.querySelector('#auth-pass');

@@ -27,8 +27,8 @@ export class ConnectionStatus {
         this.connectionStatusEl.className = state.online ? 'status-online' : 'status-offline';
 
         if (!state.online) {
-            this.syncStatusEl.textContent = `Sync Status: Offline (${state.offlineQueueCount} pending)`;
-            this.offlineQueueCountEl.textContent = state.offlineQueueCount > 0 ? ` (${state.offlineQueueCount})` : '';
+            this.syncStatusEl.textContent = `Sync Status: Offline`;
+            this.offlineQueueCountEl.textContent = state.offlineQueueCount > 0 ? ` (${state.offlineQueueCount} pending)` : '';
             this.offlineQueueCountEl.onclick = () => state.offlineQueueCount > 0 && this.onShowSettings?.();
             this.offlineQueueCountEl.style.cursor = state.offlineQueueCount > 0 ? 'pointer' : 'default';
         } else {

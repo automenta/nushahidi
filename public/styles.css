@@ -1,6 +1,3 @@
-/* Removed @import 'leaflet.markercluster/dist/MarkerCluster.css'; */
-/* Removed @import 'leaflet.markercluster/dist/MarkerCluster.Default.css'; */
-
 :root {
     --primary-color: #3367D6;
     --secondary-color: #4CAF50;
@@ -44,7 +41,7 @@ textarea {
     height: 100%;
 }
 
-header {
+.app-header {
     background-color: var(--primary-color);
     color: var(--light-text);
     padding: .8rem 1.2rem;
@@ -52,21 +49,35 @@ header {
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
 }
 
-header h1 {
+.app-header h1 {
     margin: 0;
     font-size: 1.5em;
     font-weight: 600;
 }
 
-.status-indicators span,
-.user-actions span {
-    margin-left: 1rem;
+.header-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-and-user {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.user-display,
+.connection-status span {
     font-size: .85em;
 }
 
-.user-actions button {
+.header-controls button {
     background-color: var(--secondary-color);
     color: var(--light-text);
     border: none;
@@ -77,11 +88,15 @@ header h1 {
     transition: background-color .2s;
 }
 
-.user-actions button:hover {
+.header-controls button:hover {
     background-color: #45a049;
 }
 
-.status-indicators .status-button {
+.connection-status span {
+    margin-left: 0; /* Reset margin from old .status-indicators span */
+}
+
+.connection-status .status-button { /* This selector might not be needed anymore if ConnectionStatus creates its own elements */
     background: none;
     border: none;
     color: var(--light-text);
@@ -92,10 +107,9 @@ header h1 {
     text-decoration: underline;
 }
 
-.status-indicators .status-button:hover {
+.connection-status .status-button:hover {
     opacity: 0.8;
 }
-
 
 main {
     flex-grow: 1;
@@ -120,7 +134,7 @@ main {
     flex-direction: column;
 }
 
-.controls button {
+.sidebar-controls button {
     margin-bottom: .7rem;
     padding: .6rem;
     width: 100%;
@@ -131,7 +145,7 @@ main {
     cursor: pointer;
 }
 
-#filter-controls {
+.filter-controls-container {
     background-color: #f9f9f9;
     padding: .7rem;
     border-radius: 4px;
@@ -139,23 +153,23 @@ main {
     border: 1px solid #e0e0e0;
 }
 
-#filter-controls h4 {
+.filter-controls-container h4 {
     margin-top: 0;
     margin-bottom: .5rem;
     font-size: 1.05em;
 }
 
-#filter-controls label {
+.filter-controls-container label {
     display: block;
     margin-top: .4rem;
     font-size: .85em;
     font-weight: 500;
 }
 
-#filter-controls input[type=text],
-#filter-controls input[type=search],
-#filter-controls input[type=datetime-local],
-#filter-controls select {
+.filter-controls-container input[type=text],
+.filter-controls-container input[type=search],
+.filter-controls-container input[type=datetime-local],
+.filter-controls-container select {
     width: 100%;
     padding: .5rem;
     margin-top: .2rem;
@@ -164,7 +178,7 @@ main {
     font-size: .9em;
 }
 
-#filter-controls button {
+.filter-controls-container button {
     margin-top: .7rem;
     padding: .45rem .7rem;
     color: var(--light-text);
@@ -175,16 +189,15 @@ main {
     font-size: .85em;
 }
 
-#filter-controls #set-focus-tag-btn,
-#filter-controls #apply-filters-btn {
+.filter-controls-container .apply-filters-btn {
     background-color: var(--secondary-color);
 }
 
-#filter-controls #reset-filters-btn {
+.filter-controls-container .reset-filters-btn {
     background-color: var(--danger-color);
 }
 
-#report-list-container h2 {
+.report-list-container h2 {
     font-size: 1.25em;
     margin-bottom: .4rem;
 }
@@ -228,18 +241,18 @@ main {
     margin-top: .2rem;
 }
 
-#report-detail-container {
+.report-detail-container { /* Changed from #report-detail-container */
     padding: 1rem;
     background-color: #fff;
     border-radius: 4px;
 }
 
-#report-detail-container h2 {
+.report-detail-container h2 { /* Changed from #report-detail-container */
     margin-top: 0;
     color: var(--primary-color);
 }
 
-#report-detail-container .markdown-content img {
+.report-detail-container .markdown-content img { /* Changed from #report-detail-container */
     max-width: 100%;
     height: auto;
     margin-top: .5rem;
@@ -247,7 +260,7 @@ main {
     border: 1px solid var(--border-color);
 }
 
-#report-detail-container .markdown-content pre {
+.report-detail-container .markdown-content pre { /* Changed from #report-detail-container */
     background-color: #f0f0f0;
     padding: .7rem;
     border-radius: 4px;
@@ -256,13 +269,13 @@ main {
     margin: .5rem 0;
 }
 
-#report-detail-container .small-button {
+.report-detail-container .small-button { /* Changed from #report-detail-container */
     font-size: .85em;
     padding: .3em .6em;
     margin-bottom: .5em;
 }
 
-#report-detail-container .edit-button {
+.report-detail-container .edit-button { /* Changed from #report-detail-container */
     background-color: var(--secondary-color);
     color: var(--light-text);
     border: none;
@@ -271,11 +284,11 @@ main {
     transition: background-color .2s;
 }
 
-#report-detail-container .edit-button:hover {
+.report-detail-container .edit-button:hover { /* Changed from #report-detail-container */
     background-color: #45a049;
 }
 
-#report-detail-container .delete-button {
+.report-detail-container .delete-button { /* Changed from #report-detail-container */
     background-color: var(--danger-color);
     color: var(--light-text);
     border: none;
@@ -284,40 +297,40 @@ main {
     transition: background-color .2s;
 }
 
-#report-detail-container .delete-button:hover {
+.report-detail-container .delete-button:hover { /* Changed from #report-detail-container */
     background-color: #c9302c;
 }
 
 
-#report-detail-container .interactions {
+.report-detail-container .interactions { /* Changed from #report-detail-container */
     margin-top: 1rem;
     border-top: 1px solid #eee;
     padding-top: .8rem;
 }
 
-#report-detail-container .interactions h4 {
+.report-detail-container .interactions h4 { /* Changed from #report-detail-container */
     margin-top: 0;
     margin-bottom: .5rem;
 }
 
-#report-detail-container .interaction-item {
+.report-detail-container .interaction-item { /* Changed from #report-detail-container */
     font-size: .9em;
     margin-bottom: .4rem;
     padding-bottom: .4rem;
     border-bottom: 1px dotted #eee;
 }
 
-#report-detail-container .interaction-item:last-child {
+.report-detail-container .interaction-item:last-child { /* Changed from #report-detail-container */
     border-bottom: none;
 }
 
-#report-detail-container .reaction-buttons button {
+.report-detail-container .reaction-buttons button { /* Changed from #report-detail-container */
     margin-right: .3rem;
     padding: .2rem .4rem;
     font-size: .8em;
 }
 
-#report-detail-container #comment-form textarea {
+.report-detail-container .comment-form textarea { /* Changed from #report-detail-container #comment-form */
     width: 100%;
     min-height: 60px;
     margin-bottom: .3rem;
@@ -454,7 +467,7 @@ footer {
     font-size: .9em;
 }
 
-#map-picker-area {
+.map-picker-area { /* Changed from #map-picker-area */
     height: 120px;
     background-color: #e9ecef;
     margin-bottom: .4rem;
@@ -468,14 +481,14 @@ footer {
     border-radius: 4px;
 }
 
-#cats-cont-form label {
+.cats-cont-form label { /* Changed from #cats-cont-form */
     display: inline-block;
     margin-right: .8rem;
     font-weight: 400;
     font-size: .9em;
 }
 
-#upld-photos-preview p {
+.uploaded-photos-preview p { /* Changed from #upld-photos-preview */
     font-size: .8em;
     margin: .15rem 0;
     word-break: break-all;
@@ -520,13 +533,13 @@ footer {
 }
 
 
-#settings-sections section {
+.settings-sections section { /* Changed from #settings-sections */
     margin-bottom: 1.2rem;
     padding-bottom: .8rem;
     border-bottom: 1px solid #eee;
 }
 
-#settings-sections section:last-child {
+.settings-sections section:last-child { /* Changed from #settings-sections */
     border-bottom: none;
 }
 
@@ -599,90 +612,7 @@ footer {
     }
 }
 
-[aria-hidden="true"] {
-    display: none !important;
-}
-
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-}
-
-#toast-container {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1001;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    pointer-events: none;
-}
-
-.toast {
-    background-color: #333;
-    color: #fff;
-    padding: 10px 20px;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-    transform: translateY(20px);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    min-width: 250px;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.toast-info {
-    background-color: #337ab7;
-}
-
-.toast-success {
-    background-color: #5cb85c;
-}
-
-.toast-error {
-    background-color: #d9534f;
-}
-
-.toast-warning {
-    background-color: #f0ad4e;
-}
-
-.toast button.copy-button {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    padding: 5px 10px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.8em;
-    pointer-events: all;
-    transition: background-color 0.2s;
-}
-
-.toast button.copy-button:hover {
-    background-color: rgba(255, 255, 255, 0.3);
-}
-
-.global-spinner {
+.global-spinner { /* Changed from #global-loading-spinner */
     position: fixed;
     top: 0;
     left: 0;
@@ -736,27 +666,24 @@ footer {
     background-color: #45a049;
 }
 
-/* Removed background-image and background-position rules for leaflet-draw-toolbar a */
-/* These styles are typically provided by the leaflet.draw.css file from the CDN */
-
-#filter-controls hr {
+.filter-controls-container hr { /* Changed from #filter-controls */
     border: none;
     border-top: 1px solid #e0e0e0;
     margin: 1rem 0;
 }
 
-#filter-controls #map-draw-controls {
+.filter-controls-container .map-draw-controls { /* Changed from #filter-controls #map-draw-controls */
     margin-bottom: 0.5rem;
 }
 
-#filter-controls #map-draw-controls .leaflet-draw-toolbar {
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar { /* Changed from #filter-controls #map-draw-controls */
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
     margin-bottom: 0.5rem;
 }
 
-#filter-controls #map-draw-controls .leaflet-draw-toolbar a {
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a { /* Changed from #filter-controls #map-draw-controls */
     display: inline-block;
     width: 24px;
     height: 24px;
@@ -767,11 +694,11 @@ footer {
     transition: background-color 0.2s;
 }
 
-#filter-controls #map-draw-controls .leaflet-draw-toolbar a:hover {
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a:hover { /* Changed from #filter-controls #map-draw-controls */
     background-color: #2a5bb7;
 }
 
-#filter-controls #map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions {
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions { /* Changed from #filter-controls #map-draw-controls */
     background-color: transparent;
     border: none;
     width: auto;
@@ -781,31 +708,31 @@ footer {
     color: var(--primary-color);
 }
 
-#filter-controls #map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions:hover {
+.filter-controls-container .map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions:hover { /* Changed from #filter-controls #map-draw-controls */
     text-decoration: underline;
 }
 
-#filter-controls #spatial-filter-toggle {
+.filter-controls-container #spatial-filter-toggle { /* Changed from #filter-controls */
     width: auto;
     margin-right: 0.5rem;
 }
 
-#filter-controls #clear-drawn-shapes-btn {
+.filter-controls-container .clear-drawn-shapes-btn { /* Changed from #filter-controls #clear-drawn-shapes-btn */
     background-color: var(--danger-color);
     margin-top: 0.5rem;
 }
 
-#onboarding-info .modal-content {
+.onboarding-modal .modal-content { /* Changed from #onboarding-info */
     max-width: 500px;
     text-align: center;
 }
 
-#onboarding-info .modal-content ul {
+.onboarding-modal .modal-content ul { /* Changed from #onboarding-info */
     text-align: left;
     margin-left: 20px;
 }
 
-#onboarding-info .modal-content button {
+.onboarding-modal .modal-content button { /* Changed from #onboarding-info */
     margin-top: 1.5rem;
     background-color: var(--primary-color);
     color: var(--light-text);
@@ -816,6 +743,6 @@ footer {
     font-size: 0.95em;
 }
 
-#onboarding-info .modal-content button:hover {
+.onboarding-modal .modal-content button:hover { /* Changed from #onboarding-info */
     opacity: 0.85;
 }
