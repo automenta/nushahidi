@@ -1,4 +1,5 @@
-import {nip11, relayInit} from 'nostr-tools';
+import { relayInit } from 'nostr-tools/relay';
+import { nip11 } from 'nostr-tools/nip11';
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';

@@ -2,9 +2,9 @@ import {
     generateSecretKey as genSk,
     getEventHash as getEvH,
     getPublicKey as getPk,
-    nip19,
     finalizeEvent as signEvNostr
-} from 'nostr-tools';
+} from 'nostr-tools/event';
+import { nip19 } from 'nostr-tools/nip19';
 import {appStore} from '../store.js';
 import {decrypt, encrypt, isNostrId, nsecToHex, showToast} from '../utils.js';
 import {showPassphraseModal} from '../ui/modals.js';

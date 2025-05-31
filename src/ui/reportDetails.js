@@ -6,7 +6,7 @@ import {hideModal, showConfirmModal} from './modals.js';
 import {renderForm} from './forms.js';
 import {RepFormComp} from './reportForm.js';
 import {applyAllFilters} from './filters.js';
-import {nip19} from 'nostr-tools';
+import { nip19 } from 'nostr-tools/nip19';
 import {withLoading, withToast} from '../decorators.js';
 
 
