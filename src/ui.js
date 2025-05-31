@@ -33,8 +33,8 @@ const setupOnboardingModal = () => {
 
 const initGlobalButtons = () => {
     $('#create-report-btn').onclick = () => {
-        $('#report-form-modal').innerHTML = '';
-        $('#report-form-modal').append(RepFormComp());
+        // RepFormComp already handles appending the modal to the DOM
+        RepFormComp();
         showModal('report-form-modal', 'rep-title');
     };
 
@@ -42,15 +42,15 @@ const initGlobalButtons = () => {
         appStore.get().user ?
             showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
             (() => {
-                $('#auth-modal').innerHTML = '';
-                $('#auth-modal').append(AuthModalComp());
+                // AuthModalComp already handles appending the modal to the DOM
+                AuthModalComp();
                 showModal('auth-modal', 'conn-nip07-btn');
             })();
     };
 
     $('#settings-btn').onclick = () => {
-        $('#settings-modal').innerHTML = '';
-        $('#settings-modal').append(SettPanComp());
+        // SettPanComp already handles appending the modal to the DOM
+        SettPanComp();
         showModal('settings-modal');
     };
 };
