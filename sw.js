@@ -3,9 +3,9 @@ import {NavigationRoute, registerRoute} from 'workbox-routing';
 import {NetworkFirst, StaleWhileRevalidate} from 'workbox-strategies';
 import {ExpirationPlugin} from 'workbox-expiration';
 import {BackgroundSyncPlugin} from 'workbox-background-sync';
-import { setLogLevel, LOG_LEVELS } from 'workbox-core'; // Corrected import from LogLevel to LOG_LEVELS
+import { setLogLevel, LogLevel } from 'workbox-core'; // Corrected import to LogLevel
 
-setLogLevel(LOG_LEVELS.SILENT); // Corrected usage from LogLevel to LOG_LEVELS
+setLogLevel(LogLevel.SILENT); // Corrected usage to LogLevel.SILENT
 
 cleanupOutdatedCaches();
 
