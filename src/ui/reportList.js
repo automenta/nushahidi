@@ -8,6 +8,28 @@ import { RepFormComp } from './reportForm.js';
 import { applyAllFilters } from './filters.js';
 import { nip19 } from 'nostr-tools';
 
+// Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
+const withLoading = (fn) => async (...args) => {
+    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+    try {
+        return await fn(...args);
+    } finally {
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+    }
+};
+
+const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
+    try {
+        const result = await fn(...args);
+        if (successMsg) showToast(successMsg, 'success');
+        return result;
+    } catch (e) {
+        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
+        if (onErrorCallback) onErrorCallback(e);
+        throw e; // Re-throw to allow further error handling if needed
+    }
+};
+
 const rendRepCard = report => {
     const summary = report.sum || (report.ct ? report.ct.substring(0, 100) + '...' : 'N/A');
     return `<div class="report-card" data-rep-id="${sanitizeHTML(report.id)}" role="button" tabindex="0" aria-labelledby="card-title-${report.id}">
@@ -19,9 +41,7 @@ const rendRepCard = report => {
 async function loadAndDisplayInteractions(reportId, reportPk, container) {
     // Display a spinner while loading
     container.innerHTML = '<h4>Interactions</h4><div class="spinner"></div>';
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-
-    try {
+    await withLoading(withToast(async () => {
         const interactions = await nostrSvc.fetchInteractions(reportId, reportPk);
 
         const fragment = document.createDocumentFragment();
@@ -72,9 +92,6 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
             style: 'margin-top:0.5rem;'
         });
 
-        fragment.appendChild(reactionButtonsDiv);
-        fragment.appendChild(commentForm);
-
         // Clear container and append the fragment once
         container.innerHTML = '';
         container.appendChild(fragment);
@@ -90,12 +107,7 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
             }
             return {};
         });
-    } catch (e) {
-        showToast(`Error loading interactions: ${e.message}`, 'error');
-        container.innerHTML = `<h4>Interactions</h4><p style="color:red;">Failed to load interactions: ${sanitizeHTML(e.message)}</p>`;
-    } finally {
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
+    }, null, "Error loading interactions"))();
 }
 
 async function handleReactionSubmit(event) {
@@ -104,23 +116,19 @@ async function handleReactionSubmit(event) {
     const reportPk = btn.dataset.reportPk;
     const reactionContent = btn.dataset.reaction;
     if (!appStore.get().user) return showToast("Please connect your Nostr identity to react.", 'warning');
-    try {
+
+    await withLoading(withToast(async () => {
         btn.disabled = true;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
         await nostrSvc.pubEv({
             kind: C.NOSTR_KIND_REACTION,
             content: reactionContent,
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
-        showToast("Reaction sent!", 'success');
         const report = appStore.get().reports.find(r => r.id === reportId);
         if (report) showReportDetails(report);
-    } catch (e) {
-        showToast(`Error sending reaction: ${e.message}`, 'error');
-    } finally {
+    }, "Reaction sent!", "Error sending reaction", () => {
         btn.disabled = false;
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
+    }))();
 }
 
 async function handleCommentSubmit(event) {
@@ -132,24 +140,20 @@ async function handleCommentSubmit(event) {
     const commentText = form.elements.comment.value.trim();
     if (!commentText) return showToast("Comment cannot be empty.", 'warning');
     if (!appStore.get().user) return showToast("Please connect your Nostr identity to comment.", 'warning');
-    try {
+
+    await withLoading(withToast(async () => {
         submitBtn.disabled = true;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
         await nostrSvc.pubEv({
             kind: C.NOSTR_KIND_NOTE,
             content: commentText,
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
-        showToast("Comment sent!", 'success');
         form.reset();
         const report = appStore.get().reports.find(r => r.id === reportId);
         if (report) showReportDetails(report);
-    } catch (e) {
-        showToast(`Error sending comment: ${e.message}`, 'error');
-    } finally {
+    }, "Comment sent!", "Error sending comment", () => {
         submitBtn.disabled = false;
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
+    }))();
 }
 
 const renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
@@ -197,19 +201,12 @@ const setupReportDetailEventListeners = (report, isAuthor, canFollow, detailCont
             showConfirmModal(
                 "Delete Report",
                 `Are you sure you want to delete the report "${sanitizeHTML(report.title || report.id.substring(0, 8) + '...')}"? This action publishes a deletion event to relays.`,
-                async () => {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                    try {
-                        await nostrSvc.deleteEv(report.id);
-                        hideModal('report-detail-container');
-                        listContainer.style.display = 'block';
-                        applyAllFilters();
-                    } catch (e) {
-                        showToast(`Failed to delete report: ${e.message}`, 'error');
-                    } finally {
-                        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                    }
-                },
+                withLoading(withToast(async () => {
+                    await nostrSvc.deleteEv(report.id);
+                    hideModal('report-detail-container');
+                    listContainer.style.display = 'block';
+                    applyAllFilters();
+                }, null, "Failed to delete report")),
                 () => showToast("Report deletion cancelled.", 'info')
             );
         };
@@ -259,25 +256,22 @@ async function handleFollowToggle(event) {
         return;
     }
 
-    try {
+    await withLoading(withToast(async () => {
         btn.disabled = true;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-
         if (isCurrentlyFollowed) {
             confSvc.rmFollowed(pubkeyToToggle);
-            showToast(`Unfollowed ${formatNpubShort(pubkeyToToggle)}.`, 'info');
+            return `Unfollowed ${formatNpubShort(pubkeyToToggle)}.`;
         } else {
             confSvc.addFollowed(pubkeyToToggle);
-            showToast(`Followed ${formatNpubShort(pubkeyToToggle)}!`, 'success');
+            return `Followed ${formatNpubShort(pubkeyToToggle)}!`;
         }
-        const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
-        if (report) showReportDetails(report);
-    } catch (e) {
-        showToast(`Error toggling follow status: ${e.message}`, 'error');
-    } finally {
+    }, null, "Error toggling follow status", () => {
         btn.disabled = false;
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-    }
+    }))();
+
+    // Re-render report details to update follow button state
+    const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
+    if (report) showReportDetails(report);
 }
 
 export const rendRepList = reports => {

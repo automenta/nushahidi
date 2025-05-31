@@ -4,10 +4,35 @@ import { mapSvc, idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js'
 import { C, $, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast, isValidUrl } from '../utils.js';
 import { createModalWrapper, showConfirmModal, showPassphraseModal, hideModal, showModal } from './modals.js';
 import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
+import {
+    createListSectionRenderer,
+    addRelayLogic,
+    addCategoryLogic,
+    addFocusTagLogic,
+    addMutePubkeyLogic,
+    addFollowedPubkeyLogic
+} from './settingsHelpers.js'; // New import
 
-// Helper to create list rendering functions
-const createListSectionRenderer = (containerId, itemRenderer, actionsConfig, itemWrapperClass) => (modalContent) => {
-    renderList(containerId, appStore.get()[containerId.replace('-list', '')] || appStore.get().settings[containerId.replace('-list', '')], itemRenderer, actionsConfig, itemWrapperClass, modalContent);
+// Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
+const withLoading = (fn) => async (...args) => {
+    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+    try {
+        return await fn(...args);
+    } finally {
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+    }
+};
+
+const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
+    try {
+        const result = await fn(...args);
+        if (successMsg) showToast(successMsg, 'success');
+        return result;
+    } catch (e) {
+        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
+        if (onErrorCallback) onErrorCallback(e);
+        throw e; // Re-throw to allow further error handling if needed
+    }
 };
 
 const renderRelays = createListSectionRenderer('rly-list',
@@ -126,101 +151,23 @@ const renderOfflineQueue = async (modalContent) => {
         {
             label: 'Retry',
             className: 'retry-offline-q-btn',
-            onClick: async (item) => {
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                try {
-                    await nostrSvc.pubEv(item.event);
-                    await dbSvc.rmOfflineQ(item.qid);
-                    showToast("Event retried and published!", 'success');
-                } catch (e) {
-                    showToast(`Failed to retry event: ${e.message}`, 'error');
-                } finally {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                    renderOfflineQueue(modalContent);
-                }
-            }
+            onClick: withLoading(withToast(async (item) => {
+                await nostrSvc.pubEv(item.event);
+                await dbSvc.rmOfflineQ(item.qid);
+                renderOfflineQueue(modalContent); // Re-render list after action
+            }, "Event retried and published!", "Failed to retry event"))
         },
         {
             label: 'Delete',
             className: 'remove-offline-q-btn',
-            onClick: async (item) => {
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                try {
-                    await dbSvc.rmOfflineQ(item.qid);
-                    showToast("Event removed from queue.", 'info');
-                } catch (e) {
-                    showToast(`Failed to delete event from queue: ${e.message}`, 'error');
-                } finally {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                    renderOfflineQueue(modalContent);
-                }
-            },
-            confirm: { title: 'Delete Queued Event', message: 'Are you sure you want to delete this event from the offline queue? It will NOT be published.' }
+            onClick: withLoading(withToast(async (item) => {
+                await dbSvc.rmOfflineQ(item.qid);
+                renderOfflineQueue(modalContent); // Re-render list after action
+            }, "Event removed from queue.", "Failed to delete event from queue"))
         }
     ];
 
     renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig, 'offline-q-entry', modalContent);
-};
-
-
-const addRelayLogic = async (url) => {
-    if (!isValidUrl(url)) {
-        showToast("Invalid URL.", 'warning');
-        return false;
-    }
-    const currentRelays = appStore.get().relays;
-    if (currentRelays.some(r => r.url === url)) {
-        showToast("Relay already exists.", 'info');
-        return false;
-    }
-    confSvc.setRlys([...currentRelays, { url, read: true, write: true, status: '?' }]);
-    showToast("Relay added.", 'success');
-    return true;
-};
-
-const addCategoryLogic = async (cat) => {
-    const currentCats = appStore.get().settings.cats;
-    if (currentCats.includes(cat)) {
-        showToast("Category already exists.", 'info');
-        return false;
-    }
-    confSvc.setCats([...currentCats, cat]);
-    showToast("Category added.", 'success');
-    return true;
-};
-
-const addFocusTagLogic = async (tag) => {
-    if (!tag.startsWith('#')) tag = '#' + tag;
-    const currentTags = appStore.get().focusTags;
-    if (currentTags.some(t => t.tag === tag)) {
-        showToast("Focus tag already exists.", 'info');
-        return false;
-    }
-    confSvc.setFocusTags([...currentTags, { tag, active: false }]);
-    showToast("Focus tag added.", 'success');
-    return true;
-};
-
-const addMutePubkeyLogic = async (pk) => {
-    try {
-        pk = npubToHex(pk);
-        confSvc.addMute(pk);
-        return true;
-    } catch (e) {
-        showToast(`Error adding pubkey: ${e.message}`, 'error');
-        return false;
-    }
-};
-
-const addFollowedPubkeyLogic = async (pk) => {
-    try {
-        pk = npubToHex(pk);
-        confSvc.addFollowed(pk);
-        return true;
-    } catch (e) {
-        showToast(`Error adding user: ${e.message}`, 'error');
-        return false;
-    }
 };
 
 // Helper to setup common list management sections
@@ -239,48 +186,36 @@ const setupListManagement = (modalContent, config) => {
 const setupKeyManagementListeners = (modalContent) => {
     const expSkBtn = $('#exp-sk-btn', modalContent);
     if (expSkBtn) {
-        expSkBtn.onclick = async () => {
-            if (!appStore.get().user) return showToast("No Nostr identity connected.", 'warning');
-            if (appStore.get().user.authM === 'nip07') return showToast("NIP-07 keys cannot be exported.", 'info');
+        expSkBtn.onclick = withLoading(withToast(async () => {
+            if (!appStore.get().user) throw new Error("No Nostr identity connected.");
+            if (appStore.get().user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
 
-            appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-            try {
-                const sk = await idSvc.getSk(true);
-                if (sk) {
-                    showToast(
-                        "Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.",
-                        'critical-warning',
-                        0,
-                        nip19.nsecEncode(sk)
-                    );
-                }
-            } catch (e) {
-                showToast(`Export failed: ${e.message}`, 'error');
-            } finally {
-                appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+            const sk = await idSvc.getSk(true);
+            if (sk) {
+                showToast(
+                    "Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.",
+                    'critical-warning',
+                    0,
+                    nip19.nsecEncode(sk)
+                );
+            } else {
+                throw new Error("Private key not available for export.");
             }
-        };
+        }, null, "Export failed"));
     }
 
     const chgPassBtn = $('#chg-pass-btn', modalContent);
     if (chgPassBtn) {
-        chgPassBtn.onclick = async () => {
+        chgPassBtn.onclick = withLoading(withToast(async () => {
             const oldPass = $('#chg-pass-old', modalContent).value;
             const newPass = $('#chg-pass-new', modalContent).value;
             if (!oldPass || !newPass || newPass.length < 8) {
-                return showToast("Both passphrases are required, new must be min 8 chars.", 'warning');
+                throw new Error("Both passphrases are required, new must be min 8 chars.");
             }
-            appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-            try {
-                await idSvc.chgPass(oldPass, newPass);
-                $('#chg-pass-old', modalContent).value = '';
-                $('#chg-pass-new', modalContent).value = '';
-            } catch (e) {
-                showToast(`Passphrase change failed: ${e.message}`, 'error');
-            } finally {
-                appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-            }
-        };
+            await idSvc.chgPass(oldPass, newPass);
+            $('#chg-pass-old', modalContent).value = '';
+            $('#chg-pass-new', modalContent).value = '';
+        }, null, "Passphrase change failed"));
     }
 };
 
@@ -300,18 +235,17 @@ const setupMapTilesListeners = (modalContent) => {
         }
     };
 
-    $('#save-tile-btn', modalContent).onclick = () => {
+    $('#save-tile-btn', modalContent).onclick = withToast(async () => {
         const selectedPresetName = tilePresetSel.value;
         const customUrl = tileUrlIn.value.trim();
 
         if (!isValidUrl(customUrl)) {
-            return showToast("Invalid tile URL.", 'warning');
+            throw new Error("Invalid tile URL.");
         }
 
         confSvc.setTilePreset(selectedPresetName, customUrl);
         mapSvc.updTile(customUrl);
-        showToast("Map tile settings saved.", 'success');
-    };
+    }, "Map tile settings saved.", "Error saving map tile settings");
 };
 
 const setupImageHostListeners = (modalContent) => {
@@ -337,51 +271,42 @@ const setupImageHostListeners = (modalContent) => {
         }
     };
 
-    $('#save-img-host-btn', modalContent).onclick = () => {
+    $('#save-img-host-btn', modalContent).onclick = withToast(async () => {
         const selectedHost = imgHostSel.value;
         if (selectedHost === 'nip96') {
             const nip96Url = nip96UrlIn.value.trim();
             const nip96Token = nip96TokenIn.value.trim();
             if (!isValidUrl(nip96Url)) {
-                return showToast("Invalid NIP-96 server URL.", 'warning');
+                throw new Error("Invalid NIP-96 server URL.");
             }
             confSvc.setImgHost(nip96Url, true, nip96Token);
         } else {
             confSvc.setImgHost(selectedHost, false);
         }
-        showToast("Image host settings saved.", 'success');
-    };
+    }, "Image host settings saved.", "Error saving image host settings");
 };
 
 const setupFollowedListUniqueListeners = (modalContent) => {
-    $('#import-contacts-btn', modalContent).onclick = async () => {
+    $('#import-contacts-btn', modalContent).onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) {
-            showToast("Please connect your Nostr identity to import contacts.", 'warning');
-            return;
+            throw new Error("Please connect your Nostr identity to import contacts.");
         }
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-        try {
-            const contacts = await nostrSvc.fetchContacts();
-            if (contacts.length > 0) {
-                const currentFollowed = appStore.get().followedPubkeys.map(f => f.pk);
-                const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({ pk: c.pubkey, followedAt: Date.now() }));
-                if (newFollowed.length > 0) {
-                    confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
-                    showToast(`Imported ${newFollowed.length} contacts from Nostr.`, 'success');
-                } else {
-                    showToast("No new contacts found to import.", 'info');
-                }
+        const contacts = await nostrSvc.fetchContacts();
+        if (contacts.length > 0) {
+            const currentFollowed = appStore.get().followedPubkeys.map(f => f.pk);
+            const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({ pk: c.pubkey, followedAt: Date.now() }));
+            if (newFollowed.length > 0) {
+                confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
+                return `Imported ${newFollowed.length} contacts from Nostr.`;
             } else {
-                showToast("No NIP-02 contact list found on relays for your account.", 'info');
+                return "No new contacts found to import.";
             }
-        } catch (e) {
-            showToast(`Error importing contacts: ${e.message}`, 'error');
-        } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+        } else {
+            return "No NIP-02 contact list found on relays for your account.";
         }
-    };
+    }, null, "Error importing contacts"));
 
-    $('#publish-contacts-btn', modalContent).onclick = async () => {
+    $('#publish-contacts-btn', modalContent).onclick = () => {
         if (!appStore.get().user) {
             showToast("Please connect your Nostr identity to publish contacts.", 'warning');
             return;
@@ -389,18 +314,10 @@ const setupFollowedListUniqueListeners = (modalContent) => {
         showConfirmModal(
             "Publish Contacts",
             "This will publish your current followed list as a NIP-02 contact list (Kind 3 event) to your connected relays. This will overwrite any existing Kind 3 event for your pubkey. Continue?",
-            async () => {
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                try {
-                    const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' }));
-                    await nostrSvc.pubContacts(contactsToPublish);
-                    showToast("NIP-02 contact list published!", 'success');
-                } catch (e) {
-                    showToast(`Error publishing contacts: ${e.message}`, 'error');
-                } finally {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                }
-            },
+            withLoading(withToast(async () => {
+                const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' }));
+                await nostrSvc.pubContacts(contactsToPublish);
+            }, null, "Error publishing contacts")),
             () => showToast("Publish contacts cancelled.", 'info')
         );
     };
@@ -411,42 +328,26 @@ const setupDataManagementListeners = (modalContent) => {
         showConfirmModal(
             "Clear Cached Reports",
             "Are you sure you want to clear all cached reports from your local database? This will not delete them from relays.",
-            async () => {
-                appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                try {
-                    await dbSvc.clearReps();
-                    appStore.set({ reports: [] });
-                    showToast("Cached reports cleared.", 'info');
-                } catch (e) {
-                    showToast(`Error clearing reports: ${e.message}`, 'error');
-                } finally {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                }
-            },
+            withLoading(withToast(async () => {
+                await dbSvc.clearReps();
+                appStore.set({ reports: [] });
+            }, "Cached reports cleared.", "Error clearing reports")),
             () => showToast("Clearing reports cancelled.", 'info')
         );
     };
 
-    $('#exp-setts-btn', modalContent).onclick = async () => {
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-        try {
-            const settings = await dbSvc.loadSetts();
-            const followedPubkeys = await dbSvc.getFollowedPubkeys();
-            const exportData = { settings, followedPubkeys };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "nostrmapper_settings.json");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-            showToast("Settings exported.", 'success');
-        } catch (e) {
-            showToast(`Error exporting settings: ${e.message}`, 'error');
-        } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-        }
-    };
+    $('#exp-setts-btn', modalContent).onclick = withLoading(withToast(async () => {
+        const settings = await dbSvc.loadSetts();
+        const followedPubkeys = await dbSvc.getFollowedPubkeys();
+        const exportData = { settings, followedPubkeys };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "nostrmapper_settings.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }, "Settings exported.", "Error exporting settings"));
 
     $('#imp-setts-file', modalContent).onchange = async e => {
         const file = e.target.files[0];
@@ -463,27 +364,20 @@ const setupDataManagementListeners = (modalContent) => {
                 showConfirmModal(
                     "Import Settings",
                     "Are you sure you want to import settings? This will overwrite your current settings and followed users.",
-                    async () => {
-                        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                        try {
-                            await dbSvc.saveSetts(importedData.settings);
-                            await dbSvc.clearFollowedPubkeys();
-                            for (const fp of importedData.followedPubkeys) {
-                                await dbSvc.addFollowedPubkey(fp.pk);
-                            }
-                            await confSvc.load();
-                            showToast("Settings imported successfully! Please refresh the page.", 'success', 5000);
-                            setTimeout(() => {
-                                if (confirm("Settings imported. Reload page now?")) {
-                                    window.location.reload();
-                                }
-                            }, 2000);
-                        } catch (err) {
-                            showToast(`Error importing settings: ${err.message}`, 'error');
-                        } finally {
-                            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+                    withLoading(withToast(async () => {
+                        await dbSvc.saveSetts(importedData.settings);
+                        await dbSvc.clearFollowedPubkeys();
+                        for (const fp of importedData.followedPubkeys) {
+                            await dbSvc.addFollowedPubkey(fp.pk);
                         }
-                    },
+                        await confSvc.load();
+                        showToast("Settings imported successfully! Please refresh the page.", 'success', 5000);
+                        setTimeout(() => {
+                            if (confirm("Settings imported. Reload page now?")) {
+                                window.location.reload();
+                            }
+                        }, 2000);
+                    }, null, "Error importing settings")),
                     () => showToast("Import cancelled.", 'info')
                 );
             } catch (err) {

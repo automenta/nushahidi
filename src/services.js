@@ -3,9 +3,31 @@ import 'leaflet.markercluster';
 import { generatePrivateKey as genSk, getPublicKey as getPk, nip19, getEventHash as getEvH, signEvent as signEvNostr, relayInit, nip11 } from 'nostr-tools';
 import { appStore } from './store.js';
 import { C, $, encrypt, decrypt, sha256, npubToHex, geohashEncode, parseReport, getGhPrefixes, nsecToHex, isNostrId, showToast, generateUUID } from './utils.js';
-import { showPassphraseModal, showConfirmModal } from './ui.js';
+import { showPassphraseModal, showConfirmModal } from './ui/modals.js';
 
 let _db;
+
+// Helper for loading state and toasts
+const withLoading = (fn) => async (...args) => {
+    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+    try {
+        return await fn(...args);
+    } finally {
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+    }
+};
+
+const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
+    try {
+        const result = await fn(...args);
+        if (successMsg) showToast(successMsg, 'success');
+        return result;
+    } catch (e) {
+        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
+        if (onErrorCallback) onErrorCallback(e);
+        throw e; // Re-throw to allow further error handling if needed
+    }
+};
 
 const getDbStore = async (storeName, mode = 'readonly') => {
     if (!_db) {
@@ -126,18 +148,14 @@ export const confSvc = {
             return { tileUrl, tilePreset };
         };
 
-        if (!settings) {
-            settings = initializeSettingsDefaults();
-        }
+        settings = settings || initializeSettingsDefaults();
 
         const updatedRelays = migrateRelaySettings(settings);
         const updatedFocusTags = migrateFocusTags(settings);
         const { tileUrl, tilePreset } = migrateTileSettings(settings);
         const currentFocusTag = updatedFocusTags.find(t => t.active)?.tag || C.FOCUS_TAG_DEFAULT;
 
-        if (!followedPubkeys) {
-            followedPubkeys = [];
-        }
+        followedPubkeys = followedPubkeys || [];
 
         appStore.set({
             relays: updatedRelays,
@@ -227,80 +245,60 @@ export const idSvc = {
         if (id) appStore.set({ user: { pk: id.pk, authM: id.authM } });
     },
 
-    async nip07() {
+    nip07: withLoading(withToast(async () => {
         if (!window.nostr?.getPublicKey) {
             showToast("NIP-07 extension not found. Please install Alby or nos2x.", 'warning');
             return null;
         }
-        try {
-            const pubkey = await window.nostr.getPublicKey();
-            if (pubkey) {
-                const identity = { pk: pubkey, authM: 'nip07' };
-                await confSvc.saveId(identity);
-                appStore.set({ user: identity });
-                showToast("NIP-07 connected successfully!", 'success');
-                return pubkey;
-            }
-        } catch (e) {
-            showToast(`NIP-07 connection error: ${e.message}`, 'error');
+        const pubkey = await window.nostr.getPublicKey();
+        if (pubkey) {
+            const identity = { pk: pubkey, authM: 'nip07' };
+            await confSvc.saveId(identity);
+            appStore.set({ user: identity });
+            return pubkey;
         }
         return null;
-    },
+    }, "NIP-07 connected successfully!", "NIP-07 connection error")),
 
-    async newProf(passphrase) {
+    newProf: withLoading(withToast(async (passphrase) => {
         if (!passphrase || passphrase.length < 8) {
             showToast("Passphrase too short (min 8 chars).", 'warning');
             return null;
         }
         const sk = genSk();
         const pk = getPk(sk);
-        try {
-            const encryptedSk = await encrypt(sk, passphrase);
-            const identity = { pk, authM: 'local', eSk: encryptedSk };
-            await confSvc.saveId(identity);
-            appStore.set({ user: { pk, authM: 'local' } });
-            _locSk = sk;
-            showToast(`Profile created! Pubkey: ${nip19.npubEncode(pk)}.`, 'success');
-            showToast(
-                `CRITICAL: Backup your private key (nsec)!`,
-                'warning',
-                0,
-                nip19.nsecEncode(sk)
-            );
-            return { pk, sk };
-        } catch (e) {
-            showToast(`Profile creation error: ${e.message}`, 'error');
-            return null;
-        }
-    },
+        const encryptedSk = await encrypt(sk, passphrase);
+        const identity = { pk, authM: 'local', eSk: encryptedSk };
+        await confSvc.saveId(identity);
+        appStore.set({ user: { pk, authM: 'local' } });
+        _locSk = sk;
+        showToast(`Profile created! Pubkey: ${nip19.npubEncode(pk)}.`, 'success');
+        showToast(
+            `CRITICAL: Backup your private key (nsec)!`,
+            'warning',
+            0,
+            nip19.nsecEncode(sk)
+        );
+        return { pk, sk };
+    }, null, "Profile creation error")), // Success toast handled internally for nsec backup
 
-    async impSk(skInput, passphrase) {
+    impSk: withLoading(withToast(async (skInput, passphrase) => {
         if (!passphrase || passphrase.length < 8) {
             showToast("Passphrase too short (min 8 chars).", 'warning');
             return null;
         }
         let skHex;
-        try {
-            skHex = nsecToHex(skInput);
-            if (!isNostrId(skHex)) throw new Error("Invalid Nostr private key format.");
-        } catch (e) {
-            showToast(e.message, 'error');
-            return null;
-        }
+        skHex = nsecToHex(skInput);
+        if (!isNostrId(skHex)) throw new Error("Invalid Nostr private key format.");
+
         const pk = getPk(skHex);
-        try {
-            const encryptedSk = await encrypt(skHex, passphrase);
-            const identity = { pk, authM: 'import', eSk: encryptedSk };
-            await confSvc.saveId(identity);
-            appStore.set({ user: { pk, authM: 'import' } });
-            _locSk = skHex;
-            showToast("Private key imported successfully.", 'success');
-            return { pk, sk: skHex };
-        } catch (e) {
-            showToast(`Key import error: ${e.message}`, 'error');
-            return null;
-        }
-    },
+        const encryptedSk = await encrypt(skHex, passphrase);
+        const identity = { pk, authM: 'import', eSk: encryptedSk };
+        await confSvc.saveId(identity);
+        appStore.set({ user: { pk, authM: 'import' } });
+        _locSk = skHex;
+        return { pk, sk: skHex };
+    }, "Private key imported successfully.", "Key import error")),
 
     async getSk(promptPassphrase = true) {
         const user = appStore.get().user;
@@ -320,34 +318,25 @@ export const idSvc = {
             showToast("Decryption cancelled.", 'info');
             return null;
         }
-        try {
+        return withToast(async () => {
             const decryptedSk = await decrypt(identity.eSk, passphrase);
             _locSk = decryptedSk;
             return decryptedSk;
-        } catch (e) {
-            showToast("Decryption failed. Incorrect passphrase?", 'error');
-            return null;
-        }
+        }, null, "Decryption failed. Incorrect passphrase?")(); // Call the wrapped function immediately
     },
 
-    async chgPass(oldPassphrase, newPassphrase) {
+    chgPass: withLoading(withToast(async (oldPassphrase, newPassphrase) => {
         const identity = await confSvc.getId();
         if (!identity?.eSk || (identity.authM !== 'local' && identity.authM !== 'import')) {
             throw new Error("No local key to change passphrase for.");
         }
-        let decryptedSk;
-        try {
-            decryptedSk = await decrypt(identity.eSk, oldPassphrase);
-        } catch (e) {
-            throw new Error("Old passphrase incorrect.");
-        }
-        if (!decryptedSk) throw new Error("Decryption failed.");
+        const decryptedSk = await decrypt(identity.eSk, oldPassphrase);
+        if (!decryptedSk) throw new Error("Old passphrase incorrect.");
 
         const newEncryptedSk = await encrypt(decryptedSk, newPassphrase);
         await confSvc.saveId({ ...identity, eSk: newEncryptedSk });
         _locSk = decryptedSk;
-        showToast("Passphrase changed successfully.", 'success');
-    },
+    }, "Passphrase changed successfully.", "Passphrase change failed")),
 
     logout() {
         _locSk = null;
@@ -369,7 +358,7 @@ export const idSvc = {
                 throw new Error("NIP-07 signing failed: " + e.message);
             }
         } else if (user.authM === 'local' || user.authM === 'import') {
-            const sk = await idSvc.getSk(true);
+            const sk = await idSvc.getSk(true); // This will prompt for passphrase if needed
             if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
             const signedEvent = { ...event, pubkey: user.pk, id: getEvH(event), sig: signEvNostr(event, sk) };
             return signedEvent;
@@ -547,20 +536,26 @@ export const nostrSvc = {
 
                 if (!response.ok && response.status !== 503) {
                     console.error("Publish Error (SW Proxy):", response.statusText);
+                    showToast(`Publish failed: ${response.statusText}`, 'error');
                 } else if (response.status === 503) {
                     console.log("Publish deferred by Service Worker (offline or network issue).");
+                    showToast("Publish deferred (offline or network issue).", 'info');
+                } else {
+                    showToast("Event published successfully!", 'success');
                 }
             } catch (e) {
                 console.warn("Publish Network Error, Service Worker should handle:", e);
+                showToast(`Network error during publish: ${e.message}. Will retry offline.`, 'warning');
             }
         } else {
             await dbSvc.addOfflineQ({ event: signedEvent, ts: Date.now() });
+            showToast("Offline. Event added to queue for later publishing.", 'info');
         }
 
         return signedEvent;
     },
 
-    async deleteEv(eventIdToDelete) {
+    deleteEv: withLoading(withToast(async (eventIdToDelete) => {
         const user = appStore.get().user;
         if (!user) throw new Error("No Nostr identity connected to delete events.");
 
@@ -570,52 +565,50 @@ export const nostrSvc = {
             tags: [['e', eventIdToDelete]]
         };
 
-        const signedDeletionEvent = await this.pubEv(eventData);
+        const signedDeletionEvent = await nostrSvc.pubEv(eventData);
 
         appStore.set(s => ({ reports: s.reports.filter(r => r.id !== eventIdToDelete) }));
         await dbSvc.rmRep(eventIdToDelete);
-        showToast("Report deletion event sent (NIP-09).", 'info');
-
         return signedDeletionEvent;
-    },
+    }, "Report deletion event sent (NIP-09).", "Failed to delete report")),
 
-    async fetchProf(pubkey) {
+    fetchProf: withLoading(withToast(async (pubkey) => {
         let profile = await dbSvc.getProf(pubkey);
         if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile;
 
         const filter = { kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 };
         const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1);
 
-        if (relaysToQuery.length === 0) return profile;
+        if (relaysToQuery.length === 0) {
+            showToast("No connected relays to fetch profiles from.", 'warning');
+            return profile;
+        }
 
-        try {
-            const events = await relaysToQuery[0].list([filter]);
-            if (events?.length > 0) {
-                const latestProfileEvent = events.sort((a, b) => b.at - a.at)[0];
-                try {
-                    const parsedContent = JSON.parse(latestProfileEvent.content);
-                    profile = {
-                        pk: pubkey,
-                        name: parsedContent.name || '',
-                        nip05: parsedContent.nip05 || '',
-                        picture: parsedContent.picture || '',
-                        about: parsedContent.about || '',
-                        fetchedAt: Date.now(),
-                        ...parsedContent
-                    };
-                    await dbSvc.addProf(profile);
-                    return profile;
-                } catch (e) {
-                    console.error("Error parsing profile content:", e);
-                }
+        const events = await relaysToQuery[0].list([filter]);
+        if (events?.length > 0) {
+            const latestProfileEvent = events.sort((a, b) => b.at - a.at)[0];
+            try {
+                const parsedContent = JSON.parse(latestProfileEvent.content);
+                profile = {
+                    pk: pubkey,
+                    name: parsedContent.name || '',
+                    nip05: parsedContent.nip05 || '',
+                    picture: parsedContent.picture || '',
+                    about: parsedContent.about || '',
+                    fetchedAt: Date.now(),
+                    ...parsedContent
+                };
+                await dbSvc.addProf(profile);
+                return profile;
+            } catch (e) {
+                console.error("Error parsing profile content:", e);
+                throw new Error("Error parsing profile content.");
             }
-        } catch (e) {
-            showToast(`Error fetching profile for ${formatNpubShort(pubkey)}: ${e.message}`, 'error');
         }
         return profile;
-    },
+    }, null, "Error fetching profile")),
 
-    async fetchInteractions(reportId, reportPk) {
+    fetchInteractions: withLoading(withToast(async (reportId, reportPk) => {
         const filters = [
             { kinds: [C.NOSTR_KIND_REACTION], "#e": [reportId] },
             { kinds: [C.NOSTR_KIND_NOTE], "#e": [reportId] }
@@ -623,8 +616,7 @@ export const nostrSvc = {
         let allInteractions = [];
         const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
         if (relaysToQuery.length === 0) {
-            showToast("No connected relays to fetch interactions from.", 'warning');
-            return [];
+            throw new Error("No connected relays to fetch interactions from.");
         }
 
         const fetchPromises = relaysToQuery.map(r =>
@@ -658,9 +650,9 @@ export const nostrSvc = {
         }));
 
         return allInteractions.sort((a, b) => a.created_at - b.created_at);
-    },
+    }, null, "Error fetching interactions")),
 
-    async pubContacts(contacts) {
+    pubContacts: withLoading(withToast(async (contacts) => {
         const user = appStore.get().user;
         if (!user) throw new Error("No Nostr identity connected to publish contacts.");
 
@@ -677,10 +669,10 @@ export const nostrSvc = {
             tags: tags
         };
 
-        return this.pubEv(eventData);
-    },
+        return nostrSvc.pubEv(eventData);
+    }, "NIP-02 contact list published!", "Error publishing contacts")),
 
-    async fetchContacts() {
+    fetchContacts: withLoading(withToast(async () => {
         const user = appStore.get().user;
         if (!user) return [];
 
@@ -688,27 +680,22 @@ export const nostrSvc = {
         const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
 
         if (relaysToQuery.length === 0) {
-            showToast("No connected relays to fetch contacts from.", 'warning');
-            return [];
+            throw new Error("No connected relays to fetch contacts from.");
         }
 
-        try {
-            const events = await relaysToQuery[0].list([filter]);
-            if (events?.length > 0) {
-                const latestContactsEvent = events.sort((a, b) => b.created_at - a.created_at)[0];
-                return latestContactsEvent.tags
-                    .filter(tag => tag[0] === 'p' && tag[1])
-                    .map(tag => ({
-                        pubkey: tag[1],
-                        relay: tag[2] || '',
-                        petname: tag[3] || ''
-                    }));
-            }
-        } catch (e) {
-            showToast(`Error fetching contacts: ${e.message}`, 'error');
+        const events = await relaysToQuery[0].list([filter]);
+        if (events?.length > 0) {
+            const latestContactsEvent = events.sort((a, b) => b.created_at - a.created_at)[0];
+            return latestContactsEvent.tags
+                .filter(tag => tag[0] === 'p' && tag[1])
+                .map(tag => ({
+                    pubkey: tag[1],
+                    relay: tag[2] || '',
+                    petname: tag[3] || ''
+                }));
         }
         return [];
-    }
+    }, null, "Error fetching contacts"))
 };
 
 export const offSvc = {

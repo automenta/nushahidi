@@ -24,15 +24,32 @@ export function AuthModalComp() {
         const form = renderForm(authFormFields, {}, { id: 'auth-form' });
         root.appendChild(form);
 
-        $('#conn-nip07-btn', form).onclick = async () => {
+        // Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
+        const withLoading = (fn) => async (...args) => {
             appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
             try {
-                await idSvc.nip07();
-                if (appStore.get().user) hideModal('auth-modal');
+                return await fn(...args);
             } finally {
                 appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
             }
         };
+
+        const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
+            try {
+                const result = await fn(...args);
+                if (successMsg) showToast(successMsg, 'success');
+                return result;
+            } catch (e) {
+                showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
+                if (onErrorCallback) onErrorCallback(e);
+                throw e; // Re-throw to allow further error handling if needed
+            }
+        };
+
+        $('#conn-nip07-btn', form).onclick = withLoading(async () => {
+            await idSvc.nip07();
+            if (appStore.get().user) hideModal('auth-modal');
+        });
 
         $('#create-prof-btn', form).onclick = async () => {
             const passphrase = $('#auth-pass', form).value;
@@ -43,15 +60,10 @@ export function AuthModalComp() {
             showConfirmModal(
                 "Backup Private Key?",
                 "<strong>CRITICAL:</strong> You are about to create a new Nostr identity. Your private key (nsec) will be generated and displayed. You MUST copy and securely back it up. If you lose it, your identity and associated data will be unrecoverable. Do you understand and wish to proceed?",
-                async () => {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                    try {
-                        const result = await idSvc.newProf(passphrase);
-                        if (result) hideModal('auth-modal');
-                    } finally {
-                        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                    }
-                },
+                withLoading(async () => {
+                    const result = await idSvc.newProf(passphrase);
+                    if (result) hideModal('auth-modal');
+                }),
                 () => showToast("New profile creation cancelled.", 'info')
             );
         };
@@ -66,15 +78,10 @@ export function AuthModalComp() {
             showConfirmModal(
                 "Import Private Key?",
                 "<strong>HIGH RISK:</strong> Importing a private key directly into the browser is generally discouraged due to security risks. Ensure you understand the implications. It is highly recommended to use a NIP-07 browser extension instead. Do you wish to proceed?",
-                async () => {
-                    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-                    try {
-                        const result = await idSvc.impSk(privateKey, passphrase);
-                        if (result) hideModal('auth-modal');
-                    } finally {
-                        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                    }
-                },
+                withLoading(async () => {
+                    const result = await idSvc.impSk(privateKey, passphrase);
+                    if (result) hideModal('auth-modal');
+                }),
                 (() => showToast("Private key import cancelled.", 'info'))
             );
         };

@@ -1,7 +1,7 @@
 import { appStore } from './store.js';
 import { confSvc, idSvc, nostrSvc, mapSvc, dbSvc, offSvc } from './services.js';
 import { initUI } from './ui.js';
-import { $ } from './utils.js';
+import { $, showToast } from './utils.js'; // Import showToast
 
 async function main() {
     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
@@ -27,23 +27,28 @@ async function main() {
         });
     }
 
-    await confSvc.load();
-    await idSvc.init();
+    try {
+        await confSvc.load();
+        await idSvc.init();
 
-    if (!mapSvc.init('map-container')) {
-        $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
+        if (!mapSvc.init('map-container')) {
+            $('#map-container').innerHTML = '<p style="color:red">Map init failed.</p>';
+        }
+
+        initUI();
+
+        const cachedReports = await dbSvc.getAllReps();
+        appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
+
+        nostrSvc.refreshSubs();
+        offSvc.setupSyncLs();
+        await dbSvc.pruneDb();
+    } catch (e) {
+        console.error("Application initialization failed:", e);
+        showToast(`App failed to load: ${e.message}`, 'error', 0); // Show persistent error
+    } finally {
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     }
-
-    initUI();
-
-    const cachedReports = await dbSvc.getAllReps();
-    appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
-
-    nostrSvc.refreshSubs();
-    offSvc.setupSyncLs();
-    await dbSvc.pruneDb();
-
-    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
 }
 
 document.addEventListener('DOMContentLoaded', main);

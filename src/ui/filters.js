@@ -64,25 +64,29 @@ export const applyAllFilters = () => {
 };
 export const debAppAllFilt = debounce(applyAllFilters, 350);
 
+const updateFilterState = (key, value) => {
+    appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
+};
+
 const setupFilterEventListeners = (filterForm) => {
     $('#search-query-input', filterForm).oninput = e => {
-        appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, q: e.target.value } } }));
+        updateFilterState('q', e.target.value);
         debAppAllFilt();
     };
     $('#filter-category', filterForm).onchange = e => {
-        appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, cat: e.target.value } } }));
+        updateFilterState('cat', e.target.value);
         applyAllFilters();
     };
     $('#filter-author', filterForm).oninput = e => {
-        appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, auth: e.target.value.trim() } } }));
+        updateFilterState('auth', e.target.value.trim());
         debAppAllFilt();
     };
     $('#filter-time-start', filterForm).onchange = e => {
-        appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, tStart: e.target.value ? new Date(e.target.value).getTime() / 1000 : null } } }));
+        updateFilterState('tStart', e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
         applyAllFilters();
     };
     $('#filter-time-end', filterForm).onchange = e => {
-        appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, tEnd: e.target.value ? new Date(e.target.value).getTime() / 1000 : null } } }));
+        updateFilterState('tEnd', e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
         applyAllFilters();
     };
     $('#apply-filters-btn', filterForm).onclick = applyAllFilters;
@@ -123,9 +127,7 @@ const setupFilterEventListeners = (filterForm) => {
         applyAllFilters();
     };
 
-    $('#clear-drawn-shapes-btn', filterForm).onclick = () => {
-        mapSvc.clearAllDrawnShapes();
-    };
+    $('#clear-drawn-shapes-btn', filterForm).onclick = mapSvc.clearAllDrawnShapes;
 };
 
 export const initFilterControls = () => {

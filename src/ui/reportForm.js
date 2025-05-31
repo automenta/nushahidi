@@ -4,6 +4,28 @@ import { C, $, createEl, sanitizeHTML, geohashEncode, showToast, isValidUrl, gen
 import { renderForm, renderList } from './forms.js';
 import { createModalWrapper, showModal, hideModal } from './modals.js';
 
+// Helper for loading state and toasts (duplicated from services.js, but necessary to avoid circular dependency)
+const withLoading = (fn) => async (...args) => {
+    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+    try {
+        return await fn(...args);
+    } finally {
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+    }
+};
+
+const withToast = (fn, successMsg, errorMsg, onErrorCallback = null) => async (...args) => {
+    try {
+        const result = await fn(...args);
+        if (successMsg) showToast(successMsg, 'success');
+        return result;
+    } catch (e) {
+        showToast(`${errorMsg || 'An error occurred'}: ${e.message}`, 'error');
+        if (onErrorCallback) onErrorCallback(e);
+        throw e; // Re-throw to allow further error handling if needed
+    }
+};
+
 const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     previewElement.innerHTML = '';
     if (imagesMetadata.length === 0) {
@@ -49,117 +71,101 @@ const setupReportFormLocationHandlers = (formRoot, formState, updateLocationDisp
         );
     };
 
-    $('#geocode-address-btn', formRoot).onclick = async () => {
+    $('#geocode-address-btn', formRoot).onclick = withLoading(withToast(async () => {
         const address = $('#rep-address', formRoot).value.trim();
-        if (!address) return showToast("Please enter an address to geocode.", 'warning');
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-        try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
-            const data = await response.json();
-            if (data?.length > 0) {
-                const { lat, lon, display_name } = data[0];
-                formState.pFLoc = { lat: parseFloat(lat), lng: parseFloat(lon) };
-                updateLocationDisplay(display_name);
-                showToast(`Address found: ${display_name}`, 'success');
-            } else {
-                showToast("Address not found.", 'info');
-            }
-        } catch (e) {
-            showToast(`Geocoding error: ${e.message}`, 'error');
-        } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
+        if (!address) throw new Error("Please enter an address to geocode.");
+
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+        const data = await response.json();
+        if (data?.length > 0) {
+            const { lat, lon, display_name } = data[0];
+            formState.pFLoc = { lat: parseFloat(lat), lng: parseFloat(lon) };
+            updateLocationDisplay(display_name);
+            return `Address found: ${display_name}`;
+        } else {
+            throw new Error("Location not found.");
         }
-    };
+    }, null, "Geocoding error"));
 };
 
 const setupReportFormImageUploadHandler = (imagesMetadata, updatePreview) => {
-    return async e => {
+    return withLoading(async e => {
         const files = e.target.files;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-        try {
-            for (const file of files) {
-                try {
-                    const processedImage = await processImageFile(file);
-                    const uploadedUrl = await imgSvc.upload(processedImage.file);
-                    imagesMetadata.push({
-                        url: uploadedUrl,
-                        type: processedImage.file.type,
-                        dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
-                        hHex: processedImage.hash
-                    });
-                    showToast(`Image ${file.name} uploaded.`, 'success', 1500);
-                } catch (error) {
-                    showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
-                }
+        for (const file of files) {
+            try {
+                const processedImage = await processImageFile(file);
+                const uploadedUrl = await imgSvc.upload(processedImage.file);
+                imagesMetadata.push({
+                    url: uploadedUrl,
+                    type: processedImage.file.type,
+                    dim: `${processedImage.dimensions.w}x${processedImage.dimensions.h}`,
+                    hHex: processedImage.hash
+                });
+                showToast(`Image ${file.name} uploaded.`, 'success', 1500);
+            } catch (error) {
+                showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
             }
-            updatePreview();
-        } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
         }
-    };
+        updatePreview();
+    });
 };
 
 const setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
-    formElement.onsubmit = async e => {
+    formElement.onsubmit = withLoading(withToast(async e => {
         e.preventDefault();
         const submitBtn = e.target.querySelector('button[type=submit]');
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
 
-        if (!formState.pFLoc) return showToast("Location missing. Please pick or geocode a location.", 'warning');
+        if (!formState.pFLoc) throw new Error("Location missing. Please pick or geocode a location.");
 
         submitBtn.disabled = true;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
-        try {
-            const lat = formState.pFLoc.lat;
-            const lon = formState.pFLoc.lng;
-            const geohash = geohashEncode(lat, lon);
-            const focusTag = appStore.get().currentFocusTag.substring(1);
 
-            const tags = [['g', geohash]];
+        const lat = formState.pFLoc.lat;
+        const lon = formState.pFLoc.lng;
+        const geohash = geohashEncode(lat, lon);
+        const focusTag = appStore.get().currentFocusTag.substring(1);
 
-            if (data.title) tags.push(['title', data.title]);
-            if (data.summary) tags.push(['summary', data.summary]);
-            if (focusTag && focusTag !== 'NostrMapper_Global') tags.push(['t', focusTag]);
+        const tags = [['g', geohash]];
 
-            if (data.freeTags) {
-                data.freeTags.split(',').forEach(tag => {
-                    const trimmedTag = tag.trim();
-                    if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
-                });
-            }
+        if (data.title) tags.push(['title', data.title]);
+        if (data.summary) tags.push(['summary', data.summary]);
+        if (focusTag && focusTag !== 'NostrMapper_Global') tags.push(['t', focusTag]);
 
-            const selectedCategories = formData.getAll('category');
-            selectedCategories.forEach(cat => {
-                tags.push(['L', 'report-category']);
-                tags.push(['l', cat, 'report-category']);
+        if (data.freeTags) {
+            data.freeTags.split(',').forEach(tag => {
+                const trimmedTag = tag.trim();
+                if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
             });
-
-            if (data.eventType) tags.push(['event_type', data.eventType]);
-            if (data.status) tags.push(['status', data.status]);
-
-            imagesMetadata.forEach(img => tags.push(['image', img.url, img.type, img.dim, `ox${img.hHex}`]));
-
-            const dTagValue = reportToEdit?.d || generateUUID();
-            tags.push(['d', dTagValue]);
-
-            const eventData = { kind: C.NOSTR_KIND_REPORT, content: data.description, tags };
-
-            await nostrSvc.pubEv(eventData);
-            showToast('Report sent!', 'success');
-            e.target.reset();
-            $('#pFLoc-coords', formRoot).textContent = 'None';
-            $('#upld-photos-preview', formRoot).innerHTML = '';
-            formState.pFLoc = null;
-            imagesMetadata.length = 0;
-            hideModal('report-form-modal');
-        } catch (error) {
-            showToast(`Report submission error: ${error.message}`, 'error');
-        } finally {
-            submitBtn.disabled = false;
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
         }
-    };
+
+        const selectedCategories = formData.getAll('category');
+        selectedCategories.forEach(cat => {
+            tags.push(['L', 'report-category']);
+            tags.push(['l', cat, 'report-category']);
+        });
+
+        if (data.eventType) tags.push(['event_type', data.eventType]);
+        if (data.status) tags.push(['status', data.status]);
+
+        imagesMetadata.forEach(img => tags.push(['image', img.url, img.type, img.dim, `ox${img.hHex}`]));
+
+        const dTagValue = reportToEdit?.d || generateUUID();
+        tags.push(['d', dTagValue]);
+
+        const eventData = { kind: C.NOSTR_KIND_REPORT, content: data.description, tags };
+
+        await nostrSvc.pubEv(eventData);
+        e.target.reset();
+        $('#pFLoc-coords', formRoot).textContent = 'None';
+        $('#upld-photos-preview', formRoot).innerHTML = '';
+        formState.pFLoc = null;
+        imagesMetadata.length = 0;
+        hideModal('report-form-modal');
+        return 'Report sent!';
+    }, null, "Report submission error", () => {
+        formElement.querySelector('button[type=submit]').disabled = false;
+    }));
 };
 
 export function RepFormComp(reportToEdit = null) {
