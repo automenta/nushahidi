@@ -8,9 +8,8 @@ import { renderMapTilesSection } from './settings/mapTiles.js';
 import { renderImageHostSection } from './settings/imageHost.js';
 import { setupFollowedListUniqueListeners } from './settings/followedUsers.js';
 import { renderDataManagementSection } from './settings/dataManagement.js';
-import { offlineQueueItemRenderer, offlineQueueActionsConfig, renderOfflineQueue } from './settingsUtils.js';
+import { offlineQueueItemRenderer, offlineQueueActionsConfig, renderOfflineQueue } from './settings/offlineQueue.js';
 
-// Generic function to create an add logic handler (moved from settingsUtils.js)
 const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async (inputValue) => {
     if (!inputValue) {
         showToast("Input cannot be empty.", 'warning');
@@ -30,7 +29,6 @@ const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, war
     }
 };
 
-// Specific add logic handlers (moved from settingsUtils.js and settingsHelpers.js)
 const addRelayLogic = createAddLogicHandler(
     async (url) => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
     (url) => appStore.get().relays.some(r => r.url === url),
@@ -249,13 +247,13 @@ export const settingsSections = [
         uniqueListenersSetup: setupFollowedListUniqueListeners
     },
     {
-        type: 'offline-queue', // Special type for offline queue
+        type: 'offline-queue',
         title: 'Offline Queue',
         listId: 'offline-queue-list',
         itemRenderer: offlineQueueItemRenderer,
         actionsConfig: (modalContent) => offlineQueueActionsConfig(modalContent),
         itemWrapperClass: 'offline-q-entry',
-        customRenderLogic: renderOfflineQueue // A specific function to handle initial render and updates
+        customRenderLogic: renderOfflineQueue
     },
     {
         type: 'section',

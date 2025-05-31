@@ -1,7 +1,8 @@
 import { createEl } from '../utils.js';
 import { createModalWrapper, hideModal } from './modals.js';
-import { settingsSections } from './settingsConfig.js'; // New import
-import { renderConfigurableListSetting } from './settingsUtils.js'; // Re-use generic list renderer
+import { settingsSections } from './settingsConfig.js';
+import { renderConfigurableListSetting } from './settingsUtils.js';
+import { renderOfflineQueue } from './settings/offlineQueue.js';
 
 
 const settingsContentRenderer = (modalRoot) => {
@@ -12,17 +13,17 @@ const settingsContentRenderer = (modalRoot) => {
             renderConfigurableListSetting(settingsSectionsWrapper, section);
         } else if (section.type === 'section') {
             const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
-            sectionEl.appendChild(section.renderer(settingsSectionsWrapper)); // Pass wrapper if needed by renderer
+            sectionEl.appendChild(section.renderer(settingsSectionsWrapper));
             settingsSectionsWrapper.appendChild(sectionEl);
             settingsSectionsWrapper.appendChild(createEl('hr'));
-        } else if (section.type === 'offline-queue') { // Special handling for offline queue
+        } else if (section.type === 'offline-queue') {
             settingsSectionsWrapper.appendChild(createEl('section', {}, [
                 createEl('h3', { textContent: section.title }),
                 createEl('p', { textContent: 'Events waiting to be published when online.' }),
                 createEl('div', { id: section.listId })
             ]));
             settingsSectionsWrapper.appendChild(createEl('hr'));
-            section.customRenderLogic(settingsSectionsWrapper); // Call specific render function
+            renderOfflineQueue(settingsSectionsWrapper);
         }
     });
 
