@@ -309,7 +309,7 @@ function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                     accept: field.accept || ''
                 });
                 if (field.onchange) {
-                    input.addEventListener('change', field.onchange);
+                    inputElement.addEventListener('change', field.onchange);
                 }
                 break;
             case 'button':
@@ -856,6 +856,64 @@ function AuthModalComp() {
     return modalContent;
 }
 
+/**
+ * Sets up event listeners for adding items to a list and optionally for a save button.
+ * This abstracts common logic for list management sections in settings.
+ * @param {object} config - Configuration object.
+ * @param {HTMLElement} config.modalContent - The root element to scope queries for input/button IDs.
+ * @param {string} config.addInputId - ID of the input field for new items.
+ * @param {string} config.addBtnId - ID of the button to add new items.
+ * @param {function(string): Promise<boolean>} config.addLogic - Async function that takes the input value,
+ *   performs validation, checks for existence, adds the item via `confSvc` or similar, and updates `appStore`.
+ *   It should return `true` if the item was successfully added, `false` if not (e.g., validation failed, already exists).
+ *   It should handle its own `showToast` messages for success/failure.
+ * @param {function(): void} config.listRenderer - Function to call to re-render the specific list display.
+ * @param {string} [config.saveBtnId] - Optional ID of a separate "Save" button.
+ * @param {function(): void} [config.onSaveCallback] - Optional callback for the save button.
+ */
+const setupAddRemoveListSection = ({
+    modalContent,
+    addInputId,
+    addBtnId,
+    addLogic,
+    listRenderer,
+    saveBtnId,
+    onSaveCallback
+}) => {
+    const addInput = gE(addInputId, modalContent);
+    const addBtn = gE(addBtnId, modalContent);
+    const saveBtn = saveBtnId ? gE(saveBtnId, modalContent) : null;
+
+    if (!addInput || !addBtn) {
+        console.warn(`Missing elements for list setup: input=${addInputId}, button=${addBtnId}`);
+        return;
+    }
+
+    addBtn.onclick = async () => {
+        const inputValue = addInput.value.trim();
+        if (!inputValue) {
+            showToast("Input cannot be empty.", 'warning');
+            return;
+        }
+        try {
+            const added = await addLogic(inputValue);
+            if (added) {
+                addInput.value = ''; // Clear input only on successful add
+                listRenderer(); // Re-render the list immediately
+            }
+        } catch (e) {
+            showToast(`Error: ${e.message}`, 'error');
+        }
+    };
+
+    if (saveBtn) {
+        saveBtn.onclick = () => {
+            if (onSaveCallback) onSaveCallback();
+            showToast("Settings saved.", 'success');
+        };
+    }
+};
+
 // SettingsPanel
 function SettPanComp() {
     const appState = appStore.get();
@@ -1103,25 +1161,121 @@ function SettPanComp() {
     renderMuteList();
     renderFollowedList();
 
-    // Setup Event Listeners for Settings Panel (must be called after modalContent is in DOM)
-    const setupRelayListeners = () => {
-        gE('#add-rly-btn', modalContent).onclick = () => {
-            const input = gE('#new-rly-url', modalContent);
-            const url = input.value.trim();
-            if (!isValidUrl(url)) return showToast("Invalid URL.", 'warning');
-            const currentRelays = appStore.get().relays;
-            if (currentRelays.some(r => r.url === url)) return showToast("Relay already exists.", 'info');
-            confSvc.setRlys([...currentRelays, { url, read: true, write: true, status: '?' }]);
-            input.value = '';
-            renderRelays();
-        };
-        gE('#save-rlys-btn', modalContent).onclick = () => {
-            nostrSvc.discAllRlys();
-            nostrSvc.connRlys();
-            showToast("Relays saved and reconnected.", 'success');
-        };
+    // Define addLogic functions for each list type
+    const addRelayLogic = async (url) => {
+        if (!isValidUrl(url)) {
+            showToast("Invalid URL.", 'warning');
+            return false;
+        }
+        const currentRelays = appStore.get().relays;
+        if (currentRelays.some(r => r.url === url)) {
+            showToast("Relay already exists.", 'info');
+            return false;
+        }
+        confSvc.setRlys([...currentRelays, { url, read: true, write: true, status: '?' }]);
+        showToast("Relay added.", 'success');
+        return true;
     };
 
+    const addCategoryLogic = async (cat) => {
+        const currentCats = appStore.get().settings.cats;
+        if (currentCats.includes(cat)) {
+            showToast("Category already exists.", 'info');
+            return false;
+        }
+        confSvc.setCats([...currentCats, cat]);
+        showToast("Category added.", 'success');
+        return true;
+    };
+
+    const addFocusTagLogic = async (tag) => {
+        if (!tag.startsWith('#')) tag = '#' + tag;
+        const currentTags = appStore.get().focusTags;
+        if (currentTags.some(t => t.tag === tag)) {
+            showToast("Focus tag already exists.", 'info');
+            return false;
+        }
+        confSvc.setFocusTags([...currentTags, { tag, active: false }]);
+        showToast("Focus tag added.", 'success');
+        return true;
+    };
+
+    const addMutePubkeyLogic = async (pk) => {
+        try {
+            pk = npubToHex(pk);
+            if (!isNostrId(pk)) throw new Error("Invalid Nostr pubkey format.");
+            confSvc.addMute(pk); // This already handles existence check and toast
+            return true;
+        } catch (e) {
+            showToast(`Error adding pubkey: ${e.message}`, 'error');
+            return false;
+        }
+    };
+
+    const addFollowedPubkeyLogic = async (pk) => {
+        try {
+            pk = npubToHex(pk);
+            if (!isNostrId(pk)) throw new Error("Invalid Nostr pubkey format.");
+            confSvc.addFollowed(pk); // This already handles existence check and toast
+            return true;
+        } catch (e) {
+            showToast(`Error adding user: ${e.message}`, 'error');
+            return false;
+        }
+    };
+
+    // Setup Event Listeners for Settings Panel using the new helper
+    setupAddRemoveListSection({
+        modalContent,
+        addInputId: 'new-rly-url',
+        addBtnId: 'add-rly-btn',
+        addLogic: addRelayLogic,
+        listRenderer: renderRelays,
+        saveBtnId: 'save-rlys-btn',
+        onSaveCallback: () => {
+            nostrSvc.discAllRlys();
+            nostrSvc.connRlys();
+        }
+    });
+
+    setupAddRemoveListSection({
+        modalContent,
+        addInputId: 'new-cat-name',
+        addBtnId: 'add-cat-btn',
+        addLogic: addCategoryLogic,
+        listRenderer: renderCategories,
+        saveBtnId: 'save-cats-btn'
+    });
+
+    setupAddRemoveListSection({
+        modalContent,
+        addInputId: 'new-focus-tag-input',
+        addBtnId: 'add-focus-tag-btn',
+        addLogic: addFocusTagLogic,
+        listRenderer: renderFocusTags,
+        saveBtnId: 'save-focus-tags-btn',
+        onSaveCallback: () => nostrSvc.refreshSubs()
+    });
+
+    setupAddRemoveListSection({
+        modalContent,
+        addInputId: 'new-mute-pk-input',
+        addBtnId: 'add-mute-btn',
+        addLogic: addMutePubkeyLogic,
+        listRenderer: renderMuteList,
+        saveBtnId: 'save-mute-list-btn'
+    });
+
+    setupAddRemoveListSection({
+        modalContent,
+        addInputId: 'new-followed-pk-input',
+        addBtnId: 'add-followed-btn',
+        addLogic: addFollowedPubkeyLogic,
+        listRenderer: renderFollowedList,
+        saveBtnId: 'save-followed-btn'
+    });
+
+    // Unique listeners (Key Management, Map Tiles, Image Host, Data Management, NIP-02 Import/Publish)
     const setupKeyManagementListeners = () => {
         const expSkBtn = gE('#exp-sk-btn', modalContent);
         if (expSkBtn) {
@@ -1168,40 +1322,6 @@ function SettPanComp() {
                 }
             };
         }
-    };
-
-    const setupFocusTagListeners = () => {
-        gE('#add-focus-tag-btn', modalContent).onclick = () => {
-            const input = gE('#new-focus-tag-input', modalContent);
-            let tag = input.value.trim();
-            if (!tag) return showToast("Please enter a focus tag.", 'warning');
-            if (!tag.startsWith('#')) tag = '#' + tag;
-            const currentTags = appStore.get().focusTags;
-            if (currentTags.some(t => t.tag === tag)) return showToast("Focus tag already exists.", 'info');
-            confSvc.setFocusTags([...currentTags, { tag, active: false }]);
-            input.value = '';
-            renderFocusTags();
-        };
-        gE('#save-focus-tags-btn', modalContent).onclick = () => {
-            showToast("Focus tags saved.", 'info');
-            nostrSvc.refreshSubs(); // Refresh subscriptions to apply new focus tag if active
-        };
-    };
-
-    const setupCategoryListeners = () => {
-        gE('#add-cat-btn', modalContent).onclick = () => {
-            const input = gE('#new-cat-name', modalContent);
-            const cat = input.value.trim();
-            if (!cat) return showToast("Please enter a category name.", 'warning');
-            const currentCats = appStore.get().settings.cats;
-            if (currentCats.includes(cat)) return showToast("Category already exists.", 'info');
-            confSvc.setCats([...currentCats, cat]);
-            input.value = '';
-            renderCategories();
-        };
-        gE('#save-cats-btn', modalContent).onclick = () => {
-            showToast("Categories saved.", 'info');
-        };
     };
 
     const setupMapTilesListeners = () => {
@@ -1273,48 +1393,7 @@ function SettPanComp() {
         };
     };
 
-    const setupMuteListListeners = () => {
-        gE('#add-mute-btn', modalContent).onclick = () => {
-            const input = gE('#new-mute-pk-input', modalContent);
-            let pk = input.value.trim();
-            if (!pk) return showToast("Please enter a pubkey or npub.", 'warning');
-            try {
-                pk = npubToHex(pk);
-                if (!isNostrId(pk)) throw new Error("Invalid Nostr pubkey format.");
-                confSvc.addMute(pk);
-                input.value = '';
-                showToast("Pubkey added to mute list.", 'success');
-            } catch (e) {
-                showToast(`Error adding pubkey: ${e.message}`, 'error');
-            }
-        };
-        gE('#save-mute-list-btn', modalContent).onclick = () => {
-            showToast("Mute list saved.", 'info');
-        };
-    };
-
-    const setupFollowedListListeners = () => {
-        gE('#add-followed-btn', modalContent).onclick = () => {
-            const input = gE('#new-followed-pk-input', modalContent);
-            let pk = input.value.trim();
-            if (!pk) return showToast("Please enter a pubkey or npub.", 'warning');
-            try {
-                pk = npubToHex(pk);
-                if (!isNostrId(pk)) throw new Error("Invalid Nostr pubkey format.");
-                confSvc.addFollowed(pk);
-                input.value = '';
-                showToast("User added to followed list.", 'success');
-            } catch (e) {
-                showToast(`Error adding user: ${e.message}`, 'error');
-            }
-        };
-
-        gE('#save-followed-btn', modalContent).onclick = () => {
-            // The add/remove functions already update the appStore and trigger save via confSvc.save
-            // This button is mostly for user clarity or if manual edits were allowed in the UI
-            showToast("Followed list saved.", 'info');
-        };
-
+    const setupFollowedListUniqueListeners = () => {
         gE('#import-contacts-btn', modalContent).onclick = async () => {
             if (!appStore.get().user) {
                 showToast("Please connect your Nostr identity to import contacts.", 'warning');
@@ -1457,15 +1536,11 @@ function SettPanComp() {
         };
     };
 
-    // Initialize all listeners
-    setupRelayListeners();
+    // Initialize unique listeners
     setupKeyManagementListeners();
-    setupFocusTagListeners();
-    setupCategoryListeners();
     setupMapTilesListeners();
     setupImageHostListeners();
-    setupMuteListListeners();
-    setupFollowedListListeners();
+    setupFollowedListUniqueListeners(); // Contains import/publish contacts
     setupDataManagementListeners();
 
     return modalContent;
