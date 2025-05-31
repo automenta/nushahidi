@@ -141,9 +141,10 @@ export const idSvc = {
         }
     },
 
-    async signEventLocal(event, pubkey) {
+    async signEventLocal(eventTemplate, pubkey) {
         const sk = await idSvc.getSk(true);
         if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
-        return { ...event, pubkey, id: getEvH(event), sig: signEvNostr(event, sk) };
+        // finalizeEvent (aliased as signEvNostr) automatically adds pubkey, id, and sig
+        return signEvNostr(eventTemplate, sk);
     }
 };
