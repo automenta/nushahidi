@@ -10,8 +10,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    // Re-including 'nostr-tools' to ensure proper bundling and prevent internal SimplePool errors.
     include: ['nostr-tools'], 
   },
-  // publicDir: 'public'
 });

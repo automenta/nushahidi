@@ -20,8 +20,9 @@ export const renderKeyManagementSection = modalContent => {
     modalContent.appendChild(form);
 
     $('#exp-sk-btn', form).onclick = withLoading(withToast(async () => {
-        if (!appStore.get().user) throw new Error("No Nostr identity connected.");
-        if (appStore.get().user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
+        const user = appStore.get().user;
+        if (!user) throw new Error("No Nostr identity connected.");
+        if (user.authM === 'nip07') throw new Error("NIP-07 keys cannot be exported.");
 
         const sk = await idSvc.getSk(true);
         if (!sk) throw new Error("Private key not available for export.");

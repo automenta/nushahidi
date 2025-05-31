@@ -4,7 +4,6 @@ import {NetworkFirst, StaleWhileRevalidate} from 'workbox-strategies';
 import {ExpirationPlugin} from 'workbox-expiration';
 import {BackgroundSyncPlugin} from 'workbox-background-sync';
 
-
 cleanupOutdatedCaches();
 
 precacheAndRoute(self.__WB_MANIFEST || []);
@@ -53,7 +52,6 @@ registerRoute(
     ],
   })
 );
-
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {

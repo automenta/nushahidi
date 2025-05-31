@@ -122,23 +122,24 @@ export const settingsSections = [
         addInputId: 'new-focus-tag-input',
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
-        itemRenderer: ft => {
-            const span = createEl('span', { textContent: `${sanitizeHTML(ft.tag)}${ft.active ? ' (Active)' : ''}` });
-            const radio = createEl('input', {
-                type: 'radio',
-                name: 'activeFocusTag',
-                value: ft.tag,
-                checked: ft.active,
-                onchange: () => {
-                    const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === ft.tag }));
-                    confSvc.setFocusTags(updatedTags);
-                    confSvc.setCurrentFocusTag(ft.tag);
-                    nostrSvc.refreshSubs();
-                }
-            });
-            const label = createEl('label', {}, [radio, ` Set Active`]);
-            return createEl('div', {}, [span, label]);
-        },
+        itemRenderer: ft => createEl('div', {}, [
+            createEl('span', { textContent: `${sanitizeHTML(ft.tag)}${ft.active ? ' (Active)' : ''}` }),
+            createEl('label', {}, [
+                createEl('input', {
+                    type: 'radio',
+                    name: 'activeFocusTag',
+                    value: ft.tag,
+                    checked: ft.active,
+                    onchange: () => {
+                        const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === ft.tag }));
+                        confSvc.setFocusTags(updatedTags);
+                        confSvc.setCurrentFocusTag(ft.tag);
+                        nostrSvc.refreshSubs();
+                    }
+                }),
+                ` Set Active`
+            ])
+        ]),
         actionsConfig: [{
             label: 'Remove',
             className: 'remove-focus-tag-btn',

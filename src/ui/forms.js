@@ -9,6 +9,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     for (const field of fieldsConfig) {
         const fieldId = field.id || (field.name ? `field-${field.name}` : null);
         const commonAttrs = { id: fieldId, name: field.name, required: field.required || false };
+        const initialValue = initialData[field.name] ?? field.value ?? '';
 
         if (field.label && !['button', 'custom-html', 'paragraph', 'hr', 'checkbox', 'h4'].includes(field.type)) {
             form.appendChild(createEl('label', { for: fieldId, textContent: field.label }));
@@ -20,7 +21,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                 inputElement = createEl('input', {
                     type: field.type,
                     placeholder: field.placeholder || '',
-                    value: initialData[field.name] ?? field.value ?? '',
+                    value: initialValue,
                     autocomplete: field.autocomplete || 'off',
                     readOnly: field.readOnly || false,
                     ...commonAttrs
@@ -30,7 +31,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                 inputElement = createEl('textarea', {
                     placeholder: field.placeholder || '',
                     rows: field.rows || 3,
-                    textContent: initialData[field.name] ?? field.value ?? '',
+                    textContent: initialValue,
                     ...commonAttrs
                 });
                 break;
@@ -39,7 +40,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                     field.options.map(opt => createEl('option', {
                         value: opt.value,
                         textContent: opt.label,
-                        selected: (initialData[field.name] ?? field.value) === opt.value
+                        selected: initialValue === opt.value
                     }))
                 );
                 break;
@@ -90,7 +91,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                         type: 'radio',
                         name: field.name,
                         value: opt.value,
-                        checked: (initialData[field.name] ?? field.value) === opt.value,
+                        checked: initialValue === opt.value,
                     });
                     if (opt.onchange) radio.onchange = opt.onchange;
                     inputElement.appendChild(createEl('label', {}, [radio, ` ${sanitizeHTML(opt.label)}`]));
