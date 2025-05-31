@@ -2,36 +2,10 @@ import { appStore } from '../../store.js';
 import { confSvc, nostrSvc } from '../../services.js';
 import { $, formatNpubShort, showToast, createEl } from '../../utils.js';
 import { withLoading, withToast } from '../../decorators.js';
-import { renderForm } from '../forms.js';
-import { createListSectionRenderer } from '../settingsHelpers.js';
 import { showConfirmModal } from '../modals.js';
 
-export const renderFollowedUsersSection = (modalContent) => {
-    const followedUsersFormFields = [
-        { label: 'New Followed Pubkey:', type: 'text', id: 'new-followed-pk-input', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
-        { label: 'Add to Followed', type: 'button', id: 'add-followed-btn', buttonType: 'button' },
-        { label: 'Save Followed List', type: 'button', id: 'save-followed-btn', buttonType: 'button' },
-        { type: 'hr' },
-        { label: 'Import NIP-02 Contacts', type: 'button', id: 'import-contacts-btn', buttonType: 'button' },
-        { label: 'Publish NIP-02 Contacts', type: 'button', id: 'publish-contacts-btn', buttonType: 'button' }
-    ];
-
-    const form = renderForm(followedUsersFormFields, {}, { id: 'followed-list-form' });
-    modalContent.appendChild(form);
-
-    return form;
-};
-
-export const renderFollowedList = createListSectionRenderer('followed-list',
-    f => createEl('span', { textContent: formatNpubShort(f.pk) }),
-    [{
-        label: 'Unfollow',
-        className: 'remove-followed-btn',
-        onClick: f => confSvc.rmFollowed(f.pk),
-        confirm: { title: 'Unfollow User', message: 'Are you sure you want to unfollow this user?' }
-    }],
-    'followed-entry'
-);
+// renderFollowedUsersSection and renderFollowedList are no longer defined here.
+// Their functionality is now integrated into settingsUtils.js and settingsPanel.js.
 
 export const setupFollowedListUniqueListeners = (modalContent) => {
     $('#import-contacts-btn', modalContent).onclick = withLoading(withToast(async () => {

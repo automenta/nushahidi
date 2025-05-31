@@ -1,40 +1,10 @@
-import { appStore } from '../store.js';
-import { confSvc } from '../services.js';
-import { C, createEl, showToast, npubToHex } from '../utils.js';
-import { renderList } from './forms.js';
+import { appStore } from '../../store.js';
+import { confSvc } from '../../services.js';
+import { C, createEl, showToast, npubToHex } from '../../utils.js';
+// Import createAddLogicHandler from the new settingsUtils.js
+import { createAddLogicHandler } from './settingsUtils.js';
 
-export const createListSectionRenderer = (containerId, itemRenderer, actionsConfig, itemWrapperClass) => (modalContent) => {
-    let items;
-    if (containerId === 'rly-list') {
-        items = appStore.get().relays;
-    } else if (containerId === 'followed-list') {
-        items = appStore.get().followedPubkeys;
-    } else {
-        items = appStore.get().settings[containerId.replace('-list', '')];
-    }
-
-    renderList(containerId, items || [], itemRenderer, actionsConfig, itemWrapperClass, modalContent);
-};
-
-export const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async (inputValue) => {
-    if (!inputValue) {
-        showToast("Input cannot be empty.", 'warning');
-        return false;
-    }
-    try {
-        if (itemExistsChecker && itemExistsChecker(inputValue)) {
-            showToast(warningMsg || "Item already exists.", 'info');
-            return false;
-        }
-        await confSvcMethod(inputValue);
-        showToast(successMsg || "Item added.", 'success');
-        return true;
-    } catch (e) {
-        showToast(`${errorMsg || 'Error adding item'}: ${e.message}`, 'error');
-        return false;
-    }
-};
-
+// The specific add logic handlers remain here, using the imported createAddLogicHandler
 export const addRelayLogic = createAddLogicHandler(
     async (url) => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
     (url) => appStore.get().relays.some(r => r.url === url),

@@ -2,245 +2,231 @@ import { appStore } from '../store.js';
 import { idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
 import { C, $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
 import { createModalWrapper, hideModal } from './modals.js';
-import { setupAddRemoveListSection, renderList } from './forms.js';
+import { renderForm } from './forms.js';
+
+import { renderKeyManagementSection } from './settings/keyManagement.js';
+import { renderMapTilesSection } from './settings/mapTiles.js';
+import { renderImageHostSection } from './settings/imageHost.js';
+import { setupFollowedListUniqueListeners } from './settings/followedUsers.js'; // Keep this for unique listeners
+import { renderDataManagementSection } from './settings/dataManagement.js';
+
+// Import the new generalized rendering function and specific list renderers/logic
 import {
-    createListSectionRenderer,
+    renderConfigurableListSetting,
+    renderRelays, // Still needed for initial render of the list
+    renderCategories, // Still needed for initial render of the list
+    renderFocusTags, // Still needed for initial render of the list
+    renderMuteList, // Still needed for initial render of the list
+    renderFollowedList, // Still needed for initial render of the list
+    renderOfflineQueue, // Still needed for initial render of the list
+    offlineQueueItemRenderer, // Still needed for offline queue
+    offlineQueueActionsConfig, // Still needed for offline queue
     addRelayLogic,
     addCategoryLogic,
     addFocusTagLogic,
     addMutePubkeyLogic,
     addFollowedPubkeyLogic
-} from './settingsHelpers.js';
+} from './settingsUtils.js';
 
-import { renderKeyManagementSection } from './settings/keyManagement.js';
-import { renderMapTilesSection } from './settings/mapTiles.js';
-import { renderImageHostSection } from './settings/imageHost.js';
-import { renderFollowedUsersSection, renderFollowedList, setupFollowedListUniqueListeners } from './settings/followedUsers.js';
-import { renderDataManagementSection } from './settings/dataManagement.js';
-import { renderForm } from './forms.js';
-
-const renderRelays = createListSectionRenderer('rly-list',
-    r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` }),
-    [{
-        label: 'Remove',
-        className: 'remove-relay-btn',
-        onClick: r => {
-            const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
-            confSvc.setRlys(updatedRelays);
-            nostrSvc.discAllRlys();
-            nostrSvc.connRlys();
-        },
-        confirm: { title: 'Remove Relay', message: 'Are you sure you want to remove this relay?' }
-    }],
-    'relay-entry'
-);
-
-const renderCategories = createListSectionRenderer('cat-list',
-    c => createEl('span', { textContent: sanitizeHTML(c) }),
-    [{
-        label: 'Remove',
-        className: 'remove-category-btn',
-        onClick: c => {
-            const updatedCats = appStore.get().settings.cats.filter(cat => cat !== c);
-            confSvc.setCats(updatedCats);
-        },
-        confirm: { title: 'Remove Category', message: 'Are you sure you want to remove this category?' }
-    }],
-    'category-entry'
-);
-
-const renderFocusTags = createListSectionRenderer('focus-tag-list',
-    ft => {
-        const span = createEl('span', { textContent: `${sanitizeHTML(ft.tag)}${ft.active ? ' (Active)' : ''}` });
-        const radio = createEl('input', {
-            type: 'radio',
-            name: 'activeFocusTag',
-            value: ft.tag,
-            checked: ft.active,
-            onchange: () => {
-                const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === ft.tag }));
-                confSvc.setFocusTags(updatedTags);
-                confSvc.setCurrentFocusTag(ft.tag);
-                nostrSvc.refreshSubs();
-            }
-        });
-        const label = createEl('label', {}, [radio, ` Set Active`]);
-        return createEl('div', {}, [span, label]);
-    },
-    [{
-        label: 'Remove',
-        className: 'remove-focus-tag-btn',
-        onClick: t => {
-            const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
-            confSvc.setFocusTags(updatedTags);
-            if (t.active && updatedTags.length > 0) {
-                confSvc.setCurrentFocusTag(updatedTags[0].tag);
-                updatedTags[0].active = true;
-            } else if (updatedTags.length === 0) {
-                confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
-                confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
-            }
-        },
-        confirm: { title: 'Remove Focus Tag', message: 'Are you sure you want to remove this focus tag?' }
-    }],
-    'focus-tag-entry'
-);
-
-const renderMuteList = createListSectionRenderer('mute-list',
-    pk => createEl('span', { textContent: formatNpubShort(pk) }),
-    [{
-        label: 'Remove',
-        className: 'remove-mute-btn',
-        onClick: pk => confSvc.rmMute(pk),
-        confirm: { title: 'Remove Muted Pubkey', message: 'Are you sure you want to unmute this pubkey?' }
-    }],
-    'mute-entry'
-);
-
-const getOfflineQueueEventType = (kind) => {
-    switch (kind) {
-        case C.NOSTR_KIND_REPORT: return 'Report';
-        case C.NOSTR_KIND_REACTION: return 'Reaction';
-        case C.NOSTR_KIND_NOTE: return 'Comment';
-        case 5: return 'Deletion';
-        case C.NOSTR_KIND_PROFILE: return 'Profile';
-        case C.NOSTR_KIND_CONTACTS: return 'Contacts';
-        default: return `Kind ${kind}`;
-    }
-};
-
-const offlineQueueItemRenderer = item => {
-    const eventType = getOfflineQueueEventType(item.event.kind);
-    const timestamp = new Date(item.ts).toLocaleString();
-    const contentSnippet = item.event.content.substring(0, 50) + (item.event.content.length > 50 ? '...' : '');
-    const eventIdSnippet = item.event.id.substring(0, 8);
-    return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
-};
-
-const offlineQueueActionsConfig = (modalContent) => [
-    {
-        label: 'Retry',
-        className: 'retry-offline-q-btn',
-        onClick: async (item) => {
-            await nostrSvc.pubEv(item.event);
-            await dbSvc.rmOfflineQ(item.qid);
-            renderOfflineQueue(modalContent);
-        }
-    },
-    {
-        label: 'Delete',
-        className: 'remove-offline-q-btn',
-        onClick: async (item) => {
-            await dbSvc.rmOfflineQ(item.qid);
-            renderOfflineQueue(modalContent);
-        }
-    }
-];
-
-const renderOfflineQueue = async (modalContent) => {
-    const queueItems = await dbSvc.getOfflineQ();
-    renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig(modalContent), 'offline-q-entry', modalContent);
-};
-
-function renderRelaySection(wrapper) {
-    wrapper.appendChild(createEl('section', {}, [
-        createEl('h3', { textContent: 'Relays' }),
-        createEl('div', { id: 'rly-list' }),
-        renderForm([
-            { label: 'New Relay URL:', type: 'url', id: 'new-rly-url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
-            { label: 'Add Relay', type: 'button', id: 'add-rly-btn', buttonType: 'button' },
-            { label: 'Save & Reconnect Relays', type: 'button', id: 'save-rlys-btn', buttonType: 'button' }
-        ], {}, { id: 'relay-form' })
-    ]));
-    wrapper.appendChild(createEl('hr'));
-}
-
-function renderFocusTagsSection(wrapper) {
-    wrapper.appendChild(createEl('section', {}, [
-        createEl('h3', { textContent: 'Focus Tags' }),
-        createEl('div', { id: 'focus-tag-list' }),
-        renderForm([
-            { label: 'New Focus Tag:', type: 'text', id: 'new-focus-tag-input', name: 'newFocusTag', placeholder: '#NewFocusTag' },
-            { label: 'Add Focus Tag', type: 'button', id: 'add-focus-tag-btn', buttonType: 'button' },
-            { label: 'Save Focus Tags', type: 'button', id: 'save-focus-tags-btn', buttonType: 'button' }
-        ], {}, { id: 'focus-tag-form' })
-    ]));
-    wrapper.appendChild(createEl('hr'));
-}
-
-function renderCategoriesSection(wrapper) {
-    wrapper.appendChild(createEl('section', {}, [
-        createEl('h3', { textContent: 'Categories' }),
-        createEl('div', { id: 'cat-list' }),
-        renderForm([
-            { label: 'New Category Name:', type: 'text', id: 'new-cat-name', name: 'newCategory', placeholder: 'New Category' },
-            { label: 'Add Category', type: 'button', id: 'add-cat-btn', buttonType: 'button' },
-            { label: 'Save Categories', type: 'button', id: 'save-cats-btn', buttonType: 'button' }
-        ], {}, { id: 'category-form' })
-    ]));
-    wrapper.appendChild(createEl('hr'));
-}
-
-function renderMuteListSection(wrapper) {
-    wrapper.appendChild(createEl('section', {}, [
-        createEl('h3', { textContent: 'Mute List' }),
-        createEl('div', { id: 'mute-list' }),
-        renderForm([
-            { label: 'New Muted Pubkey:', type: 'text', id: 'new-mute-pk-input', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
-            { label: 'Add to Mute List', type: 'button', id: 'add-mute-btn', buttonType: 'button' },
-            { label: 'Save Mute List', type: 'button', id: 'save-mute-list-btn', buttonType: 'button' }
-        ], {}, { id: 'mute-list-form' })
-    ]));
-    wrapper.appendChild(createEl('hr'));
-}
-
-function renderFollowedUsersSectionWrapper(wrapper) {
-    wrapper.appendChild(createEl('section', {}, [
-        createEl('h3', { textContent: 'Followed Users (NIP-02)' }),
-        createEl('div', { id: 'followed-list' }),
-        renderFollowedUsersSection(wrapper)
-    ]));
-    wrapper.appendChild(createEl('hr'));
-}
-
-function renderOfflineQueueSection(wrapper) {
-    wrapper.appendChild(createEl('section', {}, [
-        createEl('h3', { textContent: 'Offline Queue' }),
-        createEl('p', { textContent: 'Events waiting to be published when online.' }),
-        createEl('div', { id: 'offline-queue-list' })
-    ]));
-    wrapper.appendChild(createEl('hr'));
-}
 
 const settingsContentRenderer = (modalRoot) => {
     const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
 
-    renderRelaySection(settingsSectionsWrapper);
+    // Relays Section
+    renderConfigurableListSetting(settingsSectionsWrapper, {
+        title: 'Relays',
+        listId: 'rly-list',
+        formFields: [
+            { label: 'New Relay URL:', type: 'url', id: 'new-rly-url', name: 'newRelayUrl', placeholder: 'wss://new.relay.com' },
+            { type: 'button', id: 'add-rly-btn', label: 'Add Relay', buttonType: 'button' },
+            { type: 'button', id: 'save-rlys-btn', label: 'Save & Reconnect Relays', buttonType: 'button' }
+        ],
+        formId: 'relay-form',
+        addInputId: 'new-rly-url',
+        addBtnId: 'add-rly-btn',
+        addLogic: addRelayLogic,
+        itemRenderer: r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` }),
+        actionsConfig: [{
+            label: 'Remove',
+            className: 'remove-relay-btn',
+            onClick: r => {
+                const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
+                confSvc.setRlys(updatedRelays);
+                nostrSvc.discAllRlys();
+                nostrSvc.connRlys();
+            },
+            confirm: { title: 'Remove Relay', message: 'Are you sure you want to remove this relay?' }
+        }],
+        itemWrapperClass: 'relay-entry',
+        saveBtnId: 'save-rlys-btn',
+        onSaveCallback: () => {
+            nostrSvc.discAllRlys();
+            nostrSvc.connRlys();
+        }
+    });
 
+    // Key Management Section (not a list, so rendered separately)
     const keyManagementSection = renderKeyManagementSection(settingsSectionsWrapper);
     if (keyManagementSection) {
         settingsSectionsWrapper.appendChild(createEl('hr'));
     }
 
-    renderFocusTagsSection(settingsSectionsWrapper);
-    renderCategoriesSection(settingsSectionsWrapper);
+    // Focus Tags Section
+    renderConfigurableListSetting(settingsSectionsWrapper, {
+        title: 'Focus Tags',
+        listId: 'focus-tag-list',
+        formFields: [
+            { label: 'New Focus Tag:', type: 'text', id: 'new-focus-tag-input', name: 'newFocusTag', placeholder: '#NewFocusTag' },
+            { type: 'button', id: 'add-focus-tag-btn', label: 'Add Focus Tag', buttonType: 'button' },
+            { type: 'button', id: 'save-focus-tags-btn', label: 'Save Focus Tags', buttonType: 'button' }
+        ],
+        formId: 'focus-tag-form',
+        addInputId: 'new-focus-tag-input',
+        addBtnId: 'add-focus-tag-btn',
+        addLogic: addFocusTagLogic,
+        itemRenderer: ft => {
+            const span = createEl('span', { textContent: `${sanitizeHTML(ft.tag)}${ft.active ? ' (Active)' : ''}` });
+            const radio = createEl('input', {
+                type: 'radio',
+                name: 'activeFocusTag',
+                value: ft.tag,
+                checked: ft.active,
+                onchange: () => {
+                    const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === ft.tag }));
+                    confSvc.setFocusTags(updatedTags);
+                    confSvc.setCurrentFocusTag(ft.tag);
+                    nostrSvc.refreshSubs();
+                }
+            });
+            const label = createEl('label', {}, [radio, ` Set Active`]);
+            return createEl('div', {}, [span, label]);
+        },
+        actionsConfig: [{
+            label: 'Remove',
+            className: 'remove-focus-tag-btn',
+            onClick: t => {
+                const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
+                confSvc.setFocusTags(updatedTags);
+                if (t.active && updatedTags.length > 0) {
+                    confSvc.setCurrentFocusTag(updatedTags[0].tag);
+                    updatedTags[0].active = true;
+                } else if (updatedTags.length === 0) {
+                    confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
+                    confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
+                }
+            },
+            confirm: { title: 'Remove Focus Tag', message: 'Are you sure you want to remove this focus tag?' }
+        }],
+        itemWrapperClass: 'focus-tag-entry',
+        saveBtnId: 'save-focus-tags-btn',
+        onSaveCallback: () => nostrSvc.refreshSubs()
+    });
 
+    // Categories Section
+    renderConfigurableListSetting(settingsSectionsWrapper, {
+        title: 'Categories',
+        listId: 'cat-list',
+        formFields: [
+            { label: 'New Category Name:', type: 'text', id: 'new-cat-name', name: 'newCategory', placeholder: 'New Category' },
+            { type: 'button', id: 'add-cat-btn', label: 'Add Category', buttonType: 'button' },
+            { type: 'button', id: 'save-cats-btn', label: 'Save Categories', buttonType: 'button' }
+        ],
+        formId: 'category-form',
+        addInputId: 'new-cat-name',
+        addBtnId: 'add-cat-btn',
+        addLogic: addCategoryLogic,
+        itemRenderer: c => createEl('span', { textContent: sanitizeHTML(c) }),
+        actionsConfig: [{
+            label: 'Remove',
+            className: 'remove-category-btn',
+            onClick: c => {
+                const updatedCats = appStore.get().settings.cats.filter(cat => cat !== c);
+                confSvc.setCats(updatedCats);
+            },
+            confirm: { title: 'Remove Category', message: 'Are you sure you want to remove this category?' }
+        }],
+        itemWrapperClass: 'category-entry',
+        saveBtnId: 'save-cats-btn'
+    });
+
+    // Map Tiles Section (not a list, so rendered separately)
     settingsSectionsWrapper.appendChild(createEl('section', {}, [
         createEl('h3', { textContent: 'Map Tiles' }),
         renderMapTilesSection(settingsSectionsWrapper)
     ]));
     settingsSectionsWrapper.appendChild(createEl('hr'));
 
+    // Image Host Section (not a list, so rendered separately)
     settingsSectionsWrapper.appendChild(createEl('section', {}, [
         createEl('h3', { textContent: 'Image Host' }),
         renderImageHostSection(settingsSectionsWrapper)
     ]));
     settingsSectionsWrapper.appendChild(createEl('hr'));
 
-    renderMuteListSection(settingsSectionsWrapper);
-    renderFollowedUsersSectionWrapper(settingsSectionsWrapper);
-    renderOfflineQueueSection(settingsSectionsWrapper);
+    // Mute List Section
+    renderConfigurableListSetting(settingsSectionsWrapper, {
+        title: 'Mute List',
+        listId: 'mute-list',
+        formFields: [
+            { label: 'New Muted Pubkey:', type: 'text', id: 'new-mute-pk-input', name: 'newMutePk', placeholder: 'npub... or hex pubkey' },
+            { type: 'button', id: 'add-mute-btn', label: 'Add to Mute List', buttonType: 'button' },
+            { type: 'button', id: 'save-mute-list-btn', label: 'Save Mute List', buttonType: 'button' }
+        ],
+        formId: 'mute-list-form',
+        addInputId: 'new-mute-pk-input',
+        addBtnId: 'add-mute-btn',
+        addLogic: addMutePubkeyLogic,
+        itemRenderer: pk => createEl('span', { textContent: formatNpubShort(pk) }),
+        actionsConfig: [{
+            label: 'Remove',
+            className: 'remove-mute-btn',
+            onClick: pk => confSvc.rmMute(pk),
+            confirm: { title: 'Remove Muted Pubkey', message: 'Are you sure you want to unmute this pubkey?' }
+        }],
+        itemWrapperClass: 'mute-entry',
+        saveBtnId: 'save-mute-list-btn'
+    });
 
+    // Followed Users Section
+    renderConfigurableListSetting(settingsSectionsWrapper, {
+        title: 'Followed Users (NIP-02)',
+        listId: 'followed-list',
+        formFields: [
+            { label: 'New Followed Pubkey:', type: 'text', id: 'new-followed-pk-input', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
+            { type: 'button', id: 'add-followed-btn', label: 'Add to Followed', buttonType: 'button' },
+            { type: 'button', id: 'save-followed-btn', label: 'Save Followed List', buttonType: 'button' },
+            { type: 'hr' },
+            { label: 'Import NIP-02 Contacts', type: 'button', id: 'import-contacts-btn', buttonType: 'button' },
+            { label: 'Publish NIP-02 Contacts', type: 'button', id: 'publish-contacts-btn', buttonType: 'button' }
+        ],
+        formId: 'followed-list-form',
+        addInputId: 'new-followed-pk-input',
+        addBtnId: 'add-followed-btn',
+        addLogic: addFollowedPubkeyLogic,
+        itemRenderer: f => createEl('span', { textContent: formatNpubShort(f.pk) }),
+        actionsConfig: [{
+            label: 'Unfollow',
+            className: 'remove-followed-btn',
+            onClick: f => confSvc.rmFollowed(f.pk),
+            confirm: { title: 'Unfollow User', message: 'Are you sure you want to unfollow this user?' }
+        }],
+        itemWrapperClass: 'followed-entry',
+        saveBtnId: 'save-followed-btn',
+        uniqueListenersSetup: setupFollowedListUniqueListeners // This function handles the import/publish buttons
+    });
+
+    // Offline Queue Section (special case, as it's not about adding/removing via form, but displaying queue)
+    settingsSectionsWrapper.appendChild(createEl('section', {}, [
+        createEl('h3', { textContent: 'Offline Queue' }),
+        createEl('p', { textContent: 'Events waiting to be published when online.' }),
+        createEl('div', { id: 'offline-queue-list' })
+    ]));
+    settingsSectionsWrapper.appendChild(createEl('hr'));
+    // Initial render for offline queue, and it needs to be re-rendered on updates
+    renderOfflineQueue(settingsSectionsWrapper);
+
+
+    // Data Management Section (not a list, so rendered separately)
     settingsSectionsWrapper.appendChild(createEl('section', {}, [
         createEl('h3', { textContent: 'Data Management' }),
         renderDataManagementSection(settingsSectionsWrapper)
@@ -249,72 +235,10 @@ const settingsContentRenderer = (modalRoot) => {
     return settingsSectionsWrapper;
 };
 
-function setupSettingsListListeners(modalContent) {
-    renderRelays(modalContent);
-    renderCategories(modalContent);
-    renderFocusTags(modalContent);
-    renderMuteList(modalContent);
-    renderFollowedList(modalContent);
-    renderOfflineQueue(modalContent);
-
-    setupAddRemoveListSection({
-        modalContent,
-        addInputId: 'new-rly-url',
-        addBtnId: 'add-rly-btn',
-        addLogic: addRelayLogic,
-        listRenderer: () => renderRelays(modalContent),
-        saveBtnId: 'save-rlys-btn',
-        onSaveCallback: () => {
-            nostrSvc.discAllRlys();
-            nostrSvc.connRlys();
-        }
-    });
-
-    setupAddRemoveListSection({
-        modalContent,
-        addInputId: 'new-cat-name',
-        addBtnId: 'add-cat-btn',
-        addLogic: addCategoryLogic,
-        listRenderer: () => renderCategories(modalContent),
-        saveBtnId: 'save-cats-btn'
-    });
-
-    setupAddRemoveListSection({
-        modalContent,
-        addInputId: 'new-focus-tag-input',
-        addBtnId: 'add-focus-tag-btn',
-        addLogic: addFocusTagLogic,
-        listRenderer: () => renderFocusTags(modalContent),
-        saveBtnId: 'save-focus-tags-btn',
-        onSaveCallback: () => nostrSvc.refreshSubs()
-    });
-
-    setupAddRemoveListSection({
-        modalContent,
-        addInputId: 'new-mute-pk-input',
-        addBtnId: 'add-mute-btn',
-        addLogic: addMutePubkeyLogic,
-        listRenderer: () => renderMuteList(modalContent),
-        saveBtnId: 'save-mute-list-btn'
-    });
-
-    setupAddRemoveListSection({
-        modalContent,
-        addInputId: 'new-followed-pk-input',
-        addBtnId: 'add-followed-btn',
-        addLogic: addFollowedPubkeyLogic,
-        listRenderer: () => renderFollowedList(modalContent),
-        saveBtnId: 'save-followed-btn'
-    });
-    setupFollowedListUniqueListeners(modalContent);
-}
-
 export function SettPanComp() {
     const modalContent = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
 
     modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
-
-    setupSettingsListListeners(modalContent);
 
     return modalContent;
 }
