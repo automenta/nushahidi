@@ -77,8 +77,10 @@ export const dbSvc = {
         }
 
         const allProfiles = await this.getAllProfiles();
+        // Ensure allProfiles is an array before iterating
+        const profilesToPrune = Array.isArray(allProfiles) ? allProfiles : [];
         const thirtyDaysAgo = Date.now() / 1000 - (C.DB_PRUNE_PROFILES_MAX_AGE_DAYS * 24 * 60 * 60);
-        for (const profile of allProfiles) {
+        for (const profile of profilesToPrune) {
             if (profile.at < thirtyDaysAgo) {
                 await createDbStoreCrud(C.STORE_PROFILES).rm(profile.pk);
             }
