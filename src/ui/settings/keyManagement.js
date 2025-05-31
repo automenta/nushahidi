@@ -6,7 +6,7 @@ import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showPassphraseModal} from '../modals.js';
 
-export const KeyManagementSection = () => {
+export function KeyManagementSection() {
     let sectionEl;
     let form;
     let exportSkBtn;
@@ -77,4 +77,4 @@ export const KeyManagementSection = () => {
     });
 
     return render(appStore.get());
-};
+}

@@ -4,7 +4,7 @@ import {C, isValidUrl, createEl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export const MapTilesSection = () => {
+export function MapTilesSection() {
     let sectionEl;
     let form;
     let tilePresetSel;
@@ -63,4 +63,4 @@ export const MapTilesSection = () => {
     });
 
     return render(appStore.get());
-};
+}

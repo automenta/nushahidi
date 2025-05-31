@@ -4,7 +4,7 @@ import {C, isValidUrl, createEl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 
-export const ImageHostSection = () => {
+export function ImageHostSection() {
     let sectionEl;
     let form;
     let imgHostSel;
@@ -85,4 +85,4 @@ export const ImageHostSection = () => {
     });
 
     return render(appStore.get());
-};
+}

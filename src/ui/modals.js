@@ -46,22 +46,6 @@ export class Modal {
     }
 }
 
-export const showModal = (modalInstance, focusElOrSelector) => {
-    if (modalInstance instanceof Modal) {
-        modalInstance.show(focusElOrSelector);
-    } else {
-        console.error("Invalid modal instance provided to showModal.");
-    }
-};
-
-export const hideModal = modalInstance => {
-    if (modalInstance instanceof Modal) {
-        modalInstance.hide();
-    } else {
-        console.error("Invalid modal instance provided to hideModal.");
-    }
-};
-
 export const showConfirmModal = (title, message, onConfirm, onCancel) => {
     const confirmModal = new Modal('confirm-modal', title, () => {
         const cancelBtn = createEl('button', { class: 'cancel-button', textContent: 'Cancel' });

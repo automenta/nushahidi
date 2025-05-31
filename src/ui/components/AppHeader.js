@@ -1,7 +1,5 @@
 import {appStore} from '../../store.js';
-import {idSvc} from '../../services.js';
 import {createEl, formatNpubShort} from '../../utils.js';
-import {showConfirmModal} from '../modals.js';
 
 export function AppHeader(props) {
     const { onCreateReport, onAuthToggle, onShowSettings } = props;
@@ -31,12 +29,7 @@ export function AppHeader(props) {
 
             createReportBtn.onclick = onCreateReport;
             settingsButton.onclick = onShowSettings;
-
-            authButton.onclick = () => {
-                state.user ?
-                    showConfirmModal("Logout Confirmation", "Are you sure you want to log out? Your local private key (if used) will be cleared from memory.", () => idSvc.logout()) :
-                    onAuthToggle();
-            };
+            authButton.onclick = onAuthToggle;
 
             headerEl.append(
                 createEl('h1', { textContent: 'NostrMapper' }),

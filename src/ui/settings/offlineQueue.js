@@ -24,7 +24,7 @@ export const offlineQueueItemRenderer = item => {
     return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
 };
 
-export const OfflineQueueSection = (config) => {
+export function OfflineQueueSection(config) {
     let sectionEl;
 
     const renderQueue = async () => {
@@ -66,4 +66,4 @@ export const OfflineQueueSection = (config) => {
     });
 
     return render();
-};
+}

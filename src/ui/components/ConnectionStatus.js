@@ -9,7 +9,7 @@ export function ConnectionStatus(props) {
     let syncStatusSpan;
     let offlineQueueCountSpan;
 
-    const updateDisplay = async (online, reports) => {
+    const updateDisplay = async (online) => {
         onlineStatusSpan.textContent = online ? 'Online' : 'Offline';
         onlineStatusSpan.className = online ? 'status-online' : 'status-offline';
 
@@ -22,7 +22,7 @@ export function ConnectionStatus(props) {
             offlineQueueCountSpan.onclick = () => pendingEvents > 0 && onShowSettings?.();
             offlineQueueCountSpan.style.cursor = pendingEvents > 0 ? 'pointer' : 'default';
         } else {
-            syncStatusSpan.textContent = `Sync Status: Online (${reports.length} reports)`;
+            syncStatusSpan.textContent = `Sync Status: Online`;
             offlineQueueCountSpan.textContent = '';
             offlineQueueCountSpan.onclick = null;
             offlineQueueCountSpan.style.cursor = 'default';
@@ -37,13 +37,13 @@ export function ConnectionStatus(props) {
             offlineQueueCountSpan = createEl('span');
             statusEl.append(onlineStatusSpan, syncStatusSpan, offlineQueueCountSpan);
         }
-        updateDisplay(state.online, state.reports);
+        updateDisplay(state.online);
         return statusEl;
     };
 
     appStore.on((newState, oldState) => {
-        if (newState.online !== oldState?.online || newState.reports !== oldState?.reports) {
-            updateDisplay(newState.online, newState.reports);
+        if (newState.online !== oldState?.online) {
+            updateDisplay(newState.online);
         }
     });
 

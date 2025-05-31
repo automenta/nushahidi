@@ -1,7 +1,7 @@
 import {appStore} from './store.js';
 import {idSvc} from './services.js';
 import {C, createEl} from './utils.js';
-import {showConfirmModal, showModal, Modal} from './modals.js';
+import {showConfirmModal, Modal} from './modals.js';
 import {FilterControls, applyAllFilters} from './components/FilterControls.js';
 import {ReportList} from './components/ReportList.js';
 import {ConnectionStatus} from './components/ConnectionStatus.js';

@@ -5,7 +5,7 @@ import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showConfirmModal} from '../modals.js';
 
-export const DataManagementSection = () => {
+export function DataManagementSection() {
     let sectionEl;
     let form;
     let clearReportsBtn;
@@ -83,4 +83,4 @@ export const DataManagementSection = () => {
         return sectionEl;
     };
     return render();
-};
+}
