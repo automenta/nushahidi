@@ -23,20 +23,27 @@ export class ConfigurableListSetting {
 
         this.listRenderer();
 
+        const wrapWithToast = (fn, successMsg, errorMsg) => withToast(async () => {
+            await fn();
+            this.listRenderer();
+            return successMsg;
+        }, null, errorMsg);
+
         if (config.addInputRef && config.addBtnRef && config.addLogic && this.form) {
             const addInputEl = formFieldsMap[config.addInputRef];
             const addBtnEl = formFieldsMap[config.addBtnRef];
-            const saveBtnEl = config.saveBtnRef ? formFieldsMap[config.saveBtnRef] : null;
 
-            addBtnEl.onclick = withToast(async () => {
+            addBtnEl.onclick = wrapWithToast(async () => {
                 const inputValue = addInputEl.value.trim();
                 await config.addLogic(inputValue);
                 addInputEl.value = '';
-                this.listRenderer();
             }, config.addSuccessMsg, config.addErrorMsg);
+        }
 
-            if (saveBtnEl) saveBtnEl.onclick = withToast(async () => {
-                await config.onSaveCallback?.();
+        if (config.saveBtnRef && config.onSaveCallback && this.form) {
+            const saveBtnEl = formFieldsMap[config.saveBtnRef];
+            saveBtnEl.onclick = wrapWithToast(async () => {
+                await config.onSaveCallback();
             }, "Settings saved.", "Error saving settings");
         }
 

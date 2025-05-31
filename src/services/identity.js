@@ -8,6 +8,16 @@ import { nip19 } from 'nostr-tools';
 
 let _locSk = null;
 
+const _setLocalIdentity = async (sk, authMethod, passphrase) => {
+    const pk = getPublicKey(sk);
+    const eSk = await encrypt(sk, passphrase);
+    const identity = { pk, eSk, authM: authMethod };
+    appStore.set({ user: identity });
+    confSvc.setId(identity);
+    _locSk = sk;
+    return identity;
+};
+
 export const idSvc = {
     async init() {
         const identity = await confSvc.getId();
@@ -31,24 +41,14 @@ export const idSvc = {
 
     async newProf(passphrase) {
         const sk = generatePrivateKey();
-        const pk = getPublicKey(sk);
-        const eSk = await encrypt(sk, passphrase);
-        const identity = { pk, eSk, authM: 'local' };
-        appStore.set({ user: identity });
-        confSvc.setId(identity);
-        _locSk = sk;
+        const identity = await _setLocalIdentity(sk, 'local', passphrase);
         showToast("New profile created! Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.", 'critical-warning', 0, nip19.nsecEncode(sk));
         return identity;
     },
 
     async impSk(privateKey, passphrase) {
         const sk = nsecToHex(privateKey);
-        const pk = getPublicKey(sk);
-        const eSk = await encrypt(sk, passphrase);
-        const identity = { pk, eSk, authM: 'import' };
-        appStore.set({ user: identity });
-        confSvc.setId(identity);
-        _locSk = sk;
+        const identity = await _setLocalIdentity(sk, 'import', passphrase);
         showToast("Private key imported successfully!", 'success');
         return identity;
     },
@@ -97,7 +97,7 @@ export const idSvc = {
     async signEv(event) {
         const user = appStore.get().user;
         if (!user) throw new Error("No Nostr identity connected. Please connect or create one.");
-        return user.authM === 'nip07' ? this.signEventNip07(event) : this.signEventLocal(event, user.pk);
+        return user.authM === 'nip07' ? this.signEventNip07(event) : this.signEventLocal(event);
     },
 
     async signEventNip07(event) {

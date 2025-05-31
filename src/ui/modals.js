@@ -20,9 +20,10 @@ export class Modal {
             modalContent
         );
 
-        const contentToAppend = typeof this.contentRenderer === 'function' ? this.contentRenderer(modalContent, modalElement) : this.contentRenderer;
-        const contentArray = Array.isArray(contentToAppend) ? contentToAppend : [contentToAppend];
-        contentArray.filter(Boolean).forEach(el => modalContent.appendChild(el));
+        const contentToAppend = this.contentRenderer(modalContent, modalElement);
+        (Array.isArray(contentToAppend) ? contentToAppend : [contentToAppend])
+            .filter(Boolean)
+            .forEach(el => modalContent.appendChild(el));
 
         return modalElement;
     }
@@ -31,14 +32,9 @@ export class Modal {
         this.root.style.display = 'block';
         this.root.removeAttribute('inert');
 
-        let focusEl = null;
-        if (focusSelectorOrElement instanceof Element) {
-            focusEl = focusSelectorOrElement;
-        } else if (typeof focusSelectorOrElement === 'string') {
-            focusEl = this.root.querySelector(focusSelectorOrElement);
-        } else {
-            focusEl = this.root.querySelector('h2') || this.root.querySelector('button, input, select, textarea');
-        }
+        const focusEl = focusSelectorOrElement instanceof Element ? focusSelectorOrElement :
+                        typeof focusSelectorOrElement === 'string' ? this.root.querySelector(focusSelectorOrElement) :
+                        this.root.querySelector('h2') || this.root.querySelector('button, input, select, textarea');
         focusEl?.focus();
 
         appStore.set(s => ({...s, ui: {...s.ui, modalOpen: this.root}}));

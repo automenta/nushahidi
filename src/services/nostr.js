@@ -109,7 +109,7 @@ const queueEventOffline = async signedEvent => {
 
 export const nostrSvc = {
     async connRlys() {
-        if (!_pool || typeof _pool.on !== 'function') {
+        if (!_pool) {
             try {
                 _pool = new SimplePool();
             } catch (e) {
