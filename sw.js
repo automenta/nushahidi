@@ -6,7 +6,7 @@ import {BackgroundSyncPlugin} from 'workbox-background-sync';
 
 cleanupOutdatedCaches();
 
-precacheAndRoute(self.__WB_MANIFEST);
+precacheAndRoute(self.__WB_MANIFEST || []); // Added defensive check for __WB_MANIFEST
 
 const navigationRoute = new NavigationRoute(new StaleWhileRevalidate({
   cacheName: 'app-shell-navigations',

@@ -267,7 +267,7 @@ export const nostrSvc = {
         }
 
         if (!_pool) {
-            await this.connRlys();
+            await this.connRlys(); // Ensure pool is connected before subscribing
         }
 
         const currentFilter = buildReportFilter(appState, mapGeohashes);
@@ -295,11 +295,11 @@ export const nostrSvc = {
         });
     },
 
-    refreshSubs() {
+    async refreshSubs() {
         if (!_pool || _pool.relays.length === 0) {
-            this.connRlys();
+            await this.connRlys(); // Await the connection
         }
-        this.subToReps();
+        await this.subToReps(); // Await the subscription
     },
 
     async pubEv(eventData) {
