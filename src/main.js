@@ -1,7 +1,7 @@
 import { appStore } from './store.js';
 import { confSvc, idSvc, nostrSvc, mapSvc, dbSvc, offSvc } from './services.js';
 import { initUI } from './ui.js';
-import { $, showToast } from './utils.js'; // Import showToast
+import { showToast } from './utils.js';
 
 async function main() {
     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
@@ -45,7 +45,7 @@ async function main() {
         await dbSvc.pruneDb();
     } catch (e) {
         console.error("Application initialization failed:", e);
-        showToast(`App failed to load: ${e.message}`, 'error', 0); // Show persistent error
+        showToast(`App failed to load: ${e.message}`, 'error', 0);
     } finally {
         appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     }

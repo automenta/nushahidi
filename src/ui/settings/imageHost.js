@@ -4,11 +4,6 @@ import { C, $, showToast, isValidUrl } from '../../utils.js';
 import { withToast } from '../../decorators.js';
 import { renderForm, createEl } from '../forms.js';
 
-/**
- * Renders the image host settings section form.
- * @param {HTMLElement} modalContent The parent modal content element.
- * @returns {HTMLElement} The rendered form element.
- */
 export const renderImageHostSection = (modalContent) => {
     const appState = appStore.get();
 
@@ -38,17 +33,13 @@ export const renderImageHostSection = (modalContent) => {
     ];
 
     const form = renderForm(imageHostFormFields, {}, { id: 'image-host-form' });
-    modalContent.appendChild(form); // Append to modalContent directly
+    modalContent.appendChild(form);
     modalContent.appendChild(createEl('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' }));
 
     setupImageHostListeners(modalContent);
     return form;
 };
 
-/**
- * Sets up event listeners for the image host settings section.
- * @param {HTMLElement} modalContent The root element containing the image host form.
- */
 const setupImageHostListeners = (modalContent) => {
     const imgHostSel = $('#img-host-sel', modalContent);
     const nip96Fields = $('#nip96-fields', modalContent);

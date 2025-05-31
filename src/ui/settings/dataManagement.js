@@ -5,11 +5,6 @@ import { withLoading, withToast } from '../../decorators.js';
 import { renderForm } from '../forms.js';
 import { showConfirmModal } from '../modals.js';
 
-/**
- * Renders the data management settings section form.
- * @param {HTMLElement} modalContent The parent modal content element.
- * @returns {HTMLElement} The rendered form element.
- */
 export const renderDataManagementSection = (modalContent) => {
     const dataManagementFormFields = [
         { type: 'button', id: 'clr-reps-btn', label: 'Clear Cached Reports' },
@@ -18,16 +13,12 @@ export const renderDataManagementSection = (modalContent) => {
     ];
 
     const form = renderForm(dataManagementFormFields, {}, { id: 'data-management-form' });
-    modalContent.appendChild(form); // Append to modalContent directly
+    modalContent.appendChild(form);
 
     setupDataManagementListeners(form);
     return form;
 };
 
-/**
- * Sets up event listeners for the data management section.
- * @param {HTMLElement} formRoot The root element of the data management form.
- */
 const setupDataManagementListeners = (formRoot) => {
     $('#clr-reps-btn', formRoot).onclick = () => {
         showConfirmModal(

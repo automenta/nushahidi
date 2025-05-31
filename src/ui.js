@@ -1,8 +1,8 @@
 import { appStore } from './store.js';
-import { mapSvc, idSvc, confSvc, nostrSvc, dbSvc } from './services.js';
+import { idSvc, confSvc, mapSvc } from './services.js';
 import { C, $ } from './utils.js';
 
-import { showModal, hideModal, showConfirmModal } from './ui/modals.js';
+import { showModal, showConfirmModal, hideModal } from './ui/modals.js';
 import { RepFormComp } from './ui/reportForm.js';
 import { AuthModalComp } from './ui/authModal.js';
 import { SettPanComp } from './ui/settingsPanel.js';
@@ -17,6 +17,22 @@ import {
     handleReportViewing,
     updateGlobalLoadingSpinner
 } from './ui/statusDisplays.js';
+
+const setupOnboardingModal = () => {
+    const onboardingModal = $('#onboarding-info');
+    if (onboardingModal) {
+        const closeBtn = $('.close-btn', onboardingModal);
+        const gotItBtn = $('button', onboardingModal);
+
+        const hideOnboarding = () => {
+            localStorage.setItem(C.ONBOARDING_KEY, 'true');
+            hideModal('onboarding-info');
+        };
+
+        if (closeBtn) closeBtn.onclick = hideOnboarding;
+        if (gotItBtn) gotItBtn.onclick = hideOnboarding;
+    }
+};
 
 export function initUI() {
     const initGlobalButtons = () => {
@@ -85,6 +101,7 @@ export function initUI() {
     initGlobalButtons();
     initFilterControls();
     setupAppStoreListeners();
+    setupOnboardingModal();
 
     if (!localStorage.getItem(C.ONBOARDING_KEY)) {
         showModal('onboarding-info');

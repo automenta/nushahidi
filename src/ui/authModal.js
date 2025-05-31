@@ -1,10 +1,9 @@
-import { nip19 } from 'nostr-tools';
 import { appStore } from '../store.js';
 import { idSvc } from '../services.js';
-import { C, $, createEl, showToast } from '../utils.js';
+import { $, createEl, showToast } from '../utils.js';
 import { createModalWrapper, showConfirmModal, hideModal } from './modals.js';
 import { renderForm } from './forms.js';
-import { withLoading, withToast } from '../decorators.js'; // Import from new decorators file
+import { withLoading } from '../decorators.js';
 
 export function AuthModalComp() {
     const authFormFields = [

@@ -5,15 +5,10 @@ import { $, showToast } from '../../utils.js';
 import { withLoading, withToast } from '../../decorators.js';
 import { renderForm } from '../forms.js';
 
-/**
- * Renders the key management section form.
- * @param {HTMLElement} modalContent The parent modal content element.
- * @returns {HTMLElement} The rendered form element.
- */
 export const renderKeyManagementSection = (modalContent) => {
     const appState = appStore.get();
     if (!appState.user || (appState.user.authM !== 'local' && appState.user.authM !== 'import')) {
-        return null; // Only show if local/imported key is used
+        return null;
     }
 
     const keyManagementFormFields = [
@@ -24,16 +19,12 @@ export const renderKeyManagementSection = (modalContent) => {
     ];
 
     const form = renderForm(keyManagementFormFields, {}, { id: 'key-management-form' });
-    modalContent.appendChild(form); // Append to modalContent directly
+    modalContent.appendChild(form);
 
     setupKeyManagementListeners(form);
     return form;
 };
 
-/**
- * Sets up event listeners for the key management section.
- * @param {HTMLElement} formRoot The root element of the key management form.
- */
 const setupKeyManagementListeners = (formRoot) => {
     const expSkBtn = $('#exp-sk-btn', formRoot);
     if (expSkBtn) {

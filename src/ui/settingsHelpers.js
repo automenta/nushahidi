@@ -3,9 +3,7 @@ import { confSvc } from '../services.js';
 import { C, createEl, showToast, npubToHex } from '../utils.js';
 import { renderList } from './forms.js';
 
-// Helper to create list rendering functions
 export const createListSectionRenderer = (containerId, itemRenderer, actionsConfig, itemWrapperClass) => (modalContent) => {
-    // Determine the data source based on containerId
     let items;
     if (containerId === 'rly-list') {
         items = appStore.get().relays;
@@ -18,7 +16,6 @@ export const createListSectionRenderer = (containerId, itemRenderer, actionsConf
     renderList(containerId, items || [], itemRenderer, actionsConfig, itemWrapperClass, modalContent);
 };
 
-// Factory for addLogic functions
 export const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async (inputValue) => {
     if (!inputValue) {
         showToast("Input cannot be empty.", 'warning');
@@ -38,7 +35,6 @@ export const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successM
     }
 };
 
-// Specific addLogic functions using the factory
 export const addRelayLogic = createAddLogicHandler(
     async (url) => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
     (url) => appStore.get().relays.some(r => r.url === url),

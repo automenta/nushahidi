@@ -1,7 +1,7 @@
 import { appStore } from '../store.js';
 import { dbSvc } from '../services.js';
 import { $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
-import { showReportDetails } from './reportList.js';
+import { showReportDetails } from './reportDetails.js';
 import { applyAllFilters } from './filters.js';
 import { showModal } from './modals.js';
 

@@ -1,6 +1,6 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
-import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies';
+import { StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
 
@@ -44,7 +44,7 @@ registerRoute(
 
 registerRoute(
   ({url}) => url.href.includes('tile.openstreetmap.org') || url.href.includes('tile.thunderforest.com'),
-  new CacheFirst({
+  new StaleWhileRevalidate({
     cacheName: 'map-tiles',
     plugins: [
       new ExpirationPlugin({ maxEntries: 500, maxAgeSeconds: 30 * 24 * 60 * 60 }),

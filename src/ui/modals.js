@@ -1,5 +1,5 @@
 import { appStore } from '../store.js';
-import { C, $, createEl, sanitizeHTML, showToast } from '../utils.js';
+import { $, createEl, sanitizeHTML } from '../utils.js';
 
 export function createModalWrapper(modalId, title, contentRenderer) {
     const modalElement = $(`#${modalId}`);

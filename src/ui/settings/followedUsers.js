@@ -1,16 +1,11 @@
 import { appStore } from '../../store.js';
 import { confSvc, nostrSvc } from '../../services.js';
-import { $, formatNpubShort, showToast } from '../../utils.js';
+import { $, formatNpubShort, showToast, createEl } from '../../utils.js';
 import { withLoading, withToast } from '../../decorators.js';
 import { renderForm } from '../forms.js';
 import { createListSectionRenderer } from '../settingsHelpers.js';
 import { showConfirmModal } from '../modals.js';
 
-/**
- * Renders the followed users list and its management form.
- * @param {HTMLElement} modalContent The parent modal content element.
- * @returns {HTMLElement} The rendered form element.
- */
 export const renderFollowedUsersSection = (modalContent) => {
     const followedUsersFormFields = [
         { label: 'New Followed Pubkey:', type: 'text', id: 'new-followed-pk-input', name: 'newFollowedPk', placeholder: 'npub... or hex pubkey' },
@@ -22,15 +17,11 @@ export const renderFollowedUsersSection = (modalContent) => {
     ];
 
     const form = renderForm(followedUsersFormFields, {}, { id: 'followed-list-form' });
-    modalContent.appendChild(form); // Append to modalContent directly
+    modalContent.appendChild(form);
 
     return form;
 };
 
-/**
- * Renders the list of followed pubkeys.
- * @param {HTMLElement} modalContent The parent modal content element.
- */
 export const renderFollowedList = createListSectionRenderer('followed-list',
     f => createEl('span', { textContent: formatNpubShort(f.pk) }),
     [{
@@ -42,10 +33,6 @@ export const renderFollowedList = createListSectionRenderer('followed-list',
     'followed-entry'
 );
 
-/**
- * Sets up unique event listeners for the followed users section (import/publish contacts).
- * @param {HTMLElement} modalContent The root element containing the followed users section.
- */
 export const setupFollowedListUniqueListeners = (modalContent) => {
     $('#import-contacts-btn', modalContent).onclick = withLoading(withToast(async () => {
         if (!appStore.get().user) {

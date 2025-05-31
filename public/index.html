@@ -49,7 +49,7 @@
     <div id="settings-modal" class="modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="settings-modal-heading"></div>
     <div id="onboarding-info" class="modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="onboarding-heading">
         <div class="modal-content">
-            <span class="close-btn" onclick="document.getElementById('onboarding-info').style.display='none'">&times;</span>
+            <span class="close-btn">&times;</span>
             <h2 id="onboarding-heading">Welcome to NostrMapper!</h2>
             <p>NostrMapper lets you create and view geo-tagged reports on the decentralized Nostr protocol.</p>
             <p><strong>Key Concepts:</strong></p>
@@ -59,8 +59,7 @@
                 <li><strong>Focus Tags:</strong> Reports are grouped by a primary "#focus_tag" (e.g., #MyEvent). Set this to scope your view and new reports.</li>
                 <li><strong>Public Data:</strong> Everything you publish to Nostr is public. Be mindful of what you share.</li>
             </ul>
-            <p>Explore, report, and discover!</p>
-            <button onclick="localStorage.setItem('nostrmapper_onboarded_v1', 'true'); document.getElementById('onboarding-info').style.display='none'">Got it!</button>
+            <button>Got it!</button>
         </div>
     </div>
     <div id="confirm-modal" class="modal" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="confirm-modal-heading"></div>

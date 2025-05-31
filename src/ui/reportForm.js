@@ -1,9 +1,9 @@
 import { appStore } from '../store.js';
 import { mapSvc, imgSvc, nostrSvc } from '../services.js';
-import { C, $, createEl, sanitizeHTML, geohashEncode, showToast, isValidUrl, generateUUID, processImageFile } from '../utils.js';
+import { C, $, createEl, sanitizeHTML, geohashEncode, showToast, generateUUID, processImageFile } from '../utils.js';
 import { renderForm, renderList } from './forms.js';
 import { createModalWrapper, showModal, hideModal } from './modals.js';
-import { withLoading, withToast } from '../decorators.js'; // Import from new decorators file
+import { withLoading, withToast } from '../decorators.js';
 
 const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     previewElement.innerHTML = '';

@@ -1,5 +1,5 @@
 import { appStore } from '../store.js';
-import { mapSvc, idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
+import { idSvc, confSvc, nostrSvc, dbSvc, offSvc } from '../services.js';
 import { C, $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
 import { createModalWrapper, hideModal } from './modals.js';
 import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
@@ -12,7 +12,6 @@ import {
     addFollowedPubkeyLogic
 } from './settingsHelpers.js';
 
-// Import modularized settings sections
 import { renderKeyManagementSection } from './settings/keyManagement.js';
 import { renderMapTilesSection } from './settings/mapTiles.js';
 import { renderImageHostSection } from './settings/imageHost.js';
@@ -125,18 +124,18 @@ const renderOfflineQueue = async (modalContent) => {
         {
             label: 'Retry',
             className: 'retry-offline-q-btn',
-            onClick: async (item) => { // withLoading/withToast handled by pubEv
+            onClick: async (item) => {
                 await nostrSvc.pubEv(item.event);
                 await dbSvc.rmOfflineQ(item.qid);
-                renderOfflineQueue(modalContent); // Re-render list after action
+                renderOfflineQueue(modalContent);
             }
         },
         {
             label: 'Delete',
             className: 'remove-offline-q-btn',
-            onClick: async (item) => { // withLoading/withToast handled by rmOfflineQ
+            onClick: async (item) => {
                 await dbSvc.rmOfflineQ(item.qid);
-                renderOfflineQueue(modalContent); // Re-render list after action
+                renderOfflineQueue(modalContent);
             }
         }
     ];
@@ -145,12 +144,9 @@ const renderOfflineQueue = async (modalContent) => {
 };
 
 export function SettPanComp() {
-    const appState = appStore.get();
-
     const settingsContentRenderer = (modalRoot) => {
         const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
 
-        // Relays Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Relays' }),
             createEl('div', { id: 'rly-list' }),
@@ -162,13 +158,11 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Local Key Management Section
         const keyManagementSection = renderKeyManagementSection(settingsSectionsWrapper);
         if (keyManagementSection) {
             settingsSectionsWrapper.appendChild(createEl('hr'));
         }
 
-        // Focus Tags Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Focus Tags' }),
             createEl('div', { id: 'focus-tag-list' }),
@@ -180,7 +174,6 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Categories Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Categories' }),
             createEl('div', { id: 'cat-list' }),
@@ -192,21 +185,18 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Map Tiles Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Map Tiles' }),
-            renderMapTilesSection(settingsSectionsWrapper) // Render and append directly
+            renderMapTilesSection(settingsSectionsWrapper)
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Image Host Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Image Host' }),
-            renderImageHostSection(settingsSectionsWrapper) // Render and append directly
+            renderImageHostSection(settingsSectionsWrapper)
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Mute List Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Mute List' }),
             createEl('div', { id: 'mute-list' }),
@@ -218,15 +208,13 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Followed Users Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Followed Users (NIP-02)' }),
             createEl('div', { id: 'followed-list' }),
-            renderFollowedUsersSection(settingsSectionsWrapper) // Render and append directly
+            renderFollowedUsersSection(settingsSectionsWrapper)
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Offline Queue Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Offline Queue' }),
             createEl('p', { textContent: 'Events waiting to be published when online.' }),
@@ -234,10 +222,9 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // Data Management Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Data Management' }),
-            renderDataManagementSection(settingsSectionsWrapper) // Render and append directly
+            renderDataManagementSection(settingsSectionsWrapper)
         ]));
 
         return settingsSectionsWrapper;
@@ -247,15 +234,13 @@ export function SettPanComp() {
 
     modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
 
-    // Initial rendering of lists
     renderRelays(modalContent);
     renderCategories(modalContent);
     renderFocusTags(modalContent);
     renderMuteList(modalContent);
-    renderFollowedList(modalContent); // This is for the list itself, not the form
+    renderFollowedList(modalContent);
     renderOfflineQueue(modalContent);
 
-    // Setup list management for sections that use it
     setupAddRemoveListSection({
         modalContent,
         addInputId: 'new-rly-url',
@@ -297,7 +282,6 @@ export function SettPanComp() {
         saveBtnId: 'save-mute-list-btn'
     });
 
-    // Followed users list management
     setupAddRemoveListSection({
         modalContent,
         addInputId: 'new-followed-pk-input',
@@ -306,7 +290,7 @@ export function SettPanComp() {
         listRenderer: () => renderFollowedList(modalContent),
         saveBtnId: 'save-followed-btn'
     });
-    setupFollowedListUniqueListeners(modalContent); // Setup unique listeners for import/publish
+    setupFollowedListUniqueListeners(modalContent);
 
     return modalContent;
 }

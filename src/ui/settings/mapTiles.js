@@ -4,11 +4,6 @@ import { C, $, showToast, isValidUrl } from '../../utils.js';
 import { withToast } from '../../decorators.js';
 import { renderForm } from '../forms.js';
 
-/**
- * Renders the map tiles settings section form.
- * @param {HTMLElement} modalContent The parent modal content element.
- * @returns {HTMLElement} The rendered form element.
- */
 export const renderMapTilesSection = (modalContent) => {
     const appState = appStore.get();
 
@@ -26,16 +21,12 @@ export const renderMapTilesSection = (modalContent) => {
     ];
 
     const form = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
-    modalContent.appendChild(form); // Append to modalContent directly
+    modalContent.appendChild(form);
 
     setupMapTilesListeners(form);
     return form;
 };
 
-/**
- * Sets up event listeners for the map tiles settings section.
- * @param {HTMLElement} formRoot The root element of the map tiles form.
- */
 const setupMapTilesListeners = (formRoot) => {
     const tilePresetSel = $('#tile-preset-sel', formRoot);
     const tileUrlIn = $('#tile-url-in', formRoot);
