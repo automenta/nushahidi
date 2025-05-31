@@ -1,4 +1,5 @@
-import { SimplePool, getEventHash, validateEvent, verifySignature } from 'nostr-tools';
+import { SimplePool } from 'nostr-tools/pool';
+import { getEventHash } from 'nostr-tools/pure'; // getEventHash is still useful for event IDs
 import { appStore } from '../store.js';
 import { dbSvc } from '../services/db.js';
 import { idSvc } from './identity.js';
@@ -51,11 +52,7 @@ const addInteractionToReport = async signedEvent => {
 };
 
 const handleEvent = async (event, relayUrl) => {
-    if (!validateEvent(event) || !verifySignature(event)) {
-        console.warn("Invalid event received:", event);
-        return;
-    }
-
+    // SimplePool handles validateEvent and verifySignature internally
     switch (event.kind) {
         case C.NOSTR_KIND_REPORT:
             await addReportToStoreAndDb(event);
@@ -67,7 +64,7 @@ const handleEvent = async (event, relayUrl) => {
         case C.NOSTR_KIND_NOTE:
             await addInteractionToReport(event);
             break;
-        case 5:
+        case 5: // Deletion event
             await dbSvc.rmRep(event.tags.find(t => t[0] === 'e')?.[1]);
             appStore.set(s => ({ reports: s.reports.filter(r => r.id !== event.tags.find(t => t[0] === 'e')?.[1]) }));
             break;
@@ -89,33 +86,30 @@ const _publishEventToRelays = async signedEvent => {
         return false; // Indicate failure
     }
 
-    let publishedSuccessfully = false;
-    const publishPromises = writeRelays.map(url => {
-        return new Promise(resolve => {
+    try {
+        // Use Promise.any to resolve as soon as one relay publishes successfully
+        await Promise.any(writeRelays.map(url => {
             const pub = _pool.publish(url, signedEvent);
-            let success = false;
-            pub.on('ok', () => {
-                console.log(`Event ${signedEvent.id.substring(0, 8)}... published to ${url}`);
-                success = true;
-                publishedSuccessfully = true;
-                resolve(true);
+            return new Promise((resolve, reject) => {
+                pub.on('ok', () => {
+                    console.log(`Event ${signedEvent.id.substring(0, 8)}... published to ${url}`);
+                    resolve(true); // Resolve with true on success
+                });
+                pub.on('failed', reason => {
+                    console.error(`Failed to publish event ${signedEvent.id.substring(0, 8)}... to ${url}: ${reason}`);
+                    reject(new Error(`Failed to publish to ${url}: ${reason}`)); // Reject on failure
+                });
+                // Add a timeout for relays that don't respond
+                setTimeout(() => {
+                    reject(new Error(`Timeout publishing event ${signedEvent.id.substring(0, 8)}... to ${url}`));
+                }, 5000); // 5 second timeout
             });
-            pub.on('failed', reason => {
-                console.error(`Failed to publish event ${signedEvent.id.substring(0, 8)}... to ${url}: ${reason}`);
-                resolve(false);
-            });
-            // Add a timeout for relays that don't respond
-            setTimeout(() => {
-                if (!success) {
-                    console.warn(`Timeout publishing event ${signedEvent.id.substring(0, 8)}... to ${url}`);
-                    resolve(false);
-                }
-            }, 5000); // 5 second timeout
-        });
-    });
-
-    await Promise.all(publishPromises);
-    return publishedSuccessfully;
+        }));
+        return true; // At least one relay published successfully
+    } catch (e) {
+        console.error("All publish attempts failed or timed out:", e);
+        return false; // All attempts failed
+    }
 };
 
 export const nostrSvc = {
@@ -176,11 +170,11 @@ export const nostrSvc = {
         }
 
         const filter = buildReportFilter(appState, appState.mapGhs);
-        const sub = _pool.sub(relaysToQuery, [filter]);
+        const sub = _pool.sub(relaysToQuery, [filter], {
+            onevent: event => handleEvent(event, event.relay),
+            oneose: () => console.log('Reports EOSE')
+        });
         _activeSubs.set('reports', { sub, type: 'reports' });
-
-        sub.on('event', event => handleEvent(event, event.relay));
-        sub.on('eose', () => console.log('Reports EOSE'));
     },
 
     unsubAllReps() {
@@ -238,14 +232,15 @@ export const nostrSvc = {
         const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
         if (!relaysToQuery.length) return null;
 
-        const sub = _pool.sub(relaysToQuery, [{ kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 }]);
         return new Promise(resolve => {
-            sub.on('event', async event => {
-                await handleEvent(event, event.relay);
-                resolve(JSON.parse(event.content));
-                sub.unsub();
+            const sub = _pool.sub(relaysToQuery, [{ kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 }], {
+                onevent: async event => {
+                    await handleEvent(event, event.relay);
+                    resolve(JSON.parse(event.content));
+                    sub.unsub();
+                },
+                oneose: () => resolve(null)
             });
-            sub.on('eose', () => resolve(null));
         });
     },
 
@@ -256,14 +251,15 @@ export const nostrSvc = {
         const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
         if (!relaysToQuery.length) return [];
 
-        const sub = _pool.sub(relaysToQuery, [{ kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 }]);
         return new Promise(resolve => {
-            sub.on('event', async event => {
-                const contacts = event.tags.filter(t => t[0] === 'p').map(t => ({ pubkey: t[1], relay: t[2], petname: t[3] }));
-                resolve(contacts);
-                sub.unsub();
+            const sub = _pool.sub(relaysToQuery, [{ kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 }], {
+                onevent: async event => {
+                    const contacts = event.tags.filter(t => t[0] === 'p').map(t => ({ pubkey: t[1], relay: t[2], petname: t[3] }));
+                    resolve(contacts);
+                    sub.unsub();
+                },
+                oneose: () => resolve([])
             });
-            sub.on('eose', () => resolve([]));
         });
     },
 
@@ -298,17 +294,16 @@ export const nostrSvc = {
             '#p': [reportPk]
         };
 
-        const sub = _pool.sub(relaysToQuery, [filter]);
         const interactions = [];
         return new Promise(resolve => {
-            sub.on('event', event => {
-                if (validateEvent(event) && verifySignature(event)) {
+            const sub = _pool.sub(relaysToQuery, [filter], {
+                onevent: event => {
                     interactions.push(event);
+                },
+                oneose: () => {
+                    resolve(interactions.sort((a, b) => a.created_at - b.created_at));
+                    sub.unsub();
                 }
-            });
-            sub.on('eose', () => {
-                resolve(interactions.sort((a, b) => a.created_at - b.created_at));
-                sub.unsub();
             });
         });
     }

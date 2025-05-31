@@ -1,5 +1,4 @@
-import { SimplePool, signEvent as signEvNostr } from 'nostr-tools';
-import { generatePrivateKey, getPublicKey } from 'nostr-tools/keys';
+import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import { encrypt, decrypt, nsecToHex, npubToHex, showToast } from '../utils.js';
 import { appStore } from '../store.js';
 import { confSvc } from './config.js';
@@ -41,7 +40,7 @@ export const idSvc = {
     }, null, "NIP-07 connection failed")),
 
     async newProf(passphrase) {
-        const sk = generatePrivateKey();
+        const sk = generateSecretKey();
         const identity = await _setLocalIdentity(sk, 'local', passphrase);
         showToast("New profile created! Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.", 'critical-warning', 0, nip19.nsecEncode(sk));
         return identity;
@@ -113,6 +112,6 @@ export const idSvc = {
     async signEventLocal(eventTemplate) {
         const sk = await idSvc.getSk(true);
         if (!sk) throw new Error("Private key not available for signing. Passphrase might be needed.");
-        return signEvNostr(eventTemplate, sk);
+        return finalizeEvent(eventTemplate, sk);
     }
 };
