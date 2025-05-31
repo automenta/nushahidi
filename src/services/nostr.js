@@ -1,18 +1,24 @@
-import { nip11, relayInit } from 'nostr-tools'; // Corrected import: relayInit from main package
+import { nip11 } from 'nostr-tools';
+import { SimplePool } from 'nostr-tools/pool';
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
 import {dbSvc} from './db.js';
 import {idSvc} from './identity.js';
 
-let _nostrRlys = new Map(),
-    _nostrSubs = new Map();
+let _pool = null;
+let _activeSubs = new Map();
 
 const updRlyStore = (url, status, nip11Doc = null) => {
-    const updatedRelays = appStore.get().relays.map(r =>
-        r.url === url ? { ...r, status, nip11: nip11Doc || r.nip11 } : r
-    );
-    appStore.set({ relays: updatedRelays });
+    appStore.set(s => {
+        const updatedRelays = s.relays.map(r => {
+            if (r.url === url) {
+                return { ...r, status, nip11: nip11Doc || r.nip11 };
+            }
+            return r;
+        });
+        return { relays: updatedRelays };
+    });
 };
 
 const addReportToStoreAndDb = async (signedEvent) => {
@@ -31,39 +37,7 @@ const addReportToStoreAndDb = async (signedEvent) => {
     });
 };
 
-const connectRelay = async (url, attempt = 1) => {
-    try {
-        const relay = relayInit(url);
-        relay.on('connect', async () => {
-            _nostrRlys.set(relay.url, relay);
-            const nip11Doc = await nip11.fetchRelayInformation(relay.url).catch(() => null);
-            updRlyStore(relay.url, 'connected', nip11Doc);
-            showToast(`Connected to ${url}`, 'success', 2000);
-            await nostrSvc.subToReps(relay);
-        });
-        relay.on('disconnect', () => {
-            updRlyStore(relay.url, 'disconnected');
-            showToast(`Disconnected from ${url}`, 'warning', 2000);
-            setTimeout(() => connectRelay(url, 1), C.RELAY_RETRY_DELAY_MS);
-        });
-        relay.on('error', () => {
-            updRlyStore(relay.url, 'error');
-            showToast(`Error connecting to ${url}`, 'error', 2000);
-            if (attempt < C.MAX_RELAY_RETRIES) {
-                setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
-            }
-        });
-        await relay.connect();
-    } catch (e) {
-        updRlyStore(url, 'error');
-        showToast(`Failed to connect to ${url}: ${e.message}`, 'error', 2000);
-        if (attempt < C.MAX_RELAY_RETRIES) {
-            setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
-        }
-    }
-};
-
-const buildReportFilter = (appState, relayConfig, mapGeohashes) => {
+const buildReportFilter = (appState, mapGeohashes) => {
     const focusTag = appState.currentFocusTag;
     const followedPubkeys = appState.followedPubkeys.map(f => f.pk);
 
@@ -78,11 +52,7 @@ const buildReportFilter = (appState, relayConfig, mapGeohashes) => {
     }
 
     if (mapGeohashes?.length > 0) {
-        if (relayConfig.nip11?.supported_nips?.includes(52)) {
-            filter['#g'] = mapGeohashes;
-        } else {
-            filter['#g'] = [mapGeohashes[0]];
-        }
+        filter['#g'] = mapGeohashes;
     }
     return filter;
 };
@@ -126,17 +96,16 @@ const fetchProfileLogic = async (pubkey) => {
     if (profile && (Date.now() - (profile.fetchedAt || 0)) < 864e5) return profile;
 
     const filter = { kinds: [C.NOSTR_KIND_PROFILE], authors: [pubkey], limit: 1 };
-    const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1);
+    const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
 
     if (relaysToQuery.length === 0) {
         throw new Error("No connected relays to fetch profiles from.");
     }
 
-    const events = await relaysToQuery[0].list([filter]);
-    if (events?.length > 0) {
-        const latestProfileEvent = events.sort((a, b) => b.at - a.at)[0];
+    const event = await _pool.get(relaysToQuery, filter);
+    if (event) {
         try {
-            const parsedContent = JSON.parse(latestProfileEvent.content);
+            const parsedContent = JSON.parse(event.content);
             profile = {
                 pk: pubkey,
                 name: parsedContent.name || '',
@@ -161,28 +130,17 @@ const fetchInteractionsLogic = async (reportId) => {
         { kinds: [C.NOSTR_KIND_REACTION], "#e": [reportId] },
         { kinds: [C.NOSTR_KIND_NOTE], "#e": [reportId] }
     ];
-    const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
+    const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
     if (relaysToQuery.length === 0) {
         throw new Error("No connected relays to fetch interactions from.");
     }
 
-    const fetchPromises = relaysToQuery.map(r =>
-        r.list(filters).catch(e => {
-            console.warn(`Error fetching interactions from ${r.url}: ${e.message}`);
-            return [];
-        })
-    );
-
-    const results = await Promise.allSettled(fetchPromises);
+    const events = await _pool.list(relaysToQuery, filters);
     const uniqueEvents = new Map();
 
-    results.forEach(result => {
-        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
-            result.value.forEach(ev => {
-                if (!uniqueEvents.has(ev.id)) {
-                    uniqueEvents.set(ev.id, ev);
-                }
-            });
+    events.forEach(ev => {
+        if (!uniqueEvents.has(ev.id)) {
+            uniqueEvents.set(ev.id, ev);
         }
     });
 
@@ -222,15 +180,15 @@ const fetchContactsLogic = async () => {
     if (!user) return [];
 
     const filter = { kinds: [C.NOSTR_KIND_CONTACTS], authors: [user.pk], limit: 1 };
-    const relaysToQuery = Array.from(_nostrRlys.values()).filter(r => r.status === 1 && r.read);
+    const relaysToQuery = appStore.get().relays.filter(r => r.read).map(r => r.url);
 
     if (relaysToQuery.length === 0) {
         throw new Error("No connected relays to fetch contacts from.");
     }
 
-    const events = await relaysToQuery[0].list([filter]);
-    if (events?.length > 0) {
-        const latestContactsEvent = events.sort((a, b) => b.created_at - a.created_at)[0];
+    const event = await _pool.get(relaysToQuery, filter);
+    if (event) {
+        const latestContactsEvent = event;
         return latestContactsEvent.tags
             .filter(tag => tag[0] === 'p' && tag[1])
             .map(tag => ({
@@ -244,66 +202,104 @@ const fetchContactsLogic = async () => {
 
 export const nostrSvc = {
     async connRlys() {
-        appStore.get().relays.forEach(async rConf => {
-            if (_nostrRlys.has(rConf.url) && _nostrRlys.get(rConf.url).status === 1) return;
-            if (!rConf.read && !rConf.write) return;
-            await connectRelay(rConf.url);
-        });
+        if (!_pool) {
+            _pool = new SimplePool();
+            _pool.on('relay:connect', (url) => {
+                updRlyStore(url, 'connected');
+                showToast(`Connected to ${url}`, 'success', 2000);
+            });
+            _pool.on('relay:disconnect', (url) => {
+                updRlyStore(url, 'disconnected');
+                showToast(`Disconnected from ${url}`, 'warning', 2000);
+            });
+            _pool.on('relay:error', (url) => {
+                updRlyStore(url, 'error');
+                showToast(`Error connecting to ${url}`, 'error', 2000);
+            });
+        }
+
+        const currentRelaysInStore = appStore.get().relays;
+        const poolRelayUrls = _pool.relays.map(r => r.url);
+
+        for (const rConf of currentRelaysInStore) {
+            if (!rConf.read && !rConf.write) continue;
+
+            if (!poolRelayUrls.includes(rConf.url)) {
+                _pool.addRelay(rConf.url);
+                updRlyStore(rConf.url, 'connecting');
+
+                if (!rConf.nip11) {
+                    try {
+                        const nip11Doc = await nip11.fetchRelayInformation(rConf.url);
+                        updRlyStore(rConf.url, 'connecting', nip11Doc);
+                    } catch (e) {
+                        console.warn(`Failed to fetch NIP-11 for ${rConf.url}: ${e.message}`);
+                    }
+                }
+            }
+        }
     },
 
     discAllRlys() {
-        _nostrRlys.forEach(r => r.close());
-        _nostrRlys.clear();
-        _nostrSubs.forEach(s => s.sub.unsub());
-        _nostrSubs.clear();
+        if (_pool) {
+            _pool.close();
+            _pool = null;
+        }
+        _activeSubs.forEach(s => {
+            try { s.sub.unsub(); } catch (e) { console.warn(`Error unsubscribing:`, e); }
+        });
+        _activeSubs.clear();
         appStore.set(s => ({ relays: s.relays.map(r => ({ ...r, status: 'disconnected' })) }));
         showToast("All relays disconnected.", 'info');
     },
 
-    async subToReps(specificRelay = null) {
+    async subToReps() {
         this.unsubAllReps();
 
         const appState = appStore.get();
         const mapGeohashes = appState.mapGhs;
 
-        const relaysToQuery = specificRelay ? [specificRelay] : Array.from(_nostrRlys.values());
+        const relaysToQuery = appState.relays.filter(r => r.read).map(r => r.url);
 
-        relaysToQuery.forEach(relay => {
-            const relayConfig = appStore.get().relays.find(rc => rc.url === relay.url);
-            if (relay.status !== 1 || !relayConfig?.read) return;
+        if (relaysToQuery.length === 0) {
+            showToast("No read-enabled relays configured for subscription.", 'warning');
+            return;
+        }
 
-            const currentFilter = buildReportFilter(appState, relayConfig, mapGeohashes);
-            const subscriptionId = `reps-${relay.url}-${Date.now()}`;
-            try {
-                const sub = relay.sub([currentFilter]);
+        if (!_pool) {
+            await this.connRlys();
+        }
 
-                sub.on('event', handleSubscriptionEvent);
-                sub.on('eose', () => {});
+        const currentFilter = buildReportFilter(appState, mapGeohashes);
 
-                _nostrSubs.set(subscriptionId, { sub, rU: relay.url, filt: currentFilter, type: 'reports' });
-            } catch (e) {
-                console.error(`Subscription Error for ${relay.url}:`, e);
-                showToast(`Subscription error for ${relay.url}: ${e.message}`, 'error');
-            }
-        });
+        const subscriptionId = `reps-${Date.now()}`;
+        try {
+            const sub = _pool.sub(relaysToQuery, [currentFilter]);
+
+            sub.on('event', handleSubscriptionEvent);
+            sub.on('eose', () => {});
+
+            _activeSubs.set(subscriptionId, { sub, rUs: relaysToQuery, filt: currentFilter, type: 'reports' });
+        } catch (e) {
+            console.error(`Subscription Error:`, e);
+            showToast(`Subscription error: ${e.message}`, 'error');
+        }
     },
 
     unsubAllReps() {
-        _nostrSubs.forEach((s, id) => {
+        _activeSubs.forEach((s, id) => {
             if (s.type === 'reports') {
                 try { s.sub.unsub(); } catch (e) { console.warn(`Error unsubscribing ${id}:`, e); }
-                _nostrSubs.delete(id);
+                _activeSubs.delete(id);
             }
         });
     },
 
     refreshSubs() {
-        const connectedCount = Array.from(_nostrRlys.values()).filter(r => r.status === 1).length;
-        if (connectedCount === 0) {
+        if (!_pool || _pool.relays.length === 0) {
             this.connRlys();
-        } else {
-            this.subToReps();
         }
+        this.subToReps();
     },
 
     async pubEv(eventData) {
