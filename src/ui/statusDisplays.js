@@ -52,22 +52,21 @@ export const handleReportAndFilterUpdates = (newState, oldState) => {
         newState.drawnShapes !== oldState?.drawnShapes ||
         newState.ui.spatialFilterEnabled !== oldState?.ui?.spatialFilterEnabled ||
         newState.followedPubkeys !== oldState?.followedPubkeys ||
-        newState.ui.followedOnlyFilter !== oldState?.ui?.followedOnlyFilter;
+        newState.ui.followedOnlyFilter !== oldState?.ui?.followedOnlyFilter ||
+        newState.ui.filters.q !== oldState?.ui?.filters?.q ||
+        newState.ui.filters.cat !== oldState?.ui?.filters?.cat ||
+        newState.ui.filters.auth !== oldState?.ui?.filters?.auth ||
+        newState.ui.filters.tStart !== oldState?.ui?.filters?.tStart ||
+        newState.ui.filters.tEnd !== oldState?.ui?.filters?.tEnd;
 
     if (shouldReapplyFilters) {
-        // Update local filter state if currentFocusTag changed in appStore
-        // This part needs to interact with _cFilt from filters.js.
-        // To avoid circular dependency or exposing _cFilt directly,
-        // I'll rely on initFilterControls to set the initial state
-        // and applyAllFilters to read the appStore state.
-        // The filter form's focus-tag-input should be updated directly.
+        // The filter form's focus-tag-input should be updated directly if currentFocusTag changes.
         if (newState.currentFocusTag !== oldState?.currentFocusTag) {
             const focusTagInput = $('#focus-tag-input', $('#filter-controls'));
             if (focusTagInput) {
                 focusTagInput.value = newState.currentFocusTag;
             }
         }
-        // The followedOnlyFilter is also handled by applyAllFilters reading appStore.
         applyAllFilters();
     }
 };

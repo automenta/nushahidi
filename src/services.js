@@ -520,9 +520,10 @@ export const nostrSvc = { /* nostrSvc: nostrService */
     async subToReps(specificRelay = null) {
         this.unsubAllReps(); // Unsubscribe from existing report subscriptions
 
-        const focusTag = appStore.get().currentFocusTag;
-        const mapGeohashes = appStore.get().mapGhs;
-        const followedPubkeys = appStore.get().followedPubkeys.map(f => f.pk);
+        const appState = appStore.get();
+        const focusTag = appState.currentFocusTag;
+        const mapGeohashes = appState.mapGhs;
+        const followedPubkeys = appState.followedPubkeys.map(f => f.pk);
 
         const baseFilter = { kinds: [C.NOSTR_KIND_REPORT] };
 
@@ -532,7 +533,7 @@ export const nostrSvc = { /* nostrSvc: nostrService */
         }
 
         // If "followed only" filter is active, add authors to the filter
-        if (appStore.get().ui.followedOnlyFilter && followedPubkeys.length > 0) {
+        if (appState.ui.followedOnlyFilter && followedPubkeys.length > 0) {
             baseFilter.authors = followedPubkeys;
         }
 

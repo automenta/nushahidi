@@ -132,7 +132,7 @@ async function handleCommentSubmit(event) {
         showToast(`Error sending comment: ${e.message}`, 'error');
     } finally {
         submitBtn.disabled = false;
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     }
 }
 

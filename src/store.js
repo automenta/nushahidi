@@ -26,7 +26,8 @@ let _s = {
         loading: false, // Global loading indicator
         syncMsg: '',
         spatialFilterEnabled: false, // Is spatial filtering active?
-        followedOnlyFilter: false // Is "show only followed users" filter active?
+        followedOnlyFilter: false, // Is "show only followed users" filter active?
+        filters: { q: '', cat: '', auth: '', tStart: null, tEnd: null } // Current filter values for search, category, author, time
     }
 };
 
