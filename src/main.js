@@ -32,7 +32,8 @@ async function initializeApplication() {
         const appRoot = document.getElementById('app');
         if (!appRoot) throw new Error("App root element not found!");
 
-        new App(appRoot);
+        const appInstance = new App(appRoot);
+        await appInstance.init(); // Call the new async init method on the App instance
 
         const cachedReports = await dbSvc.getAllReps();
         appStore.set({reports: (Array.isArray(cachedReports) ? cachedReports : []).sort((a, b) => b.at - a.at)});

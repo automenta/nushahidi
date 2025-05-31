@@ -28,11 +28,36 @@ export class App {
         this.root.append(this.headerEl, this.mainEl, this.footerEl);
         this.mainEl.append(this.mapContainerEl, this.sidebarEl);
 
+        // Modals that don't depend on mapSvc being initialized immediately
         this.authModal = new AuthModal();
-        this.reportFormModal = new ReportFormModal();
-        this.settingsModal = new SettingsModal();
         this.onboardingModal = new OnboardingModal();
         this.reportDetailsModal = null;
+
+        // These will be initialized in the async init() method
+        this.reportFormModal = null;
+        this.settingsModal = null;
+        this.appHeader = null;
+        this.sidebarControls = null;
+        this.filterControls = null;
+        this.reportList = null;
+        this.globalLoadingSpinner = null;
+
+        this.setupEventListeners();
+    }
+
+    async init() {
+        await mapSvc.init(this.mapContainerEl)
+            .then(success => {
+                if (!success) this.mapContainerEl.innerHTML = '<p style="color:red">Map init failed.</p>';
+            })
+            .catch(e => {
+                console.error("Map initialization failed:", e);
+                this.mapContainerEl.innerHTML = `<p style="color:red">Map init failed: ${e.message}</p>`;
+            });
+
+        // Now that mapSvc is initialized, instantiate components that depend on it
+        this.reportFormModal = new ReportFormModal();
+        this.settingsModal = new SettingsModal();
 
         this.appHeader = new AppHeader({
             onCreateReport: () => this.reportFormModal.show('.nstr-rep-form #field-title'),
@@ -60,18 +85,8 @@ export class App {
         this.globalLoadingSpinner = new GlobalLoadingSpinner();
         this.root.appendChild(this.globalLoadingSpinner.element);
 
-        this.setupEventListeners();
         applyAllFilters();
         appStore.set(s => ({ui: {...s.ui, showReportList: true}}));
-
-        mapSvc.init(this.mapContainerEl)
-            .then(success => {
-                if (!success) this.mapContainerEl.innerHTML = '<p style="color:red">Map init failed.</p>';
-            })
-            .catch(e => {
-                console.error("Map initialization failed:", e);
-                this.mapContainerEl.innerHTML = `<p style="color:red">Map init failed: ${e.message}</p>`;
-            });
 
         if (!localStorage.getItem(C.ONBOARDING_KEY)) this.onboardingModal.show('.onboarding-modal h2');
     }
