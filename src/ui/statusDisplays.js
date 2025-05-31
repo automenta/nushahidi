@@ -5,7 +5,7 @@ import { showReportDetails } from './reportDetails.js';
 import { applyAllFilters } from './filters.js';
 import { showModal } from './modals.js';
 
-export const updAuthDisp = pk => {
+export const updateAuthDisplay = pk => {
     const authButton = $('#auth-button');
     const userPubkeySpan = $('#user-pubkey');
     if (pk) {
@@ -18,7 +18,7 @@ export const updAuthDisp = pk => {
     }
 };
 
-export const updConnDisp = isOnline => {
+export const updateConnectionDisplay = isOnline => {
     const connectionStatusElement = $('#connection-status');
     if (connectionStatusElement) {
         connectionStatusElement.textContent = isOnline ? 'Online' : 'Offline';
@@ -26,7 +26,7 @@ export const updConnDisp = isOnline => {
     }
 };
 
-export const updSyncDisp = async () => {
+export const updateSyncDisplay = async () => {
     const syncStatusElement = $('#sync-status');
     if (!syncStatusElement) return;
     try {
@@ -76,7 +76,7 @@ export const handleReportAndFilterUpdates = (newState, oldState) => {
     }
 };
 
-export const updateFilterCategories = (newCategories) => {
+export const updateFilterCategories = newCategories => {
     const selectElement = $('#filter-category', $('#filter-controls'));
     if (selectElement) {
         selectElement.innerHTML = '<option value="">All</option>';
@@ -97,7 +97,7 @@ export const handleReportViewing = (reportId, reports) => {
     }
 };
 
-export const updateGlobalLoadingSpinner = (isLoading) => {
+export const updateGlobalLoadingSpinner = isLoading => {
     const globalSpinner = $('#global-loading-spinner');
     if (globalSpinner) {
         globalSpinner.style.display = isLoading ? 'flex' : 'none';

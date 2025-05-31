@@ -10,7 +10,7 @@ import { setupFollowedListUniqueListeners } from './settings/followedUsers.js';
 import { renderDataManagementSection } from './settings/dataManagement.js';
 import { offlineQueueItemRenderer, offlineQueueActionsConfig, renderOfflineQueue } from './settings/offlineQueue.js';
 
-const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async (inputValue) => {
+const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, warningMsg, errorMsg) => async inputValue => {
     if (!inputValue) {
         showToast("Input cannot be empty.", 'warning');
         return false;
@@ -30,43 +30,43 @@ const createAddLogicHandler = (confSvcMethod, itemExistsChecker, successMsg, war
 };
 
 const addRelayLogic = createAddLogicHandler(
-    async (url) => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
-    (url) => appStore.get().relays.some(r => r.url === url),
+    async url => confSvc.setRlys([...appStore.get().relays, { url, read: true, write: true, status: '?' }]),
+    url => appStore.get().relays.some(r => r.url === url),
     "Relay added.",
     "Relay already exists.",
     "Error adding relay"
 );
 
 const addCategoryLogic = createAddLogicHandler(
-    (cat) => confSvc.setCats([...appStore.get().settings.cats, cat]),
-    (cat) => appStore.get().settings.cats.includes(cat),
+    cat => confSvc.setCats([...appStore.get().settings.cats, cat]),
+    cat => appStore.get().settings.cats.includes(cat),
     "Category added.",
     "Category already exists.",
     "Error adding category"
 );
 
 const addFocusTagLogic = createAddLogicHandler(
-    async (tag) => {
+    async tag => {
         if (!tag.startsWith('#')) tag = '#' + tag;
         confSvc.setFocusTags([...appStore.get().focusTags, { tag, active: false }]);
     },
-    (tag) => appStore.get().focusTags.some(t => t.tag === (tag.startsWith('#') ? tag : '#' + tag)),
+    tag => appStore.get().focusTags.some(t => t.tag === (tag.startsWith('#') ? tag : '#' + tag)),
     "Focus tag added.",
     "Focus tag already exists.",
     "Error adding focus tag"
 );
 
 const addMutePubkeyLogic = createAddLogicHandler(
-    async (pk) => confSvc.addMute(npubToHex(pk)),
-    (pk) => appStore.get().settings.mute.includes(npubToHex(pk)),
+    async pk => confSvc.addMute(npubToHex(pk)),
+    pk => appStore.get().settings.mute.includes(npubToHex(pk)),
     "Pubkey added to mute list.",
     "Pubkey already muted.",
     "Error adding pubkey to mute list"
 );
 
 const addFollowedPubkeyLogic = createAddLogicHandler(
-    async (pk) => confSvc.addFollowed(npubToHex(pk)),
-    (pk) => appStore.get().followedPubkeys.some(f => f.pk === npubToHex(pk)),
+    async pk => confSvc.addFollowed(npubToHex(pk)),
+    pk => appStore.get().followedPubkeys.some(f => f.pk === npubToHex(pk)),
     "User added to followed list.",
     "User already followed.",
     "Error adding user to followed list"
@@ -251,7 +251,7 @@ export const settingsSections = [
         title: 'Offline Queue',
         listId: 'offline-queue-list',
         itemRenderer: offlineQueueItemRenderer,
-        actionsConfig: (modalContent) => offlineQueueActionsConfig(modalContent),
+        actionsConfig: modalContent => offlineQueueActionsConfig(modalContent),
         itemWrapperClass: 'offline-q-entry',
         customRenderLogic: renderOfflineQueue
     },

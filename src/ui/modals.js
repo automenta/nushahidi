@@ -29,7 +29,7 @@ export function createModalWrapper(modalId, title, contentRenderer) {
 }
 
 export function showConfirmModal(title, message, onConfirm, onCancel) {
-    createModalWrapper('confirm-modal', title, (root) => {
+    createModalWrapper('confirm-modal', title, root => {
         const msgPara = createEl('p', { innerHTML: message });
         const buttonContainer = createEl('div', { class: 'confirm-modal-buttons' });
 
@@ -54,8 +54,8 @@ export function showConfirmModal(title, message, onConfirm, onCancel) {
 }
 
 export function showPassphraseModal(title, message) {
-    return new Promise((resolve) => {
-        createModalWrapper('passphrase-modal', title, (root) => {
+    return new Promise(resolve => {
+        createModalWrapper('passphrase-modal', title, root => {
             const msgPara = createEl('p', { textContent: message });
             const passphraseInput = createEl('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
             const buttonContainer = createEl('div', { class: 'confirm-modal-buttons' });
@@ -75,7 +75,7 @@ export function showPassphraseModal(title, message) {
                 onclick: () => { hideModal('passphrase-modal'); resolve(null); }
             });
 
-            passphraseInput.addEventListener('keydown', (e) => {
+            passphraseInput.addEventListener('keydown', e => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     decryptBtn.click();
@@ -102,7 +102,7 @@ export const showModal = (id, focusElId) => {
     appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: id } }));
 };
 
-export const hideModal = (id) => {
+export const hideModal = id => {
     const modal = $(`#${id}`);
     if (modal) {
         modal.style.display = 'none';

@@ -10,7 +10,7 @@ const renderReportCard = report => {
         <small>Cats: ${report.cat.map(sanitizeHTML).join(', ') || 'N/A'}</small></div>`;
 };
 
-export const rendRepList = reports => {
+export const renderReportList = reports => {
     const listElement = $('#report-list');
     const listContainer = $('#report-list-container');
     if (!listElement || !listContainer) return;

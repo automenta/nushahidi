@@ -10,7 +10,7 @@ const handleConnectNip07 = withLoading(async () => {
     if (appStore.get().user) hideModal('auth-modal');
 });
 
-const handleCreateProfile = async (passphrase) => {
+const handleCreateProfile = async passphrase => {
     if (!passphrase || passphrase.length < 8) {
         showToast("Passphrase too short (min 8 chars).", 'warning');
         return;
@@ -72,7 +72,7 @@ function setupAuthModalListeners(form) {
 }
 
 export function AuthModalComp() {
-    const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', (root) => {
+    const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', root => {
         const form = renderForm(authFormFields, {}, { id: 'auth-form' });
         root.appendChild(form);
         setupAuthModalListeners(form);

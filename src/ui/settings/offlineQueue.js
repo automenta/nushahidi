@@ -4,7 +4,7 @@ import { dbSvc, nostrSvc } from '../../services.js';
 import { withLoading, withToast } from '../../decorators.js';
 import { renderList } from '../forms.js';
 
-export const getOfflineQueueEventType = (kind) => {
+export const getOfflineQueueEventType = kind => {
     switch (kind) {
         case C.NOSTR_KIND_REPORT: return 'Report';
         case C.NOSTR_KIND_REACTION: return 'Reaction';
@@ -24,11 +24,11 @@ export const offlineQueueItemRenderer = item => {
     return createEl('span', { innerHTML: `<strong>${sanitizeHTML(eventType)}</strong> (${timestamp}) - ID: ${sanitizeHTML(eventIdSnippet)}... <br>Content: <em>${sanitizeHTML(contentSnippet || 'N/A')}</em>` });
 };
 
-export const offlineQueueActionsConfig = (modalContent) => [
+export const offlineQueueActionsConfig = modalContent => [
     {
         label: 'Retry',
         className: 'retry-offline-q-btn',
-        onClick: withLoading(withToast(async (item) => {
+        onClick: withLoading(withToast(async item => {
             await nostrSvc.pubEv(item.event);
             await dbSvc.rmOfflineQ(item.qid);
             renderOfflineQueue(modalContent);
@@ -37,14 +37,14 @@ export const offlineQueueActionsConfig = (modalContent) => [
     {
         label: 'Delete',
         className: 'remove-offline-q-btn',
-        onClick: withLoading(withToast(async (item) => {
+        onClick: withLoading(withToast(async item => {
             await dbSvc.rmOfflineQ(item.qid);
             renderOfflineQueue(modalContent);
         }, null, "Error deleting event")),
     }
 ];
 
-export const renderOfflineQueue = async (modalContent) => {
+export const renderOfflineQueue = async modalContent => {
     const queueItems = await dbSvc.getOfflineQ();
     renderList('offline-queue-list', queueItems, offlineQueueItemRenderer, offlineQueueActionsConfig(modalContent), 'offline-q-entry', modalContent);
 };

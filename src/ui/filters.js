@@ -3,7 +3,7 @@ import { appStore } from '../store.js';
 import { mapSvc, nostrSvc } from '../services.js';
 import { C, $, createEl, sanitizeHTML, debounce, npubToHex } from '../utils.js';
 import { renderForm } from './forms.js';
-import { rendRepList } from './reportList.js';
+import { renderReportList } from './reportList.js';
 
 const filterFormFields = [
     { type: 'h4', content: ['Filter Reports'] },
@@ -97,37 +97,37 @@ export const applyAllFilters = () => {
         matchesFollowedOnly(report, followedOnlyFilter, followedPubkeys)
     ).sort((a, b) => b.at - a.at);
 
-    rendRepList(filteredReports);
+    renderReportList(filteredReports);
     mapSvc.updReps(filteredReports);
 };
-export const debAppAllFilt = debounce(applyAllFilters, 350);
+export const debouncedApplyAllFilters = debounce(applyAllFilters, 350);
 
 const updateFilterState = (key, value) => {
     appStore.set(s => ({ ui: { ...s.ui, filters: { ...s.ui.filters, [key]: value } } }));
 };
 
-const setupSearchInput = (filterForm) => {
+const setupSearchInput = filterForm => {
     $('#search-query-input', filterForm).oninput = e => {
         updateFilterState('q', e.target.value);
-        debAppAllFilt();
+        debouncedApplyAllFilters();
     };
 };
 
-const setupCategorySelect = (filterForm) => {
+const setupCategorySelect = filterForm => {
     $('#filter-category', filterForm).onchange = e => {
         updateFilterState('cat', e.target.value);
         applyAllFilters();
     };
 };
 
-const setupAuthorInput = (filterForm) => {
+const setupAuthorInput = filterForm => {
     $('#filter-author', filterForm).oninput = e => {
         updateFilterState('auth', e.target.value.trim());
-        debAppAllFilt();
+        debouncedApplyAllFilters();
     };
 };
 
-const setupTimeFilters = (filterForm) => {
+const setupTimeFilters = filterForm => {
     $('#filter-time-start', filterForm).onchange = e => {
         updateFilterState('tStart', e.target.value ? new Date(e.target.value).getTime() / 1000 : null);
         applyAllFilters();
@@ -138,7 +138,7 @@ const setupTimeFilters = (filterForm) => {
     };
 };
 
-const setupApplyResetButtons = (filterForm) => {
+const setupApplyResetButtons = filterForm => {
     $('#apply-filters-btn', filterForm).onclick = applyAllFilters;
     $('#reset-filters-btn', filterForm).onclick = () => {
         appStore.set(s => ({
@@ -162,7 +162,7 @@ const setupApplyResetButtons = (filterForm) => {
     };
 };
 
-const setupSpatialAndFollowedToggles = (filterForm) => {
+const setupSpatialAndFollowedToggles = filterForm => {
     const spatialFilterToggle = $('#spatial-filter-toggle', filterForm);
     spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled;
     spatialFilterToggle.onchange = e => {
@@ -179,11 +179,11 @@ const setupSpatialAndFollowedToggles = (filterForm) => {
     };
 };
 
-const setupClearDrawnShapesButton = (filterForm) => {
+const setupClearDrawnShapesButton = filterForm => {
     $('#clear-drawn-shapes-btn', filterForm).onclick = mapSvc.clearAllDrawnShapes;
 };
 
-const setupFilterEventListeners = (filterForm) => {
+const setupFilterEventListeners = filterForm => {
     setupSearchInput(filterForm);
     setupCategorySelect(filterForm);
     setupAuthorInput(filterForm);

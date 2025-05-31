@@ -5,7 +5,7 @@ import { renderConfigurableListSetting } from './settingsUtils.js';
 import { renderOfflineQueue } from './settings/offlineQueue.js';
 
 
-const settingsContentRenderer = (modalRoot) => {
+const settingsContentRenderer = modalRoot => {
     const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
 
     settingsSections.forEach(section => {

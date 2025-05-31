@@ -51,7 +51,7 @@ const renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
         return;
     }
 
-    const imageItemRenderer = (img) => createEl('span', { textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1)) });
+    const imageItemRenderer = img => createEl('span', { textContent: sanitizeHTML(img.url.substring(img.url.lastIndexOf('/') + 1)) });
     const imageActionsConfig = [{
         label: 'x',
         className: 'remove-image-btn',
@@ -79,7 +79,10 @@ const setupReportFormLocationHandlers = (formRoot, formState, updateLocationDisp
     };
 
     $('#use-gps-loc-btn', formRoot).onclick = () => {
-        if (!navigator.geolocation) return showToast("GPS not supported by your browser.", 'warning');
+        if (!navigator.geolocation) {
+            showToast("GPS not supported by your browser.", 'warning');
+            return;
+        }
         navigator.geolocation.getCurrentPosition(
             position => {
                 formState.pFLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -214,7 +217,7 @@ export function RepFormComp(reportToEdit = null) {
 
     const updateImagePreview = () => {
         const previewElement = $('#upld-photos-preview', formRoot);
-        renderImagePreview(previewElement, formState.uIMeta, (index) => {
+        renderImagePreview(previewElement, formState.uIMeta, index => {
             formState.uIMeta.splice(index, 1);
             updateImagePreview();
         });
@@ -232,7 +235,7 @@ export function RepFormComp(reportToEdit = null) {
         uIMeta: formState.uIMeta
     };
 
-    const formRoot = createModalWrapper('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', (modalContent) => {
+    const formRoot = createModalWrapper('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
         const form = renderForm(REPORT_FORM_FIELDS(categories, initialFormData, updateImagePreview, updateLocationDisplay), initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
 

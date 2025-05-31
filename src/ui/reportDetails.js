@@ -15,7 +15,10 @@ async function handleReactionSubmit(event) {
     const reportId = btn.dataset.reportId;
     const reportPk = btn.dataset.reportPk;
     const reactionContent = btn.dataset.reaction;
-    if (!appStore.get().user) return showToast("Please connect your Nostr identity to react.", 'warning');
+    if (!appStore.get().user) {
+        showToast("Please connect your Nostr identity to react.", 'warning');
+        return;
+    }
 
     await withLoading(withToast(async () => {
         btn.disabled = true;
@@ -38,8 +41,14 @@ async function handleCommentSubmit(event) {
     const reportId = form.dataset.reportId;
     const reportPk = form.dataset.reportPk;
     const commentText = form.elements.comment.value.trim();
-    if (!commentText) return showToast("Comment cannot be empty.", 'warning');
-    if (!appStore.get().user) return showToast("Please connect your Nostr identity to comment.", 'warning');
+    if (!commentText) {
+        showToast("Comment cannot be empty.", 'warning');
+        return;
+    }
+    if (!appStore.get().user) {
+        showToast("Please connect your Nostr identity to comment.", 'warning');
+        return;
+    }
 
     await withLoading(withToast(async () => {
         submitBtn.disabled = true;
@@ -154,17 +163,17 @@ async function handleFollowToggle(event) {
     if (report) showReportDetails(report);
 }
 
-function renderInteractionItem(i) {
-    const interactionUser = formatNpubShort(i.pubkey);
-    const interactionTime = new Date(i.created_at * 1000).toLocaleString();
+function renderInteractionItem(interaction) {
+    const interactionUser = formatNpubShort(interaction.pubkey);
+    const interactionTime = new Date(interaction.created_at * 1000).toLocaleString();
     let interactionItemContent;
 
-    if (i.kind === C.NOSTR_KIND_REACTION) {
+    if (interaction.kind === C.NOSTR_KIND_REACTION) {
         interactionItemContent = createEl('div', {
-            innerHTML: `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(i.content)} <small>(${interactionTime})</small>`
+            innerHTML: `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(interaction.content)} <small>(${interactionTime})</small>`
         });
-    } else if (i.kind === C.NOSTR_KIND_NOTE) {
-        const markdownContent = createEl('div', { class: 'markdown-content', innerHTML: marked.parse(sanitizeHTML(i.content)) });
+    } else if (interaction.kind === C.NOSTR_KIND_NOTE) {
+        const markdownContent = createEl('div', { class: 'markdown-content', innerHTML: marked.parse(sanitizeHTML(interaction.content)) });
         interactionItemContent = createEl('div', {}, [
             createEl('strong', { textContent: interactionUser }),
             document.createTextNode(' commented: '),
