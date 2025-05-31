@@ -47,7 +47,7 @@ export class FilterControls {
 
         this.render(appStore.get());
 
-        appStore.on((newState, oldState) => {
+        this.unsubscribe = appStore.on((newState, oldState) => {
             const categoriesChanged = newState.settings?.cats !== oldState?.settings?.cats;
             const focusTagChanged = newState.currentFocusTag !== oldState?.currentFocusTag;
             const filtersReset = JSON.stringify(newState.ui.filters) !== JSON.stringify(oldState?.ui?.filters) &&

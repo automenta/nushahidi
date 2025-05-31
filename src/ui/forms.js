@@ -1,6 +1,5 @@
 import {createEl, sanitizeHTML, showToast} from '../utils.js';
 import {showConfirmModal} from './modals.js';
-import {withToast} from '../decorators.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     const form = createEl('form', { ...formOptions });
@@ -110,24 +109,6 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     }
     return form;
 }
-
-export const setupAddRemoveListSection = ({
-    addInputEl, addBtnEl, addLogic, listRenderer, saveBtnEl, onSaveCallback,
-    successMsg, errorMsg
-}) => {
-    if (!addInputEl || !addBtnEl) return;
-
-    addBtnEl.onclick = withToast(async () => {
-        const inputValue = addInputEl.value.trim();
-        await addLogic(inputValue);
-        addInputEl.value = '';
-        listRenderer();
-    }, successMsg, errorMsg);
-
-    if (saveBtnEl) saveBtnEl.onclick = withToast(async () => {
-        await onSaveCallback?.();
-    }, "Settings saved.", "Error saving settings");
-};
 
 export const renderList = (containerElement, items, itemRenderer, actionsConfig, itemWrapperClass) => {
     if (!containerElement) {

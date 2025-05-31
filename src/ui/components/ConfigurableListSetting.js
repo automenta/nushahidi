@@ -1,6 +1,10 @@
 import {appStore} from '../../store.js';
 import {createEl} from '../../utils.js';
-import {renderForm, renderList, setupAddRemoveListSection} from '../forms.js';
+import {renderForm, renderList} from '../forms.js';
+import {withLoading, withToast} from '../../decorators.js';
+import {showConfirmModal} from '../modals.js';
+import {showToast} from '../../utils.js';
+import {nostrSvc, confSvc} from '../../services.js';
 
 export class ConfigurableListSetting {
     constructor(config) {
@@ -24,25 +28,29 @@ export class ConfigurableListSetting {
             const addBtnEl = this.form.querySelector(`#${config.addBtnId}`);
             const saveBtnEl = config.saveBtnId ? this.form.querySelector(`#${config.saveBtnId}`) : null;
 
-            setupAddRemoveListSection({
-                addInputEl,
-                addBtnEl,
-                addLogic: config.addLogic,
-                listRenderer: this.listRenderer.bind(this),
-                saveBtnEl,
-                onSaveCallback: config.onSaveCallback,
-                successMsg: config.addSuccessMsg,
-                errorMsg: config.addErrorMsg
-            });
+            addBtnEl.onclick = withToast(async () => {
+                const inputValue = addInputEl.value.trim();
+                await config.addLogic(inputValue);
+                addInputEl.value = '';
+                this.listRenderer();
+            }, config.addSuccessMsg, config.addErrorMsg);
+
+            if (saveBtnEl) saveBtnEl.onclick = withToast(async () => {
+                await config.onSaveCallback?.();
+            }, "Settings saved.", "Error saving settings");
         }
 
         if (config.uniqueListenersSetup && this.form) {
-            const importContactsBtn = this.form.querySelector('#import-contacts-btn');
-            const publishContactsBtn = this.form.querySelector('#publish-contacts-btn');
-            if (importContactsBtn && publishContactsBtn) {
-                config.uniqueListenersSetup(importContactsBtn, publishContactsBtn);
-            }
+            config.uniqueListenersSetup(this.form);
         }
+
+        this.unsubscribe = appStore.on((newState, oldState) => {
+            const currentItems = this.config.getItems();
+            const oldItems = this.config.getItems.call(null, oldState);
+            if (JSON.stringify(currentItems) !== JSON.stringify(oldItems)) {
+                this.listRenderer();
+            }
+        });
     }
 
     listRenderer() {

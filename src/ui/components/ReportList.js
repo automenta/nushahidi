@@ -9,7 +9,7 @@ export class ReportList {
 
         this.render(appStore.get());
 
-        appStore.on(newState => {
+        this.unsubscribe = appStore.on(newState => {
             if (newState.filteredReports !== appStore.get().filteredReports || newState.ui.showReportList !== appStore.get().ui.showReportList) {
                 this.render(newState);
             }

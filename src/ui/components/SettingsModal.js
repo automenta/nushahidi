@@ -6,7 +6,7 @@ export class SettingsModal extends Modal {
     constructor() {
         let settingsContent;
         const contentRenderer = () => {
-            settingsContent = createEl('div', { id: 'settings-sections' });
+            settingsContent = createEl('div', { class: 'settings-sections' });
             settingsSections.forEach(sectionConfig => {
                 const sectionEl = createEl('section');
                 sectionEl.appendChild(createEl('h3', { textContent: sectionConfig.title }));

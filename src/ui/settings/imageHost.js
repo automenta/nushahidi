@@ -16,7 +16,7 @@ export class ImageHostSection {
 
         this.render(appStore.get());
 
-        appStore.on((newState, oldState) => {
+        this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.settings.imgH !== oldState?.settings?.imgH ||
                 newState.settings.nip96H !== oldState?.settings?.nip96H ||
                 newState.settings.nip96T !== oldState?.settings?.nip96T) {

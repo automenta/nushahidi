@@ -31,8 +31,8 @@ export class OfflineQueueSection {
 
         this.renderQueue();
 
-        appStore.on((newState, oldState) => {
-            if (newState.online !== oldState?.online) {
+        this.unsubscribe = appStore.on((newState, oldState) => {
+            if (newState.online !== oldState?.online || newState.offlineQueueCount !== oldState?.offlineQueueCount) {
                 this.renderQueue();
             }
         });

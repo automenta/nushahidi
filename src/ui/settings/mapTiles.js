@@ -14,7 +14,7 @@ export class MapTilesSection {
 
         this.render(appStore.get());
 
-        appStore.on((newState, oldState) => {
+        this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.settings.tilePreset !== oldState?.settings?.tilePreset || newState.settings.tileUrl !== oldState?.settings?.tileUrl) {
                 this.render(newState);
             }

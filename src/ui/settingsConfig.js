@@ -5,7 +5,6 @@ import {KeyManagementSection} from './settings/keyManagement.js';
 import {MapTilesSection} from './settings/mapTiles.js';
 import {ImageHostSection} from './settings/imageHost.js';
 import {
-    setupFollowedListUniqueListeners,
     renderRelayItem, handleRelayRemove,
     renderFocusTagItem, handleFocusTagRadioChange, handleFocusTagRemove,
     renderCategoryItem, handleCategoryRemove,
@@ -13,8 +12,11 @@ import {
     renderFollowedPubkeyItem, handleFollowedPubkeyRemove
 } from './settingsUtils.js';
 import {DataManagementSection} from './settings/dataManagement.js';
-import {OfflineQueueSection, offlineQueueItemRenderer} from './settings/offlineQueue.js';
+import {OfflineQueueSection} from './settings/offlineQueue.js';
 import {ConfigurableListSetting} from './components/ConfigurableListSetting.js';
+import {withLoading, withToast} from '../decorators.js';
+import {showConfirmModal} from './modals.js';
+import {showToast} from '../utils.js';
 
 const createAddLogicHandler = (confSvcMethod, itemExistsChecker, itemExistsErrorMsg) => async inputValue => {
     if (!inputValue) throw new Error("Input cannot be empty.");
@@ -66,6 +68,40 @@ const removeActionConfig = (title, message, onClickHandler) => ({
     onClick: onClickHandler,
     confirm: { title, message }
 });
+
+const setupFollowedListUniqueListeners = (form) => {
+    const importContactsBtn = form.querySelector('#import-contacts-btn');
+    const publishContactsBtn = form.querySelector('#publish-contacts-btn');
+
+    importContactsBtn.onclick = withLoading(withToast(async () => {
+        if (!appStore.get().user) throw new Error("Please connect your Nostr identity to import contacts.");
+        const contacts = await nostrSvc.fetchContacts();
+        if (!contacts.length) return "No NIP-02 contact list found on relays for your account.";
+
+        const currentFollowed = appStore.get().followedPubkeys.map(f => f.pk);
+        const newFollowed = contacts.filter(c => !currentFollowed.includes(c.pubkey)).map(c => ({ pk: c.pubkey, followedAt: Date.now() }));
+        if (!newFollowed.length) return "No new contacts found to import.";
+
+        await confSvc.setFollowedPubkeys([...appStore.get().followedPubkeys, ...newFollowed]);
+        return `Imported ${newFollowed.length} contacts from Nostr.`;
+    }, null, "Error importing contacts"));
+
+    publishContactsBtn.onclick = () => {
+        if (!appStore.get().user) {
+            showToast("Please connect your Nostr identity to publish contacts.", 'warning');
+            return;
+        }
+        showConfirmModal(
+            "Publish Contacts",
+            "This will publish your current followed list as a NIP-02 contact list (Kind 3 event) to your connected relays. This will overwrite any existing Kind 3 event for your pubkey. Continue?",
+            withLoading(withToast(async () => {
+                const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' }));
+                await nostrSvc.pubContacts(contactsToPublish);
+            }, null, "Error publishing contacts")),
+            () => showToast("Publish contacts cancelled.", 'info')
+        );
+    };
+};
 
 export const settingsSections = [
     {

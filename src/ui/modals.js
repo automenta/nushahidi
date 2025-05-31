@@ -43,6 +43,7 @@ export class Modal {
         this.root.style.display = 'none';
         this.root.setAttribute('inert', '');
         appStore.set(s => ({ ...s.ui, modalOpen: null }));
+        this.root.remove();
     }
 }
 

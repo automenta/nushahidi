@@ -17,7 +17,7 @@ export class KeyManagementSection {
 
         this.render(appStore.get());
 
-        appStore.on((newState, oldState) => {
+        this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.user?.authM !== oldState?.user?.authM) {
                 this.render(newState);
             }

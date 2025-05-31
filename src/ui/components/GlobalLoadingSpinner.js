@@ -8,7 +8,7 @@ export class GlobalLoadingSpinner {
 
         this.render(appStore.get().ui.loading);
 
-        appStore.on((newState, oldState) => {
+        this.unsubscribe = appStore.on((newState, oldState) => {
             if (newState.ui.loading !== oldState?.ui?.loading) {
                 this.render(newState.ui.loading);
             }

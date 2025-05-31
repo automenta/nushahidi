@@ -31,7 +31,7 @@ export class AppHeader {
 
         this.render(appStore.get());
 
-        appStore.on(async (newState, oldState) => {
+        this.unsubscribe = appStore.on(async (newState, oldState) => {
             if (newState.user?.pk !== oldState?.user?.pk) {
                 this.updateAuthDisplay(newState.user?.pk);
             }
