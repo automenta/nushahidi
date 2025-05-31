@@ -1,14 +1,6 @@
 import { appStore } from '../store.js';
 import { C, $, createEl, sanitizeHTML, showToast } from '../utils.js';
 
-// --- Generic Modal Factory ---
-/**
- * Creates a generic modal wrapper with common elements (close button, heading).
- * @param {string} modalId - The ID of the modal container element (e.g., 'confirm-modal').
- * @param {string} title - The title for the modal heading.
- * @param {function(HTMLElement): (HTMLElement|HTMLElement[])} contentRenderer - A function that takes the modal's content root element and appends/returns its specific content.
- * @returns {HTMLElement} The modal-content div.
- */
 export function createModalWrapper(modalId, title, contentRenderer) {
     const modalElement = $(`#${modalId}`);
     if (!modalElement) {
@@ -17,7 +9,7 @@ export function createModalWrapper(modalId, title, contentRenderer) {
     }
 
     const modalContent = createEl('div', { class: 'modal-content' });
-    modalElement.innerHTML = ''; // Clear previous content
+    modalElement.innerHTML = '';
     modalElement.appendChild(modalContent);
 
     const closeBtn = createEl('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal(modalId) });
@@ -26,7 +18,6 @@ export function createModalWrapper(modalId, title, contentRenderer) {
     modalContent.appendChild(closeBtn);
     modalContent.appendChild(heading);
 
-    // Render specific content
     const specificContent = contentRenderer(modalContent);
     if (Array.isArray(specificContent)) {
         specificContent.forEach(el => modalContent.appendChild(el));
@@ -34,10 +25,9 @@ export function createModalWrapper(modalId, title, contentRenderer) {
         modalContent.appendChild(specificContent);
     }
 
-    return modalContent; // Return the modal-content div for further manipulation if needed
+    return modalContent;
 }
 
-// --- Generic Confirmation Modal ---
 export function showConfirmModal(title, message, onConfirm, onCancel) {
     createModalWrapper('confirm-modal', title, (root) => {
         const msgPara = createEl('p', { innerHTML: message });
@@ -63,13 +53,12 @@ export function showConfirmModal(title, message, onConfirm, onCancel) {
     showModal('confirm-modal', 'confirm-modal-heading');
 }
 
-// --- Passphrase Input Modal ---
 export function showPassphraseModal(title, message) {
     return new Promise((resolve) => {
         createModalWrapper('passphrase-modal', title, (root) => {
             const msgPara = createEl('p', { textContent: message });
             const passphraseInput = createEl('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
-            const buttonContainer = createEl('div', { class: 'confirm-modal-buttons' }); // Re-use styles
+            const buttonContainer = createEl('div', { class: 'confirm-modal-buttons' });
 
             const decryptBtn = createEl('button', {
                 class: 'confirm-button',

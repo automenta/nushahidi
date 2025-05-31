@@ -3,14 +3,14 @@ import { C } from './utils.js';
 let _s = {
     user: null,
     online: navigator.onLine,
-    focusTags: [{ tag: C.FOCUS_TAG_DEFAULT, active: true }], // Array of objects for focus tags
-    currentFocusTag: C.FOCUS_TAG_DEFAULT, // Currently active focus tag string
+    focusTags: [{ tag: C.FOCUS_TAG_DEFAULT, active: true }],
+    currentFocusTag: C.FOCUS_TAG_DEFAULT,
     reports: [],
     relays: C.RELAYS_DEFAULT.map(url => ({ url, read: true, write: true, status: '?', nip11: null })),
-    followedPubkeys: [], // Stores public keys of followed users
+    followedPubkeys: [],
     settings: {
         tileUrl: C.TILE_SERVER_DEFAULT,
-        tilePreset: 'OpenStreetMap', // Stores the name of the selected tile preset
+        tilePreset: 'OpenStreetMap',
         cats: ['Incident', 'Observation', 'Aid', 'Info'],
         mute: [],
         imgHost: C.IMG_UPLOAD_NOSTR_BUILD,
@@ -20,18 +20,18 @@ let _s = {
     map: null,
     mapBnds: null,
     mapGhs: [],
-    drawnShapes: [], // Stores GeoJSON of drawn shapes
+    drawnShapes: [],
     ui: {
-        modalOpen: null, // ID of the currently open modal, or null
-        loading: false, // Global loading indicator
+        modalOpen: null,
+        loading: false,
         syncMsg: '',
-        spatialFilterEnabled: false, // Is spatial filtering active?
-        followedOnlyFilter: false, // Is "show only followed users" filter active?
-        filters: { q: '', cat: '', auth: '', tStart: null, tEnd: null } // Current filter values for search, category, author, time
+        spatialFilterEnabled: false,
+        followedOnlyFilter: false,
+        filters: { q: '', cat: '', auth: '', tStart: null, tEnd: null }
     }
 };
 
-const _l = new Set(); // Listeners
+const _l = new Set();
 
 export const appStore = {
     get: (key) => key ? _s[key] : { ..._s },
@@ -42,11 +42,10 @@ export const appStore = {
     },
     on: (listener) => {
         _l.add(listener);
-        listener(_s); // Immediately call with current state
-        return () => _l.delete(listener); // Return unsubscribe function
+        listener(_s);
+        return () => _l.delete(listener);
     }
 };
 
-// Update online status based on browser events
 window.addEventListener('online', () => appStore.set({ online: true }));
 window.addEventListener('offline', () => appStore.set({ online: false }));

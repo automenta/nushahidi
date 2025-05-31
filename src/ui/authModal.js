@@ -22,10 +22,9 @@ export function AuthModalComp() {
 
     const modalContent = createModalWrapper('auth-modal', 'Nostr Identity', (root) => {
         const form = renderForm(authFormFields, {}, { id: 'auth-form' });
-        root.appendChild(form); // Append the form to the modal content root
+        root.appendChild(form);
 
-        // Attach event listeners to the elements *after* they are rendered by renderForm
-        $('#conn-nip07-btn', form).onclick = async () => { // Scope to form
+        $('#conn-nip07-btn', form).onclick = async () => {
             appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
             try {
                 await idSvc.nip07();
@@ -35,7 +34,7 @@ export function AuthModalComp() {
             }
         };
 
-        $('#create-prof-btn', form).onclick = async () => { // Scope to form
+        $('#create-prof-btn', form).onclick = async () => {
             const passphrase = $('#auth-pass', form).value;
             if (!passphrase || passphrase.length < 8) {
                 showToast("Passphrase too short (min 8 chars).", 'warning');
@@ -57,7 +56,7 @@ export function AuthModalComp() {
             );
         };
 
-        $('#import-sk-btn', form).onclick = async () => { // Scope to form
+        $('#import-sk-btn', form).onclick = async () => {
             const privateKey = $('#auth-sk', form).value;
             const passphrase = $('#auth-pass', form).value;
             if (!privateKey || !passphrase || passphrase.length < 8) {
@@ -79,7 +78,7 @@ export function AuthModalComp() {
                 (() => showToast("Private key import cancelled.", 'info'))
             );
         };
-        return form; // Return the form element
+        return form;
     });
     return modalContent;
 }

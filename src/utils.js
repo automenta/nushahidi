@@ -1,7 +1,7 @@
 import { nip19 } from 'nostr-tools';
 import ngeohash from 'ngeohash';
 
-export const C = { // Constants
+export const C = {
     NOSTR_KIND_REPORT: 30315,
     NOSTR_KIND_REACTION: 7,
     NOSTR_KIND_NOTE: 1,
@@ -25,12 +25,12 @@ export const C = { // Constants
     STORE_DRAWN_SHAPES: 'drawnShapes',
     STORE_FOLLOWED_PUBKEYS: 'followedPubkeys',
     IMG_UPLOAD_NOSTR_BUILD: 'https://nostr.build/api/v2/upload/files',
-    IMG_SIZE_LIMIT_BYTES: 5 * 1024 * 1024, // 5MB
+    IMG_SIZE_LIMIT_BYTES: 5 * 1024 * 1024,
     ONBOARDING_KEY: 'nostrmapper_onboarded_v1',
-    DB_PRUNE_REPORTS_MAX: 5000, // Max number of reports to keep
-    DB_PRUNE_PROFILES_MAX_AGE_DAYS: 30, // Max age for profiles in days
+    DB_PRUNE_REPORTS_MAX: 5000,
+    DB_PRUNE_PROFILES_MAX_AGE_DAYS: 30,
     MAX_RELAY_RETRIES: 3,
-    RELAY_RETRY_DELAY_MS: 5000 // 5 seconds
+    RELAY_RETRY_DELAY_MS: 5000
 };
 
 export const $ = (selector, parent = document) => parent.querySelector(selector);
@@ -191,7 +191,6 @@ export const getImgDims = file => new Promise((resolve, reject) => {
 export const formatNpubShort = pk => nip19.npubEncode(pk).substring(0, 12) + '...';
 export const isNostrId = id => /^[0-9a-f]{64}$/.test(id);
 
-// New: Toast Notification System
 export function showToast(message, type = 'info', duration = 3000, valueToCopy = null) {
     const toastContainer = $('#toast-container');
     if (!toastContainer) {
@@ -200,7 +199,7 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
     }
 
     const toast = createEl('div', { class: `toast toast-${type}` });
-    toast.appendChild(createEl('span', { textContent: message })); // Wrap message in a span
+    toast.appendChild(createEl('span', { textContent: message }));
 
     if (valueToCopy) {
         const copyButton = createEl('button', {
@@ -221,7 +220,6 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
 
     toastContainer.appendChild(toast);
 
-    // Force reflow to enable CSS transition
     void toast.offsetWidth;
     toast.classList.add('show');
 
@@ -231,7 +229,6 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
     }, duration);
 }
 
-// New: URL validation helper
 export const isValidUrl = (string) => {
     try {
         new URL(string);
@@ -241,24 +238,16 @@ export const isValidUrl = (string) => {
     }
 };
 
-// New: UUID generator for NIP-33 d-tag
 export const generateUUID = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID();
     }
-    // Fallback for environments without crypto.randomUUID
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 };
 
-/**
- * Processes an image file, performing validation, hashing, and dimension extraction.
- * @param {File} file - The image file to process.
- * @returns {Promise<{file: File, hash: string, dimensions: {w: number, h: number}}>}
- * @throws {Error} If file type is invalid or size limit exceeded.
- */
 export const processImageFile = async (file) => {
     if (!file.type.startsWith('image/')) {
         throw new Error('Invalid file type. Only images are allowed.');

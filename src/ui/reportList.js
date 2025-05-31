@@ -5,8 +5,8 @@ import { C, $, $$, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast
 import { showConfirmModal, hideModal, showModal } from './modals.js';
 import { renderForm } from './forms.js';
 import { RepFormComp } from './reportForm.js';
-import { applyAllFilters } from './filters.js'; // Needed for deletion to re-filter
-import { nip19 } from 'nostr-tools'; // For njump.me link
+import { applyAllFilters } from './filters.js';
+import { nip19 } from 'nostr-tools';
 
 const rendRepCard = report => {
     const summary = report.sum || (report.ct ? report.ct.substring(0, 100) + '...' : 'N/A');
@@ -18,7 +18,7 @@ const rendRepCard = report => {
 
 async function loadAndDisplayInteractions(reportId, reportPk, container) {
     container.innerHTML = '<h4>Interactions</h4><div class="spinner"></div>';
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading for interactions
+    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
     try {
         const interactions = await nostrSvc.fetchInteractions(reportId, reportPk);
 
@@ -33,11 +33,11 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
                 const interactionTime = new Date(i.created_at * 1000).toLocaleString();
                 let interactionItemContent;
 
-                if (i.kind === C.NOSTR_KIND_REACTION) { // Simple reaction
+                if (i.kind === C.NOSTR_KIND_REACTION) {
                     interactionItemContent = createEl('div', {
                         innerHTML: `<strong>${sanitizeHTML(interactionUser)}</strong> reacted: ${sanitizeHTML(i.content)} <small>(${interactionTime})</small>`
                     });
-                } else if (i.kind === C.NOSTR_KIND_NOTE) { // Text note comment
+                } else if (i.kind === C.NOSTR_KIND_NOTE) {
                     const markdownContent = createEl('div', { class: 'markdown-content', innerHTML: marked.parse(sanitizeHTML(i.content)) });
                     interactionItemContent = createEl('div', {}, [
                         createEl('strong', { textContent: interactionUser }),
@@ -53,18 +53,15 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
             });
         }
 
-        // Add reaction buttons
         const reactionButtonsDiv = createEl('div', { class: 'reaction-buttons', style: 'margin-top:0.5rem;' });
         reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '+', textContent: '👍 Like' }));
         reactionButtonsDiv.appendChild(createEl('button', { 'data-report-id': sanitizeHTML(reportId), 'data-report-pk': sanitizeHTML(reportPk), 'data-reaction': '-', textContent: '👎 Dislike' }));
 
-        // Define comment form fields
         const commentFormFields = [
             { type: 'textarea', name: 'comment', placeholder: 'Add a public comment...', rows: 2, required: true },
             { type: 'button', buttonType: 'submit', label: 'Post Comment' }
         ];
 
-        // Render comment form using renderForm
         const commentForm = renderForm(commentFormFields, {}, {
             id: 'comment-form',
             onSubmit: handleCommentSubmit,
@@ -73,15 +70,13 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
             style: 'margin-top:0.5rem;'
         });
 
-        container.innerHTML = ''; // Clear previous content
-        container.appendChild(fragment); // Append the dynamically generated content
-        container.appendChild(reactionButtonsDiv); // Append reaction buttons
-        container.appendChild(commentForm); // Append the dynamically rendered form
+        container.innerHTML = '';
+        container.appendChild(fragment);
+        container.appendChild(reactionButtonsDiv);
+        container.appendChild(commentForm);
 
-        // Add event listeners for new buttons/forms
         $$('.reaction-buttons button', container).forEach(btn => btn.onclick = handleReactionSubmit);
 
-        // Update local report with fetched interactions (if needed for caching)
         appStore.set(s => {
             const reportIndex = s.reports.findIndex(rep => rep.id === reportId);
             if (reportIndex > -1) {
@@ -95,7 +90,7 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
         showToast(`Error loading interactions: ${e.message}`, 'error');
         container.innerHTML = `<h4>Interactions</h4><p style="color:red;">Failed to load interactions: ${sanitizeHTML(e.message)}</p>`;
     } finally {
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     }
 }
 
@@ -107,21 +102,20 @@ async function handleReactionSubmit(event) {
     if (!appStore.get().user) return showToast("Please connect your Nostr identity to react.", 'warning');
     try {
         btn.disabled = true;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
+        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
         await nostrSvc.pubEv({
             kind: C.NOSTR_KIND_REACTION,
             content: reactionContent,
             tags: [['e', reportId], ['p', reportPk], ['t', appStore.get().currentFocusTag.substring(1) || 'NostrMapper_Global']]
         });
         showToast("Reaction sent!", 'success');
-        // Refresh interactions, or wait for subscription update
         const report = appStore.get().reports.find(r => r.id === reportId);
-        if (report) showReportDetails(report); // Re-render detail view which calls loadAndDisplayInteractions
+        if (report) showReportDetails(report);
     } catch (e) {
         showToast(`Error sending reaction: ${e.message}`, 'error');
     } finally {
         btn.disabled = false;
-        appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+        appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     }
 }
 
@@ -136,7 +130,7 @@ async function handleCommentSubmit(event) {
     if (!appStore.get().user) return showToast("Please connect your Nostr identity to comment.", 'warning');
     try {
         submitBtn.disabled = true;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
+        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
         await nostrSvc.pubEv({
             kind: C.NOSTR_KIND_NOTE,
             content: commentText,
@@ -144,9 +138,8 @@ async function handleCommentSubmit(event) {
         });
         showToast("Comment sent!", 'success');
         form.reset();
-        // Refresh interactions for this report
         const report = appStore.get().reports.find(r => r.id === reportId);
-        if (report) showReportDetails(report); // Re-render detail view which calls loadAndDisplayInteractions
+        if (report) showReportDetails(report);
     } catch (e) {
         showToast(`Error sending comment: ${e.message}`, 'error');
     } finally {
@@ -155,15 +148,6 @@ async function handleCommentSubmit(event) {
     }
 }
 
-/**
- * Generates the HTML content for the report details view.
- * @param {object} report - The report object.
- * @param {object} profile - The author's profile object.
- * @param {boolean} isAuthor - True if the current user is the report author.
- * @param {boolean} isFollowed - True if the author is currently followed.
- * @param {boolean} canFollow - True if the current user can follow/unfollow the author.
- * @returns {string} The HTML string for the report details.
- */
 const _renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollow) => {
     const imagesHtml = (report.imgs || []).map(img =>
         `<img src="${sanitizeHTML(img.url)}" alt="report image" style="max-width:100%;margin:.3rem 0;border-radius:4px;">`
@@ -196,21 +180,13 @@ const _renderReportDetailHtml = (report, profile, isAuthor, isFollowed, canFollo
     `;
 };
 
-/**
- * Sets up event listeners for buttons in the report details view.
- * @param {object} report - The report object.
- * @param {boolean} isAuthor - True if the current user is the report author.
- * @param {boolean} canFollow - True if the current user can follow/unfollow the author.
- * @param {HTMLElement} detailContainer - The report detail container element.
- * @param {HTMLElement} listContainer - The report list container element.
- */
 const _setupReportDetailEventListeners = (report, isAuthor, canFollow, detailContainer, listContainer) => {
     $('#back-to-list-btn', detailContainer).onclick = () => { detailContainer.style.display = 'none'; listContainer.style.display = 'block' };
 
     if (isAuthor) {
         $('#edit-report-btn', detailContainer).onclick = () => {
             $('#report-form-modal').innerHTML = '';
-            $('#report-form-modal').appendChild(RepFormComp(report)); // Pass the report for editing
+            $('#report-form-modal').appendChild(RepFormComp(report));
             showModal('report-form-modal', 'rep-title');
         };
         $('#delete-report-btn', detailContainer).onclick = () => {
@@ -220,11 +196,10 @@ const _setupReportDetailEventListeners = (report, isAuthor, canFollow, detailCon
                 async () => {
                     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
                     try {
-                        await nostrSvc.deleteEv(report.id); // Call the new deleteEv method
-                        // The deleteEv method already updates appStore and DB, and shows toast
-                        hideModal('report-detail-container'); // Hide detail view after deletion
-                        listContainer.style.display = 'block'; // Show list view
-                        applyAllFilters(); // Re-apply filters to remove deleted report from list/map
+                        await nostrSvc.deleteEv(report.id);
+                        hideModal('report-detail-container');
+                        listContainer.style.display = 'block';
+                        applyAllFilters();
                     } catch (e) {
                         showToast(`Failed to delete report: ${e.message}`, 'error');
                     } finally {
@@ -248,13 +223,12 @@ export const showReportDetails = async report => {
 
     listContainer.style.display = 'none';
 
-    // Fetch profile for NIP-05 display and other details
     const profile = await nostrSvc.fetchProf(report.pk);
 
     const currentUserPk = appStore.get().user?.pk;
     const isAuthor = currentUserPk && currentUserPk === report.pk;
     const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
-    const canFollow = currentUserPk && currentUserPk !== report.pk; // Can follow if logged in and not self
+    const canFollow = currentUserPk && currentUserPk !== report.pk;
 
     detailContainer.innerHTML = _renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
 
@@ -266,7 +240,6 @@ export const showReportDetails = async report => {
     if (report.lat && report.lon && typeof L !== 'undefined') {
         const miniMap = L.map('mini-map-det').setView([report.lat, report.lon], 13);
         L.tileLayer(confSvc.getTileServer(), { attribution: '&copy; OSM' }).addTo(miniMap);
-        // Invalidate size to ensure map renders correctly in a hidden div
         setTimeout(() => { miniMap.invalidateSize(); }, 0);
     }
     loadAndDisplayInteractions(report.id, report.pk, $(`#interactions-for-${report.id}`, detailContainer));
@@ -293,9 +266,8 @@ async function handleFollowToggle(event) {
             confSvc.addFollowed(pubkeyToToggle);
             showToast(`Followed ${formatNpubShort(pubkeyToToggle)}!`, 'success');
         }
-        // Re-render the report details to update the button state
-        const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle); // Find any report by this author
-        if (report) showReportDetails(report); // Re-render to update button
+        const report = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
+        if (report) showReportDetails(report);
     } catch (e) {
         showToast(`Error toggling follow status: ${e.message}`, 'error');
     } finally {

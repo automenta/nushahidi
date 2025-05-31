@@ -81,7 +81,6 @@ header h1 {
     background-color: #45a049;
 }
 
-/* New: Styling for status buttons in header */
 .status-indicators .status-button {
     background: none;
     border: none;
@@ -469,7 +468,7 @@ footer {
     border-radius: 4px;
 }
 
-#cats-cont-form label { /* Corrected ID from #categories-container-form */
+#cats-cont-form label {
     display: inline-block;
     margin-right: .8rem;
     font-weight: 400;
@@ -534,9 +533,9 @@ footer {
 .relay-entry,
 .category-entry,
 .mute-entry,
-.focus-tag-entry, /* Added */
-.followed-entry, /* Added */
-.offline-q-entry /* New */ {
+.focus-tag-entry,
+.followed-entry,
+.offline-q-entry {
     display: flex;
     align-items: center;
     gap: .4rem;
@@ -558,9 +557,9 @@ footer {
 .remove-relay-btn,
 .remove-category-btn,
 .remove-mute-btn,
-.remove-focus-tag-btn, /* Added */
-.remove-followed-btn, /* Added */
-.remove-offline-q-btn /* New */ {
+.remove-focus-tag-btn,
+.remove-followed-btn,
+.remove-offline-q-btn {
     background-color: var(--danger-color);
     color: var(--light-text);
     padding: .15rem .4rem;
@@ -570,7 +569,6 @@ footer {
     cursor: pointer;
 }
 
-/* New: Retry button for offline queue */
 .retry-offline-q-btn {
     background-color: var(--secondary-color);
     color: var(--light-text);
@@ -601,7 +599,6 @@ footer {
     }
 }
 
-/* Accessibility */
 [aria-hidden="true"] {
     display: none !important;
 }
@@ -618,19 +615,16 @@ footer {
     border-width: 0;
 }
 
-/* New: Toast Notifications */
 #toast-container {
     position: fixed;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1001;
-    /* Above modals */
     display: flex;
     flex-direction: column;
     align-items: center;
     pointer-events: none;
-    /* Allow clicks to pass through */
 }
 
 .toast {
@@ -646,13 +640,9 @@ footer {
     min-width: 250px;
     text-align: center;
     display: flex;
-    /* For copy button */
     align-items: center;
-    /* For copy button */
     justify-content: center;
-    /* For copy button */
     gap: 10px;
-    /* Space between message and button */
 }
 
 .toast.show {
@@ -664,22 +654,18 @@ footer {
     background-color: #337ab7;
 }
 
-/* Blue */
 .toast-success {
     background-color: #5cb85c;
 }
 
-/* Green */
 .toast-error {
     background-color: #d9534f;
 }
 
-/* Red */
 .toast-warning {
     background-color: #f0ad4e;
 }
 
-/* Orange */
 .toast button.copy-button {
     background-color: rgba(255, 255, 255, 0.2);
     color: white;
@@ -689,7 +675,6 @@ footer {
     cursor: pointer;
     font-size: 0.8em;
     pointer-events: all;
-    /* Make button clickable */
     transition: background-color 0.2s;
 }
 
@@ -697,7 +682,6 @@ footer {
     background-color: rgba(255, 255, 255, 0.3);
 }
 
-/* New: Global Loading Spinner */
 .global-spinner {
     position: fixed;
     top: 0;
@@ -710,7 +694,6 @@ footer {
     justify-content: center;
     align-items: center;
     z-index: 1002;
-    /* Above toasts */
 }
 
 .global-spinner .spinner {
@@ -720,7 +703,6 @@ footer {
     margin-bottom: 15px;
 }
 
-/* New: Confirmation Modal Specific Styles */
 .confirm-modal-buttons {
     display: flex;
     justify-content: flex-end;
@@ -754,9 +736,8 @@ footer {
     background-color: #45a049;
 }
 
-/* Leaflet.draw controls styling */
 .leaflet-draw-toolbar a {
-    background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png'); /* Ensure spritesheet is accessible */
+    background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png');
 }
 
 .leaflet-draw-toolbar a.leaflet-draw-draw-polygon { background-position: -144px 0; }
@@ -765,7 +746,6 @@ footer {
 .leaflet-draw-toolbar a.leaflet-draw-edit-edit { background-position: -72px 0; }
 .leaflet-draw-toolbar a.leaflet-draw-edit-remove { background-position: -96px 0; }
 
-/* Adjustments for filter controls */
 #filter-controls hr {
     border: none;
     border-top: 1px solid #e0e0e0;
@@ -785,7 +765,7 @@ footer {
 
 #filter-controls #map-draw-controls .leaflet-draw-toolbar a {
     display: inline-block;
-    width: 24px; /* Standard icon size */
+    width: 24px;
     height: 24px;
     background-color: var(--primary-color);
     border-radius: 4px;
@@ -799,7 +779,7 @@ footer {
 }
 
 #filter-controls #map-draw-controls .leaflet-draw-toolbar a.leaflet-draw-actions {
-    background-color: transparent; /* Actions like 'Cancel', 'Save' */
+    background-color: transparent;
     border: none;
     width: auto;
     height: auto;
@@ -813,7 +793,7 @@ footer {
 }
 
 #filter-controls #spatial-filter-toggle {
-    width: auto; /* Override 100% width */
+    width: auto;
     margin-right: 0.5rem;
 }
 

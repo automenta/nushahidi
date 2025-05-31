@@ -4,7 +4,7 @@ import { initUI } from './ui.js';
 import { $ } from './utils.js';
 
 async function main() {
-    appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start global loading
+    appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -37,14 +37,13 @@ async function main() {
     initUI();
 
     const cachedReports = await dbSvc.getAllReps();
-    // Always set reports from cache, sorted. appStore.reports is empty at this point.
     appStore.set({ reports: cachedReports.sort((a, b) => b.at - a.at) });
 
     nostrSvc.refreshSubs();
     offSvc.setupSyncLs();
-    await dbSvc.pruneDb(); // Prune IndexedDB on startup
+    await dbSvc.pruneDb();
 
-    appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End global loading
+    appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
     console.log("NostrMapper Initialized.");
 }
 

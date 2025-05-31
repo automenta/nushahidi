@@ -4,12 +4,6 @@ import { C, $, createEl, sanitizeHTML, geohashEncode, showToast, isValidUrl, gen
 import { renderForm, renderList } from './forms.js';
 import { createModalWrapper, showModal, hideModal } from './modals.js';
 
-/**
- * Renders the image preview section of the report form.
- * @param {HTMLElement} previewElement - The DOM element to render into.
- * @param {Array<object>} imagesMetadata - Array of image metadata.
- * @param {function} onRemoveImage - Callback for when an image is removed.
- */
 const _renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     previewElement.innerHTML = '';
     if (imagesMetadata.length === 0) {
@@ -21,25 +15,19 @@ const _renderImagePreview = (previewElement, imagesMetadata, onRemoveImage) => {
     const imageActionsConfig = [{
         label: 'x',
         className: 'remove-image-btn',
-        onClick: (item, index) => onRemoveImage(index) // Pass index to the callback
+        onClick: (item, index) => onRemoveImage(index)
     }];
 
     renderList(
-        previewElement.id, // Use the element's ID for renderList
+        previewElement.id,
         imagesMetadata,
         imageItemRenderer,
         imageActionsConfig,
         'uploaded-image-item',
-        previewElement.parentNode // Scope to the parent of previewElement if it's not a direct child of modalContent
+        previewElement.parentNode
     );
 };
 
-/**
- * Sets up event handlers for location-related actions in the report form.
- * @param {HTMLElement} formRoot - The root element of the form.
- * @param {object} formState - Object to hold form state (e.g., _pFLoc).
- * @param {function} renderLocationDisplay - Function to update location display.
- */
 const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDisplay) => {
     $('#pick-loc-map-btn', formRoot).onclick = () => {
         hideModal('report-form-modal');
@@ -64,7 +52,7 @@ const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDis
     $('#geocode-address-btn', formRoot).onclick = async () => {
         const address = $('#rep-address', formRoot).value.trim();
         if (!address) return showToast("Please enter an address to geocode.", 'warning');
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading
+        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
             const data = await response.json();
@@ -79,25 +67,19 @@ const _setupReportFormLocationHandlers = (formRoot, formState, renderLocationDis
         } catch (e) {
             showToast(`Geocoding error: ${e.message}`, 'error');
         } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
         }
     };
 };
 
-/**
- * Returns a handler function for the image file input.
- * @param {Array<object>} imagesMetadata - Array to store image metadata.
- * @param {function} renderPreview - Function to re-render image preview.
- * @returns {function} The onchange event handler for the file input.
- */
 const _setupReportFormImageUploadHandler = (imagesMetadata, renderPreview) => {
     return async e => {
         const files = e.target.files;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading for image upload
+        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
         try {
             for (const file of files) {
                 try {
-                    const processedImage = await processImageFile(file); // Use the new utility
+                    const processedImage = await processImageFile(file);
                     const uploadedUrl = await imgSvc.upload(processedImage.file);
                     imagesMetadata.push({
                         url: uploadedUrl,
@@ -110,20 +92,13 @@ const _setupReportFormImageUploadHandler = (imagesMetadata, renderPreview) => {
                     showToast(`Failed to upload ${file.name}: ${error.message}`, 'error');
                 }
             }
-            renderPreview(); // Re-render preview after all uploads
+            renderPreview();
         } finally {
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
         }
     };
 };
 
-/**
- * Sets up the form submission handler for the report form.
- * @param {HTMLElement} formElement - The form element.
- * @param {object|null} reportToEdit - The report object if editing, null if new.
- * @param {object} formState - Object holding form state (_pFLoc).
- * @param {Array<object>} imagesMetadata - Array of image metadata.
- */
 const _setupReportFormSubmission = (formElement, reportToEdit, formState, imagesMetadata) => {
     formElement.onsubmit = async e => {
         e.preventDefault();
@@ -134,12 +109,12 @@ const _setupReportFormSubmission = (formElement, reportToEdit, formState, images
         if (!formState.pFLoc) return showToast("Location missing. Please pick or geocode a location.", 'warning');
 
         submitBtn.disabled = true;
-        appStore.set(s => ({ ui: { ...s.ui, loading: true } })); // Start loading for report submission
+        appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
         try {
             const lat = formState.pFLoc.lat;
             const lon = formState.pFLoc.lng;
             const geohash = geohashEncode(lat, lon);
-            const focusTag = appStore.get().currentFocusTag.substring(1); // Remove '#' prefix
+            const focusTag = appStore.get().currentFocusTag.substring(1);
 
             const tags = [['g', geohash]];
 
@@ -147,19 +122,17 @@ const _setupReportFormSubmission = (formElement, reportToEdit, formState, images
             if (data.summary) tags.push(['summary', data.summary]);
             if (focusTag && focusTag !== 'NostrMapper_Global') tags.push(['t', focusTag]);
 
-            // Add free tags
             if (data.freeTags) {
                 data.freeTags.split(',').forEach(tag => {
                     const trimmedTag = tag.trim();
-                    if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]); // Remove '#' if present
+                    if (trimmedTag) tags.push(['t', trimmedTag.replace(/^#/, '')]);
                 });
             }
 
-            // Add categories (checkbox-group will have multiple entries for 'category')
             const selectedCategories = formData.getAll('category');
             selectedCategories.forEach(cat => {
-                tags.push(['L', 'report-category']); // NIP-32 label tag
-                tags.push(['l', cat, 'report-category']); // NIP-32 value tag
+                tags.push(['L', 'report-category']);
+                tags.push(['l', cat, 'report-category']);
             });
 
             if (data.eventType) tags.push(['event_type', data.eventType]);
@@ -167,8 +140,6 @@ const _setupReportFormSubmission = (formElement, reportToEdit, formState, images
 
             imagesMetadata.forEach(img => tags.push(['image', img.url, img.type, img.dim, `ox${img.hHex}`]));
 
-            // NIP-33 d-tag for parameterized replaceable events
-            // If editing, retain the original d-tag. If new, generate a UUID.
             const dTagValue = reportToEdit?.d || generateUUID();
             tags.push(['d', dTagValue]);
 
@@ -180,13 +151,13 @@ const _setupReportFormSubmission = (formElement, reportToEdit, formState, images
             $('#pFLoc-coords', formRoot).textContent = 'None';
             $('#upld-photos-preview', formRoot).innerHTML = '';
             formState.pFLoc = null;
-            imagesMetadata.length = 0; // Clear the array
+            uIMeta.length = 0;
             hideModal('report-form-modal');
         } catch (error) {
             showToast(`Report submission error: ${error.message}`, 'error');
         } finally {
             submitBtn.disabled = false;
-            appStore.set(s => ({ ui: { ...s.ui, loading: false } })); // End loading
+            appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
         }
     };
 };
@@ -194,11 +165,9 @@ const _setupReportFormSubmission = (formElement, reportToEdit, formState, images
 export function RepFormComp(reportToEdit = null) {
     const categories = appStore.get().settings.cats;
 
-    // Encapsulate form state within this function's scope
     let pFLoc = null;
     let uIMeta = [];
 
-    // Pre-fill location and images if editing
     if (reportToEdit) {
         if (reportToEdit.lat && reportToEdit.lon) {
             pFLoc = { lat: reportToEdit.lat, lng: reportToEdit.lon };
@@ -208,7 +177,6 @@ export function RepFormComp(reportToEdit = null) {
         }
     }
 
-    // Helper to update the location display text
     const renderLocationDisplay = (addressName = '') => {
         const coordsEl = $('#pFLoc-coords', formRoot);
         if (pFLoc) {
@@ -218,12 +186,11 @@ export function RepFormComp(reportToEdit = null) {
         }
     };
 
-    // Helper to re-render image preview
     const renderImagePreview = () => {
         const previewElement = $('#upld-photos-preview', formRoot);
         _renderImagePreview(previewElement, uIMeta, (index) => {
-            uIMeta.splice(index, 1); // Remove image from array
-            renderImagePreview(); // Re-render preview
+            uIMeta.splice(index, 1);
+            renderImagePreview();
         });
     };
 
@@ -231,7 +198,7 @@ export function RepFormComp(reportToEdit = null) {
         title: reportToEdit?.title,
         summary: reportToEdit?.sum,
         description: reportToEdit?.ct,
-        category: reportToEdit?.cat, // For checkbox-group
+        category: reportToEdit?.cat,
         freeTags: reportToEdit?.fTags?.join(', '),
         eventType: reportToEdit?.evType,
         status: reportToEdit?.stat
@@ -280,16 +247,14 @@ export function RepFormComp(reportToEdit = null) {
         const form = renderForm(reportFormFields, initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
 
-        // Attach other handlers after form is rendered
         _setupReportFormLocationHandlers(form, { pFLoc }, renderLocationDisplay);
         _setupReportFormSubmission(form, reportToEdit, { pFLoc }, uIMeta);
 
-        // Initial render of image preview and location display
         renderImagePreview();
         renderLocationDisplay();
 
-        return form; // Return the form element
+        return form;
     });
 
-    return formRoot; // This is the modal-content div
+    return formRoot;
 }

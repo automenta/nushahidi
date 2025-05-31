@@ -1,9 +1,9 @@
 import { appStore } from '../store.js';
 import { dbSvc } from '../services.js';
 import { $, createEl, sanitizeHTML, formatNpubShort } from '../utils.js';
-import { showReportDetails } from './reportList.js'; // Needs showReportDetails for handleReportViewing
-import { applyAllFilters } from './filters.js'; // Needs applyAllFilters
-import { showModal } from './modals.js'; // New: Import showModal
+import { showReportDetails } from './reportList.js';
+import { applyAllFilters } from './filters.js';
+import { showModal } from './modals.js';
 
 export const updAuthDisp = pk => {
     const authButton = $('#auth-button');
@@ -34,13 +34,13 @@ export const updSyncDisp = async () => {
         if (queue.length > 0) {
             syncStatusElement.textContent = `Syncing (${queue.length})...`;
             syncStatusElement.style.color = 'orange';
-            syncStatusElement.disabled = false; // Enable button
-            syncStatusElement.onclick = () => showModal('settings-modal'); // Make it clickable
+            syncStatusElement.disabled = false;
+            syncStatusElement.onclick = () => showModal('settings-modal');
         } else {
             syncStatusElement.textContent = appStore.get().online ? 'Synced' : 'Offline';
             syncStatusElement.style.color = 'lightgreen';
-            syncStatusElement.disabled = true; // Disable button if no queue
-            syncStatusElement.onclick = null; // Remove click handler
+            syncStatusElement.disabled = true;
+            syncStatusElement.onclick = null;
         }
     } catch {
         syncStatusElement.textContent = 'Sync status err';
@@ -50,7 +50,6 @@ export const updSyncDisp = async () => {
     }
 };
 
-// New: Handles updates related to reports and filters
 export const handleReportAndFilterUpdates = (newState, oldState) => {
     const shouldReapplyFilters =
         newState.reports !== oldState?.reports ||
@@ -67,7 +66,6 @@ export const handleReportAndFilterUpdates = (newState, oldState) => {
         newState.ui.filters.tEnd !== oldState?.ui?.filters?.tEnd;
 
     if (shouldReapplyFilters) {
-        // The filter form's focus-tag-input should be updated directly if currentFocusTag changes.
         if (newState.currentFocusTag !== oldState?.currentFocusTag) {
             const focusTagInput = $('#focus-tag-input', $('#filter-controls'));
             if (focusTagInput) {
@@ -78,23 +76,20 @@ export const handleReportAndFilterUpdates = (newState, oldState) => {
     }
 };
 
-// New: Updates the category filter dropdown
 export const updateFilterCategories = (newCategories) => {
-    const selectElement = $('#filter-category', $('#filter-controls')); // Scope to filter form
+    const selectElement = $('#filter-category', $('#filter-controls'));
     if (selectElement) {
-        selectElement.innerHTML = '<option value="">All</option>'; // Clear existing options
+        selectElement.innerHTML = '<option value="">All</option>';
         newCategories.forEach(c => selectElement.appendChild(createEl('option', { value: c, textContent: sanitizeHTML(c) })));
     }
 };
 
-// New: Handles modal focus when a modal opens
 export const handleModalFocus = (newModalId, oldModalId) => {
     if (newModalId && newModalId !== oldModalId && $(`#${newModalId}`)) {
         $(`#${newModalId}`).focus();
     }
 };
 
-// New: Handles displaying a specific report in the detail view
 export const handleReportViewing = (reportId, reports) => {
     if (reportId) {
         const report = reports.find(r => r.id === reportId);
@@ -102,7 +97,6 @@ export const handleReportViewing = (reportId, reports) => {
     }
 };
 
-// New: Controls the visibility of the global loading spinner
 export const updateGlobalLoadingSpinner = (isLoading) => {
     const globalSpinner = $('#global-loading-spinner');
     if (globalSpinner) {

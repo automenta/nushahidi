@@ -1,19 +1,7 @@
 import { createEl, $, sanitizeHTML } from '../utils.js';
 import { showConfirmModal } from './modals.js';
-import { showToast } from '../utils.js'; // showToast is a general utility
+import { showToast } from '../utils.js';
 
-/**
- * Renders a form based on a configuration array.
- * @param {Array<object>} fieldsConfig - Array of field definitions. Each object:
- *   { type: string, id?: string, name?: string, label?: string, placeholder?: string, value?: any,
- *     required?: boolean, autocomplete?: string, rows?: number, multiple?: boolean, accept?: string,
- *     options?: Array<{value: string, label: string, selected?: boolean, onchange?: function}>,
- *     class?: string, buttonType?: string, onclick?: function, content?: (string|HTMLElement)[],
- *     innerHTML?: string, style?: string }
- * @param {object} initialData - Object with initial values for form fields (keyed by 'name').
- * @param {object} formOptions - Options for the form element itself (e.g., { id: 'my-form', onSubmit: handler }).
- * @returns {HTMLElement} The generated <form> element.
- */
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     const form = createEl('form', { id: formOptions.id || 'dynamic-form' });
     if (formOptions.onSubmit) {
@@ -68,7 +56,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                     selected: (initialData[field.name] !== undefined && initialData[field.name] === opt.value) || (field.value !== undefined && field.value === opt.value)
                 })));
                 break;
-            case 'checkbox-group': // For categories
+            case 'checkbox-group':
                 inputElement = createEl('div', { id: fieldId, class: field.class || '' });
                 field.options.forEach(opt => {
                     inputElement.appendChild(createEl('label', {}, [
@@ -82,7 +70,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                     ]));
                 });
                 break;
-            case 'checkbox': // For single checkboxes like spatial filter toggle
+            case 'checkbox':
                 inputElement = createEl('label', {}, [
                     createEl('input', {
                         type: 'checkbox',
@@ -120,7 +108,7 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                     inputElement.onclick = field.onclick;
                 }
                 break;
-            case 'custom-html': // For things like location display or image preview
+            case 'custom-html':
                 inputElement = createEl('div', { id: fieldId, class: field.class || '', innerHTML: field.innerHTML || '' }, field.content || []);
                 break;
             case 'paragraph':
@@ -129,10 +117,10 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
             case 'hr':
                 inputElement = createEl('hr');
                 break;
-            case 'h4': // Added for headings within forms
+            case 'h4':
                 inputElement = createEl('h4', { textContent: field.content[0] });
                 break;
-            case 'radio-group': // For active focus tag
+            case 'radio-group':
                 inputElement = createEl('div', { id: fieldId, class: field.class || '' });
                 field.options.forEach(opt => {
                     const radio = createEl('input', {
@@ -157,21 +145,6 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     return form;
 }
 
-/**
- * Sets up event listeners for adding items to a list and optionally for a save button.
- * This abstracts common logic for list management sections in settings.
- * @param {object} config - Configuration object.
- * @param {HTMLElement} config.modalContent - The root element to scope queries for input/button IDs.
- * @param {string} config.addInputId - ID of the input field for new items.
- * @param {string} config.addBtnId - ID of the button to add new items.
- * @param {function(string): Promise<boolean>} config.addLogic - Async function that takes the input value,
- *   performs validation, checks for existence, adds the item via `confSvc` or similar, and updates `appStore`.
- *   It should return `true` if the item was successfully added, `false` if not (e.g., validation failed, already exists).
- *   It should handle its own `showToast` messages for success/failure.
- * @param {function(): void} config.listRenderer - Function to call to re-render the specific list display.
- * @param {string} [config.saveBtnId] - Optional ID of a separate "Save" button.
- * @param {function(): void} [config.onSaveCallback] - Optional callback for the save button.
- */
 export const setupAddRemoveListSection = ({
     modalContent,
     addInputId,
@@ -199,8 +172,8 @@ export const setupAddRemoveListSection = ({
         try {
             const added = await addLogic(inputValue);
             if (added) {
-                addInput.value = ''; // Clear input only on successful add
-                listRenderer(); // Re-render the list immediately
+                addInput.value = '';
+                listRenderer();
             }
         } catch (e) {
             showToast(`Error: ${e.message}`, 'error');
@@ -215,22 +188,6 @@ export const setupAddRemoveListSection = ({
     }
 };
 
-/**
- * Renders a list of items into a specified container with flexible item rendering and actions.
- * @param {string} containerId - The ID of the container element.
- * @param {Array<object>} items - Array of items to render.
- * @param {function(object, number): (string|HTMLElement)} itemRenderer - Function to render a single item's display content.
- *                                                                 Should return a string (HTML) or a DOM element.
- * @param {Array<object>} actionsConfig - Array of action button configurations for each item.
- *   Each action object: {
- *     label: string,
- *     className: string,
- *     onClick: function(item: object, index: number), // Now passes index
- *     confirm?: { title: string, message: string } // Optional confirmation modal config
- *   }
- * @param {string} itemWrapperClass - CSS class for the div wrapping each item.
- * @param {HTMLElement} [scopeElement=document] - The element to scope queries for containerId.
- */
 export const renderList = (containerId, items, itemRenderer, actionsConfig, itemWrapperClass, scopeElement = document) => {
     const container = $(`#${containerId}`, scopeElement);
     if (!container) {
@@ -244,8 +201,8 @@ export const renderList = (containerId, items, itemRenderer, actionsConfig, item
         return;
     }
 
-    items.forEach((item, index) => { // Added index here
-        const itemContent = itemRenderer(item, index); // Pass index to itemRenderer
+    items.forEach((item, index) => {
+        const itemContent = itemRenderer(item, index);
         const itemDiv = createEl('div', { class: itemWrapperClass });
 
         if (typeof itemContent === 'string') {
@@ -259,7 +216,7 @@ export const renderList = (containerId, items, itemRenderer, actionsConfig, item
 
         actionsConfig.forEach(action => {
             const actionBtn = createEl('button', {
-                type: 'button', // Ensure it's a button, not submit
+                type: 'button',
                 class: action.className,
                 textContent: action.label,
                 onclick: () => {
@@ -267,11 +224,11 @@ export const renderList = (containerId, items, itemRenderer, actionsConfig, item
                         showConfirmModal(
                             action.confirm.title,
                             action.confirm.message,
-                            () => action.onClick(item, index), // Pass index to onClick
+                            () => action.onClick(item, index),
                             () => showToast("Action cancelled.", 'info')
                         );
                     } else {
-                        action.onClick(item, index); // Pass index to onClick
+                        action.onClick(item, index);
                     }
                 }
             });

@@ -5,12 +5,11 @@ import { C, $, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast, is
 import { createModalWrapper, showConfirmModal, showPassphraseModal, hideModal, showModal } from './modals.js';
 import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
 
-// --- Helper Functions for Rendering Lists ---
 const renderRelays = (modalContent) => {
     const removeRelayAction = r => {
         const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
         confSvc.setRlys(updatedRelays);
-        nostrSvc.discAllRlys(); // Disconnect all and reconnect with new list
+        nostrSvc.discAllRlys();
         nostrSvc.connRlys();
     };
     const relayItemRenderer = r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` });
@@ -43,11 +42,9 @@ const renderFocusTags = (modalContent) => {
         const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
         confSvc.setFocusTags(updatedTags);
         if (t.active && updatedTags.length > 0) {
-            // If active tag was removed, set first available as active
             confSvc.setCurrentFocusTag(updatedTags[0].tag);
             updatedTags[0].active = true;
         } else if (updatedTags.length === 0) {
-            // If all tags removed, reset to default
             confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
             confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
         }
@@ -63,7 +60,7 @@ const renderFocusTags = (modalContent) => {
                 const updatedTags = appStore.get().focusTags.map(t => ({ ...t, active: t.tag === ft.tag }));
                 confSvc.setFocusTags(updatedTags);
                 confSvc.setCurrentFocusTag(ft.tag);
-                nostrSvc.refreshSubs(); // Refresh subscriptions with new focus tag
+                nostrSvc.refreshSubs();
             }
         });
         const label = createEl('label', {}, [radio, ` Set Active`]);
@@ -102,7 +99,6 @@ const renderFollowedList = (modalContent) => {
     renderList('followed-list', appStore.get().followedPubkeys, followedItemRenderer, followedActionsConfig, 'followed-entry', modalContent);
 };
 
-// New: Render Offline Queue
 const renderOfflineQueue = async (modalContent) => {
     const queueItems = await dbSvc.getOfflineQ();
 
@@ -111,7 +107,7 @@ const renderOfflineQueue = async (modalContent) => {
             case C.NOSTR_KIND_REPORT: return 'Report';
             case C.NOSTR_KIND_REACTION: return 'Reaction';
             case C.NOSTR_KIND_NOTE: return 'Comment';
-            case 5: return 'Deletion'; // NIP-09 deletion event
+            case 5: return 'Deletion';
             case C.NOSTR_KIND_PROFILE: return 'Profile';
             case C.NOSTR_KIND_CONTACTS: return 'Contacts';
             default: return `Kind ${kind}`;
@@ -133,15 +129,14 @@ const renderOfflineQueue = async (modalContent) => {
             onClick: async (item) => {
                 appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
                 try {
-                    // Attempt to publish the event directly
                     await nostrSvc.pubEv(item.event);
-                    await dbSvc.rmOfflineQ(item.qid); // Remove from queue if successful
+                    await dbSvc.rmOfflineQ(item.qid);
                     showToast("Event retried and published!", 'success');
                 } catch (e) {
                     showToast(`Failed to retry event: ${e.message}`, 'error');
                 } finally {
                     appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                    renderOfflineQueue(modalContent); // Re-render the list
+                    renderOfflineQueue(modalContent);
                 }
             }
         },
@@ -157,7 +152,7 @@ const renderOfflineQueue = async (modalContent) => {
                     showToast(`Failed to delete event from queue: ${e.message}`, 'error');
                 } finally {
                     appStore.set(s => ({ ui: { ...s.ui, loading: false } }));
-                    renderOfflineQueue(modalContent); // Re-render the list
+                    renderOfflineQueue(modalContent);
                 }
             },
             confirm: { title: 'Delete Queued Event', message: 'Are you sure you want to delete this event from the offline queue? It will NOT be published.' }
@@ -168,7 +163,6 @@ const renderOfflineQueue = async (modalContent) => {
 };
 
 
-// --- Add Logic Functions ---
 const addRelayLogic = async (url) => {
     if (!isValidUrl(url)) {
         showToast("Invalid URL.", 'warning');
@@ -210,7 +204,7 @@ const addFocusTagLogic = async (tag) => {
 const addMutePubkeyLogic = async (pk) => {
     try {
         pk = npubToHex(pk);
-        confSvc.addMute(pk); // This already handles existence check and toast
+        confSvc.addMute(pk);
         return true;
     } catch (e) {
         showToast(`Error adding pubkey: ${e.message}`, 'error');
@@ -221,7 +215,7 @@ const addMutePubkeyLogic = async (pk) => {
 const addFollowedPubkeyLogic = async (pk) => {
     try {
         pk = npubToHex(pk);
-        confSvc.addFollowed(pk); // This already handles existence check and toast
+        confSvc.addFollowed(pk);
         return true;
     } catch (e) {
         showToast(`Error adding user: ${e.message}`, 'error');
@@ -229,7 +223,6 @@ const addFollowedPubkeyLogic = async (pk) => {
     }
 };
 
-// --- Setup Listener Functions for Sections ---
 const setupKeyManagementListeners = (modalContent) => {
     const expSkBtn = $('#exp-sk-btn', modalContent);
     if (expSkBtn) {
@@ -239,12 +232,12 @@ const setupKeyManagementListeners = (modalContent) => {
 
             appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
             try {
-                const sk = await idSvc.getSk(true); // Prompt for passphrase
+                const sk = await idSvc.getSk(true);
                 if (sk) {
                     showToast(
                         "Your private key (nsec) is displayed below. Copy it NOW and store it securely. DO NOT share it.",
                         'critical-warning',
-                        0, // Persistent
+                        0,
                         nip19.nsecEncode(sk)
                     );
                 }
@@ -283,7 +276,6 @@ const setupMapTilesListeners = (modalContent) => {
     const tileUrlIn = $('#tile-url-in', modalContent);
     const appState = appStore.get();
 
-    // Set initial selected preset
     tilePresetSel.value = appState.settings.tilePreset;
 
     tilePresetSel.onchange = () => {
@@ -291,7 +283,7 @@ const setupMapTilesListeners = (modalContent) => {
         if (selectedPreset) {
             tileUrlIn.value = selectedPreset.url;
         } else {
-            tileUrlIn.value = ''; // Clear if 'Custom' or not found
+            tileUrlIn.value = '';
         }
     };
 
@@ -316,7 +308,6 @@ const setupImageHostListeners = (modalContent) => {
     const nip96TokenIn = $('#nip96-token-in', modalContent);
     const appState = appStore.get();
 
-    // Set initial selection
     if (appState.settings.nip96Host) {
         imgHostSel.value = 'nip96';
         nip96Fields.style.display = '';
@@ -388,7 +379,7 @@ const setupFollowedListUniqueListeners = (modalContent) => {
             async () => {
                 appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
                 try {
-                    const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' })); // NIP-02 only requires pubkey
+                    const contactsToPublish = appStore.get().followedPubkeys.map(f => ({ pubkey: f.pk, relay: '', petname: '' }));
                     await nostrSvc.pubContacts(contactsToPublish);
                     showToast("NIP-02 contact list published!", 'success');
                 } catch (e) {
@@ -463,14 +454,12 @@ const setupDataManagementListeners = (modalContent) => {
                         appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
                         try {
                             await dbSvc.saveSetts(importedData.settings);
-                            // Clear existing followed pubkeys and add new ones
                             await dbSvc.clearFollowedPubkeys();
                             for (const fp of importedData.followedPubkeys) {
                                 await dbSvc.addFollowedPubkey(fp.pk);
                             }
-                            await confSvc.load(); // Reload all settings into appStore
+                            await confSvc.load();
                             showToast("Settings imported successfully! Please refresh the page.", 'success', 5000);
-                            // Optionally, prompt for page reload
                             setTimeout(() => {
                                 if (confirm("Settings imported. Reload page now?")) {
                                     window.location.reload();
@@ -492,14 +481,12 @@ const setupDataManagementListeners = (modalContent) => {
     };
 };
 
-// --- Main Settings Panel Component ---
 export function SettPanComp() {
     const appState = appStore.get();
 
     const settingsContentRenderer = (modalRoot) => {
         const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
 
-        // Section: Relays
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Relays' }),
             createEl('div', { id: 'rly-list' }),
@@ -524,7 +511,7 @@ export function SettPanComp() {
             settingsSectionsWrapper.appendChild(createEl('hr'));
         }
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [ // Focus Tags Section
+        settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Focus Tags' }),
             createEl('div', { id: 'focus-tag-list' }),
             renderForm([
@@ -546,7 +533,7 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [ // Map Tiles Section
+        settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Map Tiles' }),
             renderForm([
                 {
@@ -593,7 +580,7 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [ // Mute List Section
+        settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Mute List' }),
             createEl('div', { id: 'mute-list' }),
             renderForm([
@@ -604,7 +591,7 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        settingsSectionsWrapper.appendChild(createEl('section', {}, [ // New: Followed Users Section
+        settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Followed Users (NIP-02)' }),
             createEl('div', { id: 'followed-list' }),
             renderForm([
@@ -618,7 +605,6 @@ export function SettPanComp() {
         ]));
         settingsSectionsWrapper.appendChild(createEl('hr'));
 
-        // New: Offline Queue Section
         settingsSectionsWrapper.appendChild(createEl('section', {}, [
             createEl('h3', { textContent: 'Offline Queue' }),
             createEl('p', { textContent: 'Events waiting to be published when online.' }),
@@ -640,24 +626,21 @@ export function SettPanComp() {
 
     const modalContent = createModalWrapper('settings-modal', 'Settings', settingsContentRenderer);
 
-    // Append the final close button
     modalContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
 
-    // Render lists (must be called after modalContent is in DOM)
     renderRelays(modalContent);
     renderCategories(modalContent);
     renderFocusTags(modalContent);
     renderMuteList(modalContent);
     renderFollowedList(modalContent);
-    renderOfflineQueue(modalContent); // New: Render offline queue
+    renderOfflineQueue(modalContent);
 
-    // Setup Event Listeners for Settings Panel using the new helper
     setupAddRemoveListSection({
         modalContent,
         addInputId: 'new-rly-url',
         addBtnId: 'add-rly-btn',
         addLogic: addRelayLogic,
-        listRenderer: () => renderRelays(modalContent), // Pass modalContent to renderer
+        listRenderer: () => renderRelays(modalContent),
         saveBtnId: 'save-rlys-btn',
         onSaveCallback: () => {
             nostrSvc.discAllRlys();
@@ -670,7 +653,7 @@ export function SettPanComp() {
         addInputId: 'new-cat-name',
         addBtnId: 'add-cat-btn',
         addLogic: addCategoryLogic,
-        listRenderer: () => renderCategories(modalContent), // Pass modalContent to renderer
+        listRenderer: () => renderCategories(modalContent),
         saveBtnId: 'save-cats-btn'
     });
 
@@ -679,7 +662,7 @@ export function SettPanComp() {
         addInputId: 'new-focus-tag-input',
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
-        listRenderer: () => renderFocusTags(modalContent), // Pass modalContent to renderer
+        listRenderer: () => renderFocusTags(modalContent),
         saveBtnId: 'save-focus-tags-btn',
         onSaveCallback: () => nostrSvc.refreshSubs()
     });
@@ -689,7 +672,7 @@ export function SettPanComp() {
         addInputId: 'new-mute-pk-input',
         addBtnId: 'add-mute-btn',
         addLogic: addMutePubkeyLogic,
-        listRenderer: () => renderMuteList(modalContent), // Pass modalContent to renderer
+        listRenderer: () => renderMuteList(modalContent),
         saveBtnId: 'save-mute-list-btn'
     });
 
@@ -698,11 +681,10 @@ export function SettPanComp() {
         addInputId: 'new-followed-pk-input',
         addBtnId: 'add-followed-btn',
         addLogic: addFollowedPubkeyLogic,
-        listRenderer: () => renderFollowedList(modalContent), // Pass modalContent to renderer
+        listRenderer: () => renderFollowedList(modalContent),
         saveBtnId: 'save-followed-btn'
     });
 
-    // Initialize unique listeners
     setupKeyManagementListeners(modalContent);
     setupMapTilesListeners(modalContent);
     setupImageHostListeners(modalContent);
