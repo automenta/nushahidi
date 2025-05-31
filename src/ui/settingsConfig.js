@@ -6,7 +6,7 @@ import {MapTilesSection} from './settings/mapTiles.js';
 import {ImageHostSection} from './settings/imageHost.js';
 import {DataManagementSection} from './settings/dataManagement.js';
 import {OfflineQueueSection} from './settings/offlineQueue.js';
-import {ConfigurableListSetting} from '../components/ConfigurableListSetting.js';
+import {ConfigurableListSetting} from './components/ConfigurableListSetting.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {showConfirmModal} from '../modals.js';
 import {showToast} from '../../utils.js';

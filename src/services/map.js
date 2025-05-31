@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import 'leaflet.markercluster';
+import 'ali.leaflet.markercluster';
 import 'leaflet-draw';
 import { appStore } from '../store.js';
 import { dbSvc } from './db.js';
