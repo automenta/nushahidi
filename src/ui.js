@@ -8,9 +8,9 @@ import { AuthModalComp } from './ui/authModal.js';
 import { SettPanComp } from './ui/settingsPanel.js';
 import { initFilterControls } from './ui/filters.js';
 import {
-    updAuthDisp,
-    updConnDisp,
-    updSyncDisp,
+    updateAuthDisplay,
+    updateConnectionDisplay,
+    updateSyncDisplay,
     handleReportAndFilterUpdates,
     updateFilterCategories,
     handleModalFocus,

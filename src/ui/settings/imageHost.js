@@ -1,8 +1,8 @@
 import { appStore } from '../../store.js';
 import { confSvc } from '../../services.js';
-import { C, $, showToast, isValidUrl } from '../../utils.js';
+import {C, $, showToast, isValidUrl, createEl} from '../../utils.js';
 import { withToast } from '../../decorators.js';
-import { renderForm, createEl } from '../forms.js';
+import { renderForm } from '../forms.js';
 
 export const renderImageHostSection = (modalContent) => {
     const appState = appStore.get();

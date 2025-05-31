@@ -9,5 +9,5 @@ export default defineConfig({
       },
     },
   },
-  publicDir: 'public',
+  publicDir: 'public'
 });
