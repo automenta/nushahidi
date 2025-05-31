@@ -172,7 +172,7 @@ function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     fieldsConfig.forEach(field => {
         const fieldId = field.id || (field.name ? `field-${field.name}` : null);
 
-        if (field.label && field.type !== 'button' && field.type !== 'custom-html' && field.type !== 'paragraph' && field.type !== 'hr') {
+        if (field.label && field.type !== 'button' && field.type !== 'custom-html' && field.type !== 'paragraph' && field.type !== 'hr' && field.type !== 'checkbox') {
             form.appendChild(cE('label', { for: fieldId, textContent: field.label }));
         }
 
@@ -191,7 +191,8 @@ function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                     placeholder: field.placeholder || '',
                     value: initialData[field.name] !== undefined ? initialData[field.name] : (field.value || ''),
                     required: field.required || false,
-                    autocomplete: field.autocomplete || 'off'
+                    autocomplete: field.autocomplete || 'off',
+                    readOnly: field.readOnly || false, // Added readOnly
                 });
                 break;
             case 'textarea':
@@ -229,6 +230,20 @@ function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
                         ` ${sH(opt.label)}`
                     ]));
                 });
+                break;
+            case 'checkbox': // For single checkboxes like spatial filter toggle
+                inputElement = cE('label', {}, [
+                    cE('input', {
+                        type: 'checkbox',
+                        id: fieldId,
+                        name: field.name,
+                        checked: initialData[field.name] || false,
+                    }),
+                    ` ${sH(field.label)}`
+                ]);
+                if (field.onchange) {
+                    inputElement.querySelector('input').addEventListener('change', field.onchange);
+                }
                 break;
             case 'file':
                 inputElement = cE('input', {
@@ -984,9 +999,9 @@ function SettPanComp() {
                         cE('label', { for: 'nip96-token-in', textContent: 'NIP-96 Auth Token (Optional):' }),
                         cE('input', { type: 'text', id: 'nip96-token-in', name: 'nip96Token', value: appState.settings.nip96Token })
                     ]
-                },
-                { label: 'Save Image Host', type: 'button', id: 'save-img-host-btn', buttonType: 'button' }
-            ], {}, { id: 'image-host-form' })
+                }
+            ], {}, { id: 'image-host-form' }),
+            cE('button', { type: 'button', id: 'save-img-host-btn', textContent: 'Save Image Host' }) // Moved outside renderForm to avoid nested form tag
         ]));
         settingsSectionsWrapper.appendChild(cE('hr'));
 
@@ -1663,43 +1678,78 @@ export function initUI() {
 
     // Setup filter controls
     const initFilterControls = () => {
-        // Initialize focus tag filter display
-        _cFilt.fT = appStore.get().currentFocusTag;
-        gE('#focus-tag-input').value = _cFilt.fT;
+        const filterControlsContainer = gE('#filter-controls');
+        const appState = appStore.get();
 
-        // Populate category filter dropdown
-        const populateFilterCategories = () => {
-            const selectElement = gE('#filter-category');
-            selectElement.innerHTML = '<option value="">All</option>';
-            appStore.get().settings.cats.forEach(cat => selectElement.appendChild(cE('option', { value: cat, textContent: sH(cat) })));
+        // Initial filter state for rendering
+        _cFilt.fT = appState.currentFocusTag;
+        _cFilt.followedOnly = appState.ui.followedOnlyFilter;
+
+        const filterFormFields = [
+            { type: 'h4', content: ['Filter Reports'] }, // Custom heading
+            { label: 'Search reports...', type: 'search', id: 'search-query-input', name: 'searchQuery', placeholder: 'Search reports text' },
+            { label: 'Focus Tag:', type: 'text', id: 'focus-tag-input', name: 'focusTag', readOnly: true },
+            {
+                label: 'Category:',
+                type: 'select',
+                id: 'filter-category',
+                name: 'filterCategory',
+                options: [{ value: '', label: 'All' }, ...appState.settings.cats.map(cat => ({ value: cat, label: cat }))]
+            },
+            { label: 'Author (npub/hex):', type: 'text', id: 'filter-author', name: 'filterAuthor', placeholder: 'Author pubkey' },
+            { label: 'From:', type: 'datetime-local', id: 'filter-time-start', name: 'filterTimeStart' },
+            { label: 'To:', type: 'datetime-local', id: 'filter-time-end', name: 'filterTimeEnd' },
+            { type: 'button', id: 'apply-filters-btn', label: 'Apply', class: 'apply-filters-btn' },
+            { type: 'button', id: 'reset-filters-btn', label: 'Reset', class: 'reset-filters-btn' },
+            { type: 'hr' },
+            { type: 'h4', content: ['Map Drawing Filters'] }, // Custom heading
+            { type: 'custom-html', id: 'map-draw-controls' }, // Placeholder for Leaflet.draw controls
+            { label: 'Enable Spatial Filter', type: 'checkbox', id: 'spatial-filter-toggle', name: 'spatialFilterEnabled' },
+            { label: 'Show Only Followed Users', type: 'checkbox', id: 'followed-only-toggle', name: 'followedOnlyFilter' },
+            { type: 'button', id: 'clear-drawn-shapes-btn', label: 'Clear All Drawn Shapes', class: 'clear-drawn-shapes-btn' }
+        ];
+
+        const initialFilterData = {
+            searchQuery: _cFilt.q,
+            focusTag: _cFilt.fT,
+            filterCategory: _cFilt.cat,
+            filterAuthor: _cFilt.auth,
+            filterTimeStart: _cFilt.tStart ? new Date(_cFilt.tStart * 1000).toISOString().slice(0, 16) : '',
+            filterTimeEnd: _cFilt.tEnd ? new Date(_cFilt.tEnd * 1000).toISOString().slice(0, 16) : '',
+            spatialFilterEnabled: appState.ui.spatialFilterEnabled,
+            followedOnlyFilter: appState.ui.followedOnlyFilter
         };
-        populateFilterCategories();
 
-        // Attach filter event listeners
-        gE('#search-query-input').oninput = e => { _cFilt.q = e.target.value; debAppAllFilt() };
-        gE('#filter-category').onchange = e => { _cFilt.cat = e.target.value; applyAllFilters() };
-        gE('#filter-author').oninput = e => { _cFilt.auth = e.target.value.trim(); debAppAllFilt() };
-        gE('#filter-time-start').onchange = e => { _cFilt.tStart = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
-        gE('#filter-time-end').onchange = e => { _cFilt.tEnd = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
-        gE('#apply-filters-btn').onclick = applyAllFilters;
+        // Clear existing content and render the form
+        filterControlsContainer.innerHTML = '';
+        const filterForm = renderForm(filterFormFields, initialFilterData, { id: 'filter-form' });
+        filterControlsContainer.appendChild(filterForm);
 
-        gE('#reset-filters-btn').onclick = () => {
+        // Attach filter event listeners to the new form elements
+        gE('#search-query-input', filterForm).oninput = e => { _cFilt.q = e.target.value; debAppAllFilt() };
+        gE('#filter-category', filterForm).onchange = e => { _cFilt.cat = e.target.value; applyAllFilters() };
+        gE('#filter-author', filterForm).oninput = e => { _cFilt.auth = e.target.value.trim(); debAppAllFilt() };
+        gE('#filter-time-start', filterForm).onchange = e => { _cFilt.tStart = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
+        gE('#filter-time-end', filterForm).onchange = e => { _cFilt.tEnd = e.target.value ? new Date(e.target.value).getTime() / 1000 : null; applyAllFilters() };
+        gE('#apply-filters-btn', filterForm).onclick = applyAllFilters;
+
+        gE('#reset-filters-btn', filterForm).onclick = () => {
             _cFilt = { q: '', fT: appStore.get().currentFocusTag, cat: '', auth: '', tStart: null, tEnd: null, followedOnly: false };
-            gE('#search-query-input').value = '';
-            gE('#focus-tag-input').value = _cFilt.fT;
-            gE('#filter-category').value = '';
-            gE('#filter-author').value = '';
-            gE('#filter-time-start').value = '';
-            gE('#filter-time-end').value = '';
+            gE('#search-query-input', filterForm).value = '';
+            gE('#focus-tag-input', filterForm).value = _cFilt.fT;
+            gE('#filter-category', filterForm).value = '';
+            gE('#filter-author', filterForm).value = '';
+            gE('#filter-time-start', filterForm).value = '';
+            gE('#filter-time-end', filterForm).value = '';
             // Reset spatial filter state
             appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: false, followedOnlyFilter: false } }));
-            gE('#spatial-filter-toggle').checked = false;
-            gE('#followed-only-toggle').checked = false;
+            gE('#spatial-filter-toggle', filterForm).checked = false;
+            gE('#followed-only-toggle', filterForm).checked = false;
             applyAllFilters();
         };
 
         // Map Drawing Controls
-        const mapDrawControlsDiv = gE('#map-draw-controls');
+        const mapDrawControlsDiv = gE('#map-draw-controls', filterForm);
         const drawControl = mapSvc.getDrawControl();
         if (drawControl) {
             // Append the draw control's toolbar to the designated div
@@ -1707,16 +1757,16 @@ export function initUI() {
         }
 
         // Spatial Filter Toggle
-        const spatialFilterToggle = gE('#spatial-filter-toggle');
-        spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled;
+        const spatialFilterToggle = gE('#spatial-filter-toggle', filterForm);
+        spatialFilterToggle.checked = appStore.get().ui.spatialFilterEnabled; // Ensure initial state is correct
         spatialFilterToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, spatialFilterEnabled: e.target.checked } }));
             applyAllFilters(); // Re-apply filters immediately
         };
 
         // Followed Only Toggle
-        const followedOnlyToggle = gE('#followed-only-toggle');
-        followedOnlyToggle.checked = appStore.get().ui.followedOnlyFilter;
+        const followedOnlyToggle = gE('#followed-only-toggle', filterForm);
+        followedOnlyToggle.checked = appStore.get().ui.followedOnlyFilter; // Ensure initial state is correct
         followedOnlyToggle.onchange = e => {
             appStore.set(s => ({ ui: { ...s.ui, followedOnlyFilter: e.target.checked } }));
             _cFilt.followedOnly = e.target.checked; // Update local filter state
@@ -1725,7 +1775,7 @@ export function initUI() {
         };
 
         // Clear Drawn Shapes Button
-        gE('#clear-drawn-shapes-btn').onclick = () => {
+        gE('#clear-drawn-shapes-btn', filterForm).onclick = () => {
             mapSvc.clearAllDrawnShapes();
         };
     };
@@ -1751,7 +1801,7 @@ export function initUI() {
                 // Update local filter state if currentFocusTag changed in appStore
                 if (newState.currentFocusTag !== _cFilt.fT) {
                     _cFilt.fT = newState.currentFocusTag;
-                    gE('#focus-tag-input').value = _cFilt.fT;
+                    gE('#focus-tag-input', gE('#filter-controls')).value = _cFilt.fT; // Scope to filter form
                 }
                 // Update local filter state for followedOnlyFilter
                 _cFilt.followedOnly = newState.ui.followedOnlyFilter;
@@ -1760,8 +1810,9 @@ export function initUI() {
 
             // Re-populate categories if settings change
             if (newState.settings.cats !== oldState?.settings?.cats) {
-                gE('#filter-category').innerHTML = '<option value="">All</option>'; // Clear existing options
-                newState.settings.cats.forEach(c => gE('#filter-category').appendChild(cE('option', { value: c, textContent: sH(c) })));
+                const selectElement = gE('#filter-category', gE('#filter-controls')); // Scope to filter form
+                selectElement.innerHTML = '<option value="">All</option>'; // Clear existing options
+                newState.settings.cats.forEach(c => selectElement.appendChild(cE('option', { value: c, textContent: sH(c) })));
             }
 
             // Handle modal focus
