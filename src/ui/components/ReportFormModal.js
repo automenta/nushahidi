@@ -162,7 +162,7 @@ export class ReportFormModal extends Modal {
             mapSvc.enPickLoc(latlng => {
                 formState.pFLoc = latlng;
                 updateLocationDisplay();
-                this.show('rep-title', this.reportToEdit);
+                this.show('.nstr-rep-form #field-title', this.reportToEdit);
             });
         };
 

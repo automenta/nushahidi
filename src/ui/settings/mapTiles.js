@@ -35,7 +35,7 @@ export class MapTilesSection {
             { type: 'button', ref: 'saveTileBtn', label: 'Save Map Tiles', buttonType: 'button' }
         ];
 
-        const { form, fields } = renderForm(mapTilesFormFields, {}, { id: 'map-tiles-form' });
+        const { form, fields } = renderForm(mapTilesFormFields, {}, { class: 'map-tiles-form' });
 
         if (!this.form) {
             this.form = form;

@@ -32,7 +32,7 @@ export class KeyManagementSection {
             { type: 'button', ref: 'changePassBtn', label: 'Change Passphrase' }
         ];
 
-        const { form, fields } = renderForm(keyManagementFormFields, {}, { id: 'key-management-form' });
+        const { form, fields } = renderForm(keyManagementFormFields, {}, { class: 'key-management-form' });
 
         if (!this.form) {
             this.form = form;

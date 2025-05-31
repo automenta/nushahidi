@@ -29,7 +29,7 @@ export class AuthModal extends Modal {
                 { type: 'button', ref: 'cancelAuthModalBtn', class: 'secondary', label: 'Cancel', onclick: () => this.hide(), style: 'margin-top:1rem' }
             ];
 
-            const { form, fields } = renderForm(authFormFields, {}, {id: 'auth-form'});
+            const { form, fields } = renderForm(authFormFields, {}, {class: 'auth-form'});
 
             connNip07Btn = fields.connectNip07Btn;
             authPassInput = fields.authPassphrase;

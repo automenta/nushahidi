@@ -23,7 +23,7 @@ export class DataManagementSection {
             { label: 'Import Settings:', type: 'file', ref: 'importSettingsFile', name: 'importSettingsFile', accept: '.json' }
         ];
 
-        const { form, fields } = renderForm(dataManagementFormFields, {}, { id: 'data-management-form' });
+        const { form, fields } = renderForm(dataManagementFormFields, {}, { class: 'data-management-form' });
 
         if (!this.form) {
             this.form = form;
@@ -56,7 +56,6 @@ export class DataManagementSection {
             downloadAnchorNode.setAttribute("href", dataStr);
             downloadAnchorNode.setAttribute("download", "nostrmapper_settings.json");
             document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
             downloadAnchorNode.remove();
         }, "Settings exported.", "Error exporting settings"));
 

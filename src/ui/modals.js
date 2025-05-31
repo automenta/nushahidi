@@ -11,7 +11,8 @@ export class Modal {
     }
 
     createModalElement() {
-        const modalElement = createEl('div', { id: this.modalId, class: `modal ${this.modalId}` });
+        // Change: Use modalId as a class, not an ID.
+        const modalElement = createEl('div', { class: `modal ${this.modalId}` });
         const modalContent = createEl('div', { class: 'modal-content' });
 
         modalElement.append(

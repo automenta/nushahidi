@@ -62,7 +62,7 @@ export class OfflineQueueSection {
         ];
         this.sectionEl.innerHTML = '';
         this.sectionEl.appendChild(createEl('p', { textContent: 'Events waiting to be published when online.' }));
-        const listContainer = createEl('div', { id: this.config.listId });
+        const listContainer = createEl('div'); // Removed id: this.config.listId
         this.sectionEl.appendChild(listContainer);
         renderList(listContainer, queueItems, offlineQueueItemRenderer, actionsConfig, 'offline-q-entry');
     }

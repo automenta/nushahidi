@@ -117,13 +117,13 @@ main {
     overflow: hidden;
 }
 
-#map-container {
+.map-container { /* Changed from #map-container */
     flex-grow: 1;
     height: 100%;
     background-color: #e0e0e0;
 }
 
-#sidebar {
+.app-sidebar { /* Changed from #sidebar */
     width: 380px;
     max-width: 40%;
     background-color: var(--light-text);

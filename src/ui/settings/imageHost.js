@@ -52,7 +52,7 @@ export class ImageHostSection {
             { type: 'button', ref: 'saveImgHostBtn', textContent: 'Save Image Host' }
         ];
 
-        const { form, fields } = renderForm(imageHostFormFields, {}, { id: 'image-host-form' });
+        const { form, fields } = renderForm(imageHostFormFields, {}, { class: 'image-host-form' });
 
         if (!this.form) {
             this.form = form;
