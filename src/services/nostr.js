@@ -266,10 +266,10 @@ export const nostrSvc = {
 
         const subscriptionId = `reps-${Date.now()}`;
         try {
-            const sub = _pool.sub(relaysToQuery, [currentFilter]);
-
-            sub.on('event', handleSubscriptionEvent);
-            sub.on('eose', () => {});
+            const sub = _pool.subscribe(relaysToQuery, [currentFilter], {
+                onevent: handleSubscriptionEvent,
+                oneose: () => {}
+            });
 
             _activeSubs.set(subscriptionId, { sub, rUs: relaysToQuery, filt: currentFilter, type: 'reports' });
         } catch (e) {
