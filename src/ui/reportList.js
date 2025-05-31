@@ -17,8 +17,10 @@ const rendRepCard = report => {
 };
 
 async function loadAndDisplayInteractions(reportId, reportPk, container) {
+    // Display a spinner while loading
     container.innerHTML = '<h4>Interactions</h4><div class="spinner"></div>';
     appStore.set(s => ({ ui: { ...s.ui, loading: true } }));
+
     try {
         const interactions = await nostrSvc.fetchInteractions(reportId, reportPk);
 
@@ -70,10 +72,12 @@ async function loadAndDisplayInteractions(reportId, reportPk, container) {
             style: 'margin-top:0.5rem;'
         });
 
+        fragment.appendChild(reactionButtonsDiv);
+        fragment.appendChild(commentForm);
+
+        // Clear container and append the fragment once
         container.innerHTML = '';
         container.appendChild(fragment);
-        container.appendChild(reactionButtonsDiv);
-        container.appendChild(commentForm);
 
         $$('.reaction-buttons button', container).forEach(btn => btn.onclick = handleReactionSubmit);
 

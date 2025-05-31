@@ -5,51 +5,43 @@ import { C, $, createEl, sanitizeHTML, formatNpubShort, npubToHex, showToast, is
 import { createModalWrapper, showConfirmModal, showPassphraseModal, hideModal, showModal } from './modals.js';
 import { renderForm, setupAddRemoveListSection, renderList } from './forms.js';
 
-const renderRelays = (modalContent) => {
-    const removeRelayAction = r => {
-        const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
-        confSvc.setRlys(updatedRelays);
-        nostrSvc.discAllRlys();
-        nostrSvc.connRlys();
-    };
-    const relayItemRenderer = r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` });
-    const relayActionsConfig = [{
+// Helper to create list rendering functions
+const createListSectionRenderer = (containerId, itemRenderer, actionsConfig, itemWrapperClass) => (modalContent) => {
+    renderList(containerId, appStore.get()[containerId.replace('-list', '')] || appStore.get().settings[containerId.replace('-list', '')], itemRenderer, actionsConfig, itemWrapperClass, modalContent);
+};
+
+const renderRelays = createListSectionRenderer('rly-list',
+    r => createEl('span', { textContent: `${sanitizeHTML(r.url)} (${r.read ? 'R' : ''}${r.write ? 'W' : ''}) - ${sanitizeHTML(r.status)}` }),
+    [{
         label: 'Remove',
         className: 'remove-relay-btn',
-        onClick: removeRelayAction,
+        onClick: r => {
+            const updatedRelays = appStore.get().relays.filter(rl => rl.url !== r.url);
+            confSvc.setRlys(updatedRelays);
+            nostrSvc.discAllRlys();
+            nostrSvc.connRlys();
+        },
         confirm: { title: 'Remove Relay', message: 'Are you sure you want to remove this relay?' }
-    }];
-    renderList('rly-list', appStore.get().relays, relayItemRenderer, relayActionsConfig, 'relay-entry', modalContent);
-};
+    }],
+    'relay-entry'
+);
 
-const renderCategories = (modalContent) => {
-    const removeCategoryAction = c => {
-        const updatedCats = appStore.get().settings.cats.filter(cat => cat !== c);
-        confSvc.setCats(updatedCats);
-    };
-    const categoryItemRenderer = c => createEl('span', { textContent: sanitizeHTML(c) });
-    const categoryActionsConfig = [{
+const renderCategories = createListSectionRenderer('cat-list',
+    c => createEl('span', { textContent: sanitizeHTML(c) }),
+    [{
         label: 'Remove',
         className: 'remove-category-btn',
-        onClick: removeCategoryAction,
+        onClick: c => {
+            const updatedCats = appStore.get().settings.cats.filter(cat => cat !== c);
+            confSvc.setCats(updatedCats);
+        },
         confirm: { title: 'Remove Category', message: 'Are you sure you want to remove this category?' }
-    }];
-    renderList('cat-list', appStore.get().settings.cats, categoryItemRenderer, categoryActionsConfig, 'category-entry', modalContent);
-};
+    }],
+    'category-entry'
+);
 
-const renderFocusTags = (modalContent) => {
-    const removeFocusTagAction = t => {
-        const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
-        confSvc.setFocusTags(updatedTags);
-        if (t.active && updatedTags.length > 0) {
-            confSvc.setCurrentFocusTag(updatedTags[0].tag);
-            updatedTags[0].active = true;
-        } else if (updatedTags.length === 0) {
-            confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
-            confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
-        }
-    };
-    const focusTagItemRenderer = ft => {
+const renderFocusTags = createListSectionRenderer('focus-tag-list',
+    ft => {
         const span = createEl('span', { textContent: `${sanitizeHTML(ft.tag)}${ft.active ? ' (Active)' : ''}` });
         const radio = createEl('input', {
             type: 'radio',
@@ -65,39 +57,47 @@ const renderFocusTags = (modalContent) => {
         });
         const label = createEl('label', {}, [radio, ` Set Active`]);
         return createEl('div', {}, [span, label]);
-    };
-    const focusTagActionsConfig = [{
+    },
+    [{
         label: 'Remove',
         className: 'remove-focus-tag-btn',
-        onClick: removeFocusTagAction,
+        onClick: t => {
+            const updatedTags = appStore.get().focusTags.filter(ft => ft.tag !== t.tag);
+            confSvc.setFocusTags(updatedTags);
+            if (t.active && updatedTags.length > 0) {
+                confSvc.setCurrentFocusTag(updatedTags[0].tag);
+                updatedTags[0].active = true;
+            } else if (updatedTags.length === 0) {
+                confSvc.setCurrentFocusTag(C.FOCUS_TAG_DEFAULT);
+                confSvc.setFocusTags([{ tag: C.FOCUS_TAG_DEFAULT, active: true }]);
+            }
+        },
         confirm: { title: 'Remove Focus Tag', message: 'Are you sure you want to remove this focus tag?' }
-    }];
-    renderList('focus-tag-list', appStore.get().focusTags, focusTagItemRenderer, focusTagActionsConfig, 'focus-tag-entry', modalContent);
-};
+    }],
+    'focus-tag-entry'
+);
 
-const renderMuteList = (modalContent) => {
-    const removeMuteAction = pk => confSvc.rmMute(pk);
-    const muteItemRenderer = pk => createEl('span', { textContent: formatNpubShort(pk) });
-    const muteActionsConfig = [{
+const renderMuteList = createListSectionRenderer('mute-list',
+    pk => createEl('span', { textContent: formatNpubShort(pk) }),
+    [{
         label: 'Remove',
         className: 'remove-mute-btn',
-        onClick: removeMuteAction,
+        onClick: pk => confSvc.rmMute(pk),
         confirm: { title: 'Remove Muted Pubkey', message: 'Are you sure you want to unmute this pubkey?' }
-    }];
-    renderList('mute-list', appStore.get().settings.mute, muteItemRenderer, muteActionsConfig, 'mute-entry', modalContent);
-};
+    }],
+    'mute-entry'
+);
 
-const renderFollowedList = (modalContent) => {
-    const removeFollowedAction = f => confSvc.rmFollowed(f.pk);
-    const followedItemRenderer = f => createEl('span', { textContent: formatNpubShort(f.pk) });
-    const followedActionsConfig = [{
+const renderFollowedList = createListSectionRenderer('followed-list',
+    f => createEl('span', { textContent: formatNpubShort(f.pk) }),
+    [{
         label: 'Unfollow',
         className: 'remove-followed-btn',
-        onClick: removeFollowedAction,
+        onClick: f => confSvc.rmFollowed(f.pk),
         confirm: { title: 'Unfollow User', message: 'Are you sure you want to unfollow this user?' }
-    }];
-    renderList('followed-list', appStore.get().followedPubkeys, followedItemRenderer, followedActionsConfig, 'followed-entry', modalContent);
-};
+    }],
+    'followed-entry'
+);
 
 const renderOfflineQueue = async (modalContent) => {
     const queueItems = await dbSvc.getOfflineQ();
@@ -221,6 +221,19 @@ const addFollowedPubkeyLogic = async (pk) => {
         showToast(`Error adding user: ${e.message}`, 'error');
         return false;
     }
+};
+
+// Helper to setup common list management sections
+const setupListManagement = (modalContent, config) => {
+    setupAddRemoveListSection({
+        modalContent,
+        addInputId: config.addInputId,
+        addBtnId: config.addBtnId,
+        addLogic: config.addLogic,
+        listRenderer: config.listRenderer,
+        saveBtnId: config.saveBtnId,
+        onSaveCallback: config.onSaveCallback
+    });
 };
 
 const setupKeyManagementListeners = (modalContent) => {
@@ -635,8 +648,7 @@ export function SettPanComp() {
     renderFollowedList(modalContent);
     renderOfflineQueue(modalContent);
 
-    setupAddRemoveListSection({
-        modalContent,
+    setupListManagement(modalContent, {
         addInputId: 'new-rly-url',
         addBtnId: 'add-rly-btn',
         addLogic: addRelayLogic,
@@ -648,8 +660,7 @@ export function SettPanComp() {
         }
     });
 
-    setupAddRemoveListSection({
-        modalContent,
+    setupListManagement(modalContent, {
         addInputId: 'new-cat-name',
         addBtnId: 'add-cat-btn',
         addLogic: addCategoryLogic,
@@ -657,8 +668,7 @@ export function SettPanComp() {
         saveBtnId: 'save-cats-btn'
     });
 
-    setupAddRemoveListSection({
-        modalContent,
+    setupListManagement(modalContent, {
         addInputId: 'new-focus-tag-input',
         addBtnId: 'add-focus-tag-btn',
         addLogic: addFocusTagLogic,
@@ -667,8 +677,7 @@ export function SettPanComp() {
         onSaveCallback: () => nostrSvc.refreshSubs()
     });
 
-    setupAddRemoveListSection({
-        modalContent,
+    setupListManagement(modalContent, {
         addInputId: 'new-mute-pk-input',
         addBtnId: 'add-mute-btn',
         addLogic: addMutePubkeyLogic,
@@ -676,8 +685,7 @@ export function SettPanComp() {
         saveBtnId: 'save-mute-list-btn'
     });
 
-    setupAddRemoveListSection({
-        modalContent,
+    setupListManagement(modalContent, {
         addInputId: 'new-followed-pk-input',
         addBtnId: 'add-followed-btn',
         addLogic: addFollowedPubkeyLogic,

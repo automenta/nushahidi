@@ -27,27 +27,30 @@ const getDbStore = async (storeName, mode = 'readonly') => {
     return _db.transaction(storeName, mode).objectStore(storeName);
 };
 
+// Factory function to create common IndexedDB CRUD operations
+const createDbStoreCrud = (storeName) => ({
+    get: async id => (await getDbStore(storeName)).get(id),
+    getAll: async () => (await getDbStore(storeName)).getAll(),
+    add: async item => (await getDbStore(storeName, 'readwrite')).put(item),
+    rm: async id => (await getDbStore(storeName, 'readwrite')).delete(id),
+    clear: async () => (await getDbStore(storeName, 'readwrite')).clear(),
+});
+
 export const dbSvc = {
-    getRep: async id => (await getDbStore(C.STORE_REPORTS)).get(id),
-    getAllReps: async () => (await getDbStore(C.STORE_REPORTS)).getAll(),
-    addRep: async r => (await getDbStore(C.STORE_REPORTS, 'readwrite')).put(r),
-    rmRep: async id => (await getDbStore(C.STORE_REPORTS, 'readwrite')).delete(id),
-    clearReps: async () => (await getDbStore(C.STORE_REPORTS, 'readwrite')).clear(),
-    getProf: async pk => (await getDbStore(C.STORE_PROFILES)).get(pk),
-    addProf: async p => (await getDbStore(C.STORE_PROFILES, 'readwrite')).put(p),
+    ...createDbStoreCrud(C.STORE_REPORTS),
+    ...createDbStoreCrud(C.STORE_PROFILES),
+    ...createDbStoreCrud(C.STORE_SETTINGS),
+    ...createDbStoreCrud(C.STORE_OFFLINE_QUEUE),
+    ...createDbStoreCrud(C.STORE_DRAWN_SHAPES),
+    ...createDbStoreCrud(C.STORE_FOLLOWED_PUBKEYS),
+
+    // Specific methods not covered by the factory
     saveSetts: async s => (await getDbStore(C.STORE_SETTINGS, 'readwrite')).put({ id: 'appSettings', ...s }),
     loadSetts: async () => (await getDbStore(C.STORE_SETTINGS)).get('appSettings'),
     addOfflineQ: async e => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).add(e),
-    getOfflineQ: async () => (await getDbStore(C.STORE_OFFLINE_QUEUE)).getAll(),
     rmOfflineQ: async qid => (await getDbStore(C.STORE_OFFLINE_QUEUE, 'readwrite')).delete(qid),
-    addDrawnShape: async shape => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).put(shape),
-    getAllDrawnShapes: async () => (await getDbStore(C.STORE_DRAWN_SHAPES)).getAll(),
-    rmDrawnShape: async id => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).delete(id),
-    clearDrawnShapes: async () => (await getDbStore(C.STORE_DRAWN_SHAPES, 'readwrite')).clear(),
-    getFollowedPubkeys: async () => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS)).getAll(),
     addFollowedPubkey: async (pk) => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).put({ pk, followedAt: Date.now() }),
     rmFollowedPubkey: async (pk) => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).delete(pk),
-    clearFollowedPubkeys: async () => (await getDbStore(C.STORE_FOLLOWED_PUBKEYS, 'readwrite')).clear(),
 
     async pruneDb() {
         const now = Date.now();
@@ -63,7 +66,7 @@ export const dbSvc = {
             showToast(`Pruned ${toDelete.length} old reports.`, 'info');
         }
 
-        const allProfiles = await getDbStore(C.STORE_PROFILES).getAll();
+        const allProfiles = await this.getAllProfiles();
         const profileStore = await getDbStore(C.STORE_PROFILES, 'readwrite');
         let profilesDeleted = 0;
         for (const prof of allProfiles) {
@@ -402,44 +405,44 @@ const addReportToStoreAndDb = async (signedEvent) => {
     });
 };
 
+const _connectRelay = async (url, attempt = 1) => {
+    try {
+        const relay = relayInit(url);
+        relay.on('connect', async () => {
+            _nostrRlys.set(relay.url, relay);
+            const nip11Doc = await nip11.fetchRelayInformation(relay.url).catch(() => null);
+            updRlyStore(relay.url, 'connected', nip11Doc);
+            showToast(`Connected to ${url}`, 'success', 2000);
+            nostrSvc.subToReps(relay); // Use nostrSvc here
+        });
+        relay.on('disconnect', () => {
+            updRlyStore(relay.url, 'disconnected');
+            showToast(`Disconnected from ${url}`, 'warning', 2000);
+            setTimeout(() => _connectRelay(url, 1), C.RELAY_RETRY_DELAY_MS);
+        });
+        relay.on('error', () => {
+            updRlyStore(relay.url, 'error');
+            showToast(`Error connecting to ${url}`, 'error', 2000);
+            if (attempt < C.MAX_RELAY_RETRIES) {
+                setTimeout(() => _connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
+            }
+        });
+        await relay.connect();
+    } catch (e) {
+        updRlyStore(url, 'error');
+        showToast(`Failed to connect to ${url}: ${e.message}`, 'error', 2000);
+        if (attempt < C.MAX_RELAY_RETRIES) {
+            setTimeout(() => _connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
+        }
+    }
+};
+
 export const nostrSvc = {
     async connRlys() {
         appStore.get().relays.forEach(async rConf => {
             if (_nostrRlys.has(rConf.url) && _nostrRlys.get(rConf.url).status === 1) return;
             if (!rConf.read && !rConf.write) return;
-
-            const connectRelay = async (url, attempt = 1) => {
-                try {
-                    const relay = relayInit(url);
-                    relay.on('connect', async () => {
-                        _nostrRlys.set(relay.url, relay);
-                        const nip11Doc = await nip11.fetchRelayInformation(relay.url).catch(() => null);
-                        updRlyStore(relay.url, 'connected', nip11Doc);
-                        showToast(`Connected to ${url}`, 'success', 2000);
-                        this.subToReps(relay);
-                    });
-                    relay.on('disconnect', () => {
-                        updRlyStore(relay.url, 'disconnected');
-                        showToast(`Disconnected from ${url}`, 'warning', 2000);
-                        setTimeout(() => connectRelay(url, 1), C.RELAY_RETRY_DELAY_MS);
-                    });
-                    relay.on('error', () => {
-                        updRlyStore(relay.url, 'error');
-                        showToast(`Error connecting to ${url}`, 'error', 2000);
-                        if (attempt < C.MAX_RELAY_RETRIES) {
-                            setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
-                        }
-                    });
-                    await relay.connect();
-                } catch (e) {
-                    updRlyStore(url, 'error');
-                    showToast(`Failed to connect to ${url}: ${e.message}`, 'error', 2000);
-                    if (attempt < C.MAX_RELAY_RETRIES) {
-                        setTimeout(() => connectRelay(url, attempt + 1), attempt * C.RELAY_RETRY_DELAY_MS);
-                    }
-                }
-            };
-            connectRelay(rConf.url);
+            _connectRelay(rConf.url);
         });
     },
 
