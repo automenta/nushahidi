@@ -79,9 +79,8 @@ export const handleReportViewing = (reportId, reports) => {
     if (reportId) {
         const report = reports.find(r => r.id === reportId);
         if (report) {
-            const detailModal = ReportDetailsModal(report);
-            $('#report-detail-container').innerHTML = '';
-            $('#report-detail-container').appendChild(detailModal);
+            // ReportDetailsModal now creates and appends itself to document.body
+            ReportDetailsModal(report);
             showModal('report-detail-container', 'detail-title');
         }
     }

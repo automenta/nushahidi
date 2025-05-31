@@ -202,6 +202,7 @@ export function ReportFormModal(reportToEdit = null) {
         }));
     };
 
+    // The Modal function now creates and appends the modal to document.body
     const modalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
         const updateLocationDisplay = (addressName = '') => {
             const coordsEl = $('#pFLoc-coords', modalContent);

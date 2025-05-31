@@ -20,9 +20,9 @@ export function ReportDetailsModal(report) {
         });
         const updatedReport = appStore.get().reports.find(r => r.id === reportId);
         if (updatedReport) {
-            const detailContainer = $('#report-detail-container');
-            detailContainer.innerHTML = '';
-            detailContainer.appendChild(ReportDetailsModal(updatedReport));
+            // Re-render the detail modal for the updated report
+            ReportDetailsModal(updatedReport); // This will create and append a new modal
+            showModal('report-detail-container', 'detail-title'); // Show the new modal
         }
     };
 
@@ -88,9 +88,7 @@ export function ReportDetailsModal(report) {
 
         if (isAuthor) {
             $('#edit-report-btn', detailContainer).onclick = () => {
-                const formModal = ReportFormModal(rep);
-                $('#report-form-modal').innerHTML = '';
-                $('#report-form-modal').appendChild(formModal);
+                ReportFormModal(rep); // This will create and append the form modal
                 showModal('report-form-modal', 'rep-title');
             };
             $('#delete-report-btn', detailContainer).onclick = () => {
@@ -122,9 +120,8 @@ export function ReportDetailsModal(report) {
             isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
             const updatedReport = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
             if (updatedReport) {
-                const detailContainer = $('#report-detail-container');
-                detailContainer.innerHTML = '';
-                detailContainer.appendChild(ReportDetailsModal(updatedReport));
+                ReportDetailsModal(updatedReport); // This will create and append a new modal
+                showModal('report-detail-container', 'detail-title'); // Show the new modal
             }
             return isCurrentlyFollowed ? `Unfollowed ${formatNpubShort(pubkeyToToggle)}.` : `Followed ${formatNpubShort(pubkeyToToggle)}!`;
         }, null, "Error toggling follow status", () => btn.disabled = false))();
@@ -202,6 +199,7 @@ export function ReportDetailsModal(report) {
         }
     };
 
+    // The Modal function now creates and appends the modal to document.body
     const modalElement = Modal('report-detail-container', report.title || 'Report Details', async modalContent => {
         const profile = await nostrSvc.fetchProf(report.pk);
         const currentUserPk = appStore.get().user?.pk;

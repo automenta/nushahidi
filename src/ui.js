@@ -1,7 +1,7 @@
 import { appStore } from './store.js';
 import { idSvc } from './services.js';
 import { $, C, createEl } from './utils.js';
-import { hideModal, showConfirmModal, showModal } from './ui/modals.js';
+import { hideModal, showConfirmModal, showModal, Modal } from './ui/modals.js';
 import { AuthModal } from './ui/components/AuthModal.js';
 import { ReportFormModal } from './ui/components/ReportFormModal.js';
 import { SettingsModal } from './ui/components/SettingsModal.js';
@@ -27,8 +27,17 @@ const ensureContainerExists = (id, parent = document.body) => {
 };
 
 const setupOnboardingModal = () => {
-    const onboardingModal = ensureContainerExists('onboarding-info');
-    if (!onboardingModal) return;
+    // Create the onboarding modal if it doesn't exist
+    if (!$('#onboarding-info')) {
+        Modal('onboarding-info', 'Welcome to NostrMapper!', root => [
+            createEl('p', { textContent: 'NostrMapper is a decentralized mapping application built on Nostr. Report incidents, observations, and aid requests directly to the Nostr network.' }),
+            createEl('p', { textContent: 'Your reports are public and uncensorable. Connect your Nostr identity to start contributing!' }),
+            createEl('button', { textContent: 'Got It!' })
+        ]);
+    }
+
+    const onboardingModal = $('#onboarding-info');
+    if (!onboardingModal) return; // Should not happen if Modal successfully created it
 
     const hideOnboarding = () => {
         localStorage.setItem(C.ONBOARDING_KEY, 'true');
@@ -40,17 +49,21 @@ const setupOnboardingModal = () => {
 };
 
 export function initUI() {
-    const authModalContainer = ensureContainerExists('auth-modal-container');
-    const reportFormModalContainer = ensureContainerExists('report-form-modal');
-    const settingsModalContainer = ensureContainerExists('settings-modal-container');
+    // Ensure static containers exist
     const filterControlsContainer = ensureContainerExists('filter-controls');
-    const reportDetailContainer = ensureContainerExists('report-detail-container'); // Ensure this exists for ReportDetailsModal
+    const reportListContainer = ensureContainerExists('report-list-container');
+    ensureContainerExists('report-list', reportListContainer); // Ensure report-list div exists inside report-list-container
 
-    authModalContainer.appendChild(AuthModal());
-    reportFormModalContainer.appendChild(ReportFormModal());
-    settingsModalContainer.appendChild(SettingsModal());
-    FilterControls(filterControlsContainer); // Call FilterControls directly, passing the container
+    // Initialize modals - they will append themselves to document.body
+    AuthModal();
+    ReportFormModal();
+    SettingsModal();
+    // ReportDetailsModal is created dynamically in handleReportViewing
 
+    // Render static UI components
+    FilterControls(filterControlsContainer);
+
+    // Setup global button click handlers
     $('#create-report-btn').onclick = () => showModal('report-form-modal', 'rep-title');
 
     $('#auth-button').onclick = () => {
@@ -61,6 +74,7 @@ export function initUI() {
 
     $('#settings-btn').onclick = () => showModal('settings-modal');
 
+    // Setup AppStore listeners for dynamic UI updates
     appStore.on((newState, oldState) => {
         if (newState.user?.pk !== oldState?.user?.pk) updateAuthDisplay(newState.user?.pk);
         if (newState.online !== oldState?.online) updateConnectionDisplay(newState.online);
@@ -72,6 +86,7 @@ export function initUI() {
         if (newState.ui.loading !== oldState?.ui?.loading) updateGlobalLoadingSpinner(newState.ui.loading);
     });
 
+    // Initial UI updates based on current store state
     updateAuthDisplay(appStore.get().user?.pk);
     updateConnectionDisplay(appStore.get().online);
     updateGlobalLoadingSpinner(appStore.get().ui.loading);
@@ -79,6 +94,7 @@ export function initUI() {
     updateSyncDisplay();
     applyAllFilters();
 
+    // Setup and show onboarding modal if not seen before
     setupOnboardingModal();
     if (!localStorage.getItem(C.ONBOARDING_KEY)) showModal('onboarding-info');
 }

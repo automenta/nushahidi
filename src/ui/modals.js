@@ -2,21 +2,26 @@ import {appStore} from '../store.js';
 import {$, createEl, sanitizeHTML} from '../utils.js';
 
 export function Modal(modalId, title, contentRenderer) {
-    const modalElement = $(`#${modalId}`);
-    if (!modalElement) return console.error(`Modal element with ID ${modalId} not found.`);
+    // Create the main modal element
+    const modalElement = createEl('div', { id: modalId, class: 'modal', inert: '' });
 
-    modalElement.innerHTML = '';
+    // Create the inner content wrapper
     const modalContent = createEl('div', { class: 'modal-content' });
 
+    // Append static modal parts
     modalElement.append(
         createEl('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal(modalId) }),
         createEl('h2', { id: `${modalId}-heading`, textContent: sanitizeHTML(title) }),
         modalContent
     );
 
+    // Render specific content into the content wrapper
     const specificContent = contentRenderer(modalContent);
     if (Array.isArray(specificContent)) specificContent.forEach(el => modalContent.appendChild(el));
     else if (specificContent instanceof Node) modalContent.appendChild(specificContent);
+
+    // Append the modal to the body
+    document.body.appendChild(modalElement);
 
     return modalElement;
 }

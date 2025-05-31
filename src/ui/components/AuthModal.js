@@ -52,6 +52,7 @@ export function AuthModal() {
         { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => hideModal('auth-modal'), style: 'margin-top:1rem' }
     ];
 
+    // The Modal function now creates and appends the modal to document.body
     const modalElement = Modal('auth-modal', 'Nostr Identity', root => {
         const form = renderForm(authFormFields, {}, {id: 'auth-form'});
         root.appendChild(form);

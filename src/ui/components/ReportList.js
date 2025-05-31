@@ -21,17 +21,15 @@ export function ReportList(reports) {
             cardWrapper.innerHTML = renderReportCard(report);
             const cardElement = cardWrapper.firstElementChild;
             cardElement.addEventListener('click', () => {
-                const detailModal = ReportDetailsModal(report);
-                $('#report-detail-container').innerHTML = '';
-                $('#report-detail-container').appendChild(detailModal);
+                // ReportDetailsModal now creates and appends itself to document.body
+                ReportDetailsModal(report);
                 showModal('report-detail-container', 'detail-title');
                 listContainer.style.display = 'none';
             });
             cardElement.addEventListener('keydown', e => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                    const detailModal = ReportDetailsModal(report);
-                    $('#report-detail-container').innerHTML = '';
-                    $('#report-detail-container').appendChild(detailModal);
+                    // ReportDetailsModal now creates and appends itself to document.body
+                    ReportDetailsModal(report);
                     showModal('report-detail-container', 'detail-title');
                     listContainer.style.display = 'none';
                 }

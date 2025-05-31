@@ -38,6 +38,7 @@ export function SettingsModal() {
         return settingsSectionsWrapper;
     };
 
+    // The Modal function now creates and appends the modal to document.body
     const modalElement = Modal('settings-modal', 'Settings', settingsContentRenderer);
     modalElement.querySelector('.modal-content').appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal('settings-modal'), style: 'margin-top:1rem' }));
     return modalElement;
