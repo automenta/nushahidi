@@ -1299,6 +1299,7 @@ export function initUI() {
     // Onboarding check
     if (!localStorage.getItem(C.ONBOARDING_KEY)) {
         showModal('onboarding-info');
+        // Fix: Use the constant C.ONBOARDING_KEY instead of hardcoded string
         localStorage.setItem(C.ONBOARDING_KEY, 'true'); // Set it after showing
     }
 } // End initUI
