@@ -7,7 +7,7 @@ export function ConfigurableListSetting(config) {
         createEl('h3', { textContent: config.title }),
         createEl('div', { id: config.listId }),
         config.formFields ? renderForm(config.formFields, {}, { id: config.formId }) : null
-    ].filter(Boolean)));
+    ].filter(Boolean));
 
     const listRenderer = () => {
         const items = config.getItems();
