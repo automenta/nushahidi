@@ -150,7 +150,6 @@ export const getImgDims = file => new Promise((resolve, reject) => {
 });
 
 export const formatNpubShort = pk => nip19.npubEncode(pk).substring(0, 12) + '...';
-export const isNostrId = id => /^[0-9a-f]{64}$/.test(id);
 
 export function showToast(message, type = 'info', duration = 3000, valueToCopy = null) {
     const toastContainer = document.getElementById('toast-container');
@@ -169,7 +168,6 @@ export function showToast(message, type = 'info', duration = 3000, valueToCopy =
                     await navigator.clipboard.writeText(valueToCopy);
                     showToast('Copied to clipboard!', 'success', 1500);
                 } catch (err) {
-                    console.error('Failed to copy:', err);
                     showToast('Failed to copy to clipboard.', 'error', 1500);
                 }
             }

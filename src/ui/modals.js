@@ -1,11 +1,9 @@
 import {appStore} from '../store.js';
 import {createEl, sanitizeHTML} from '../utils.js';
 
-export function Modal(modalId, title, contentElementOrElements) {
+export function Modal(modalId, title, contentRenderer) {
     const existingModal = document.getElementById(modalId);
-    if (existingModal) {
-        existingModal.remove();
-    }
+    if (existingModal) existingModal.remove();
 
     const modalElement = createEl('div', { id: modalId, class: 'modal', inert: '' });
     const modalContent = createEl('div', { class: 'modal-content' });
@@ -16,11 +14,7 @@ export function Modal(modalId, title, contentElementOrElements) {
         modalContent
     );
 
-    // If contentElementOrElements is a function, call it with modalContent and modalElement as context
-    const contentToAppend = typeof contentElementOrElements === 'function' ?
-        contentElementOrElements(modalContent, modalElement) :
-        contentElementOrElements;
-
+    const contentToAppend = typeof contentRenderer === 'function' ? contentRenderer(modalContent, modalElement) : contentRenderer;
     const contentArray = Array.isArray(contentToAppend) ? contentToAppend : [contentToAppend];
     contentArray.filter(Boolean).forEach(el => modalContent.appendChild(el));
 
@@ -30,19 +24,21 @@ export function Modal(modalId, title, contentElementOrElements) {
 }
 
 export const showConfirmModal = (title, message, onConfirm, onCancel) => {
-    const content = [
+    let confirmModalElement;
+    const contentRenderer = () => [
         createEl('p', { innerHTML: sanitizeHTML(message) }),
         createEl('div', { class: 'confirm-modal-buttons' }, [
             createEl('button', { class: 'cancel-button', textContent: 'Cancel', onclick: () => { hideModal(confirmModalElement); onCancel?.(); } }),
             createEl('button', { class: 'confirm-button', textContent: 'Confirm', onclick: () => { hideModal(confirmModalElement); onConfirm(); } })
         ])
     ];
-    const confirmModalElement = Modal('confirm-modal', title, content);
-    showModal(confirmModalElement, confirmModalElement.querySelector(`#${confirmModalElement.id}-heading`)); // Pass element directly
+    confirmModalElement = Modal('confirm-modal', title, contentRenderer);
+    showModal(confirmModalElement, confirmModalElement.querySelector(`#${confirmModalElement.id}-heading`));
 };
 
 export const showPassphraseModal = (title, message) => {
     return new Promise(resolve => {
+        let passphraseModalElement;
         const passphraseInput = createEl('input', { type: 'password', id: 'passphrase-input', placeholder: 'Enter passphrase', autocomplete: 'current-password' });
         const decryptBtn = createEl('button', {
             class: 'confirm-button', textContent: 'Decrypt',
@@ -50,7 +46,7 @@ export const showPassphraseModal = (title, message) => {
         });
         passphraseInput.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), decryptBtn.click()));
 
-        const content = [
+        const contentRenderer = () => [
             createEl('p', { textContent: message }),
             passphraseInput,
             createEl('div', { class: 'confirm-modal-buttons' }, [
@@ -58,35 +54,26 @@ export const showPassphraseModal = (title, message) => {
                 decryptBtn
             ])
         ];
-        const passphraseModalElement = Modal('passphrase-modal', title, content);
-        showModal(passphraseModalElement, passphraseModalElement.querySelector('#passphrase-input')); // Pass element directly
+        passphraseModalElement = Modal('passphrase-modal', title, contentRenderer);
+        showModal(passphraseModalElement, passphraseModalElement.querySelector('#passphrase-input'));
     });
 };
 
 export const showModal = (modalElement, focusElOrSelector) => {
-    if (!modalElement) {
-        console.warn('Attempted to show a null modal element.');
-        return;
-    }
+    if (!modalElement) return;
     modalElement.style.display = 'block';
     modalElement.removeAttribute('inert');
 
     let focusEl = null;
-    if (focusElOrSelector instanceof Element) {
-        focusEl = focusElOrSelector;
-    } else if (typeof focusElOrSelector === 'string') {
-        focusEl = modalElement.querySelector(focusElOrSelector);
-    }
+    if (focusElOrSelector instanceof Element) focusEl = focusElOrSelector;
+    else if (typeof focusElOrSelector === 'string') focusEl = modalElement.querySelector(focusElOrSelector);
     focusEl?.focus();
 
     appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: modalElement } }));
 };
 
 export const hideModal = modalElement => {
-    if (!modalElement) {
-        console.warn('Attempted to hide a null modal element.');
-        return;
-    }
+    if (!modalElement) return;
     modalElement.style.display = 'none';
     modalElement.setAttribute('inert', '');
     appStore.set(s => ({ ...s.ui, modalOpen: null }));

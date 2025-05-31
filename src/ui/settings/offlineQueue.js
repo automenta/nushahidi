@@ -2,6 +2,7 @@ import {C, createEl, sanitizeHTML} from '../../utils.js';
 import {dbSvc, nostrSvc} from '../../services.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {renderList} from '../forms.js';
+import {appStore} from '../../store.js';
 
 export const getOfflineQueueEventType = kind => {
     switch (kind) {
@@ -24,7 +25,7 @@ export const offlineQueueItemRenderer = item => {
 };
 
 export const OfflineQueueSection = (config) => {
-    const sectionEl = createEl('div', { id: config.listId });
+    let sectionEl;
 
     const renderQueue = async () => {
         const queueItems = await dbSvc.getOfflineQ();
@@ -50,7 +51,19 @@ export const OfflineQueueSection = (config) => {
         renderList(sectionEl, queueItems, offlineQueueItemRenderer, actionsConfig, config.itemWrapperClass);
     };
 
-    renderQueue(); // Initial render
+    const render = () => {
+        if (!sectionEl) {
+            sectionEl = createEl('div', { id: config.listId });
+        }
+        renderQueue();
+        return sectionEl;
+    };
 
-    return sectionEl;
+    appStore.on((newState, oldState) => {
+        if (newState.online !== oldState?.online) {
+            renderQueue();
+        }
+    });
+
+    return render();
 };

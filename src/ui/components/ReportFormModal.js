@@ -7,6 +7,7 @@ import {withLoading, withToast} from '../../decorators.js';
 
 export function ReportFormModal(reportToEdit = null) {
     let reportFormModalElement;
+    let modalContentContainer;
 
     const categories = appStore.get().settings.cats;
 
@@ -82,7 +83,7 @@ export function ReportFormModal(reportToEdit = null) {
         }];
 
         renderList(
-            previewElement, // Pass the element directly
+            previewElement,
             imagesMetadata,
             imageItemRenderer,
             imageActionsConfig,
@@ -210,38 +211,41 @@ export function ReportFormModal(reportToEdit = null) {
         }));
     };
 
-    const modalContentContainer = createEl('div'); // This will be the actual content passed to Modal
+    const contentRenderer = () => {
+        modalContentContainer = createEl('div');
+        const form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
+        modalContentContainer.appendChild(form);
 
-    const updateLocationDisplay = (addressName = '') => {
-        const coordsEl = modalContentContainer.querySelector('#pFLoc-coords');
-        if (coordsEl) {
-            coordsEl.textContent = formState.pFLoc ?
-                `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}` :
-                'None';
-        }
+        const updateLocationDisplay = (addressName = '') => {
+            const coordsEl = modalContentContainer.querySelector('#pFLoc-coords');
+            if (coordsEl) {
+                coordsEl.textContent = formState.pFLoc ?
+                    `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}${addressName ? ` (${sanitizeHTML(addressName)})` : ''}` :
+                    'None';
+            }
+        };
+
+        const updateImagePreview = () => {
+            const previewElement = modalContentContainer.querySelector('#upld-photos-preview');
+            if (previewElement) {
+                renderImagePreview(previewElement, formState.uIMeta, index => {
+                    formState.uIMeta.splice(index, 1);
+                    updateImagePreview();
+                });
+            }
+        };
+
+        form.querySelector('#rep-photos').onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview, form);
+        setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
+        setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
+
+        updateImagePreview();
+        updateLocationDisplay();
+
+        return modalContentContainer;
     };
 
-    const updateImagePreview = () => {
-        const previewElement = modalContentContainer.querySelector('#upld-photos-preview');
-        if (previewElement) {
-            renderImagePreview(previewElement, formState.uIMeta, index => {
-                formState.uIMeta.splice(index, 1);
-                updateImagePreview();
-            });
-        }
-    };
-
-    const form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
-    modalContentContainer.appendChild(form);
-
-    form.querySelector('#rep-photos').onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview, form);
-    setupReportFormLocationHandlers(form, formState, updateLocationDisplay);
-    setupReportFormSubmission(form, reportToEdit, formState, formState.uIMeta);
-
-    updateImagePreview();
-    updateLocationDisplay();
-
-    reportFormModalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContentContainer);
+    reportFormModalElement = Modal('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', contentRenderer);
 
     return reportFormModalElement;
 }

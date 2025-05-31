@@ -54,21 +54,25 @@ export function AuthModal() {
         { type: 'button', id: 'cancel-auth-modal-btn', class: 'secondary', label: 'Cancel', onclick: () => hideModal(authModalElement), style: 'margin-top:1rem' }
     ];
 
-    const form = renderForm(authFormFields, {}, {id: 'auth-form'});
+    const contentRenderer = () => {
+        const form = renderForm(authFormFields, {}, {id: 'auth-form'});
 
-    const connNip07Btn = form.querySelector('#conn-nip07-btn');
-    const authPassInput = form.querySelector('#auth-pass');
-    const createProfBtn = form.querySelector('#create-prof-btn');
-    const authSkInput = form.querySelector('#auth-sk');
-    const importSkBtn = form.querySelector('#import-sk-btn');
-    const cancelAuthModalBtn = form.querySelector('#cancel-auth-modal-btn');
+        const connNip07Btn = form.querySelector('#conn-nip07-btn');
+        const authPassInput = form.querySelector('#auth-pass');
+        const createProfBtn = form.querySelector('#create-prof-btn');
+        const authSkInput = form.querySelector('#auth-sk');
+        const importSkBtn = form.querySelector('#import-sk-btn');
+        const cancelAuthModalBtn = form.querySelector('#cancel-auth-modal-btn');
 
-    connNip07Btn.onclick = handleConnectNip07;
-    createProfBtn.onclick = withToast(() => handleCreateProfile(authPassInput.value), null, "Error creating profile");
-    importSkBtn.onclick = withToast(() => handleImportKey(authSkInput.value, authPassInput.value), null, "Error importing key");
-    cancelAuthModalBtn.onclick = () => hideModal(authModalElement);
+        connNip07Btn.onclick = handleConnectNip07;
+        createProfBtn.onclick = withToast(() => handleCreateProfile(authPassInput.value), null, "Error creating profile");
+        importSkBtn.onclick = withToast(() => handleImportKey(authSkInput.value, authPassInput.value), null, "Error importing key");
+        cancelAuthModalBtn.onclick = () => hideModal(authModalElement);
 
-    authModalElement = Modal('auth-modal', 'Nostr Identity', form);
+        return form;
+    };
+
+    authModalElement = Modal('auth-modal', 'Nostr Identity', contentRenderer);
 
     return authModalElement;
 }

@@ -4,6 +4,7 @@ import {settingsSections} from '../settingsConfig.js';
 
 export function SettingsModal() {
     let settingsModalElement;
+    let settingsContent;
 
     const sectionRenderers = new Map([
         ['list', (wrapper, section) => wrapper.appendChild(section.renderer(section))],
@@ -24,17 +25,19 @@ export function SettingsModal() {
         }]
     ]);
 
-    const settingsContent = createEl('div', { id: 'settings-sections' });
+    const contentRenderer = () => {
+        settingsContent = createEl('div', { id: 'settings-sections' });
+        settingsSections.forEach(section => {
+            const renderer = sectionRenderers.get(section.type);
+            if (renderer) {
+                renderer(settingsContent, section);
+                settingsContent.appendChild(createEl('hr'));
+            }
+        });
+        settingsContent.appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal(settingsModalElement), style: 'margin-top:1rem' }));
+        return settingsContent;
+    };
 
-    settingsSections.forEach(section => {
-        const renderer = sectionRenderers.get(section.type);
-        if (renderer) {
-            renderer(settingsContent, section);
-            settingsContent.appendChild(createEl('hr'));
-        }
-    });
-
-    settingsModalElement = Modal('settings-modal', 'Settings', settingsContent);
-    settingsModalElement.querySelector('.modal-content').appendChild(createEl('button', { type: 'button', class: 'secondary', textContent: 'Close', onclick: () => hideModal(settingsModalElement), style: 'margin-top:1rem' }));
+    settingsModalElement = Modal('settings-modal', 'Settings', contentRenderer);
     return settingsModalElement;
 }

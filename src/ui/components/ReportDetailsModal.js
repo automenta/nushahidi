@@ -11,6 +11,7 @@ import {withLoading, withToast} from '../../decorators.js';
 
 export function ReportDetailsModal(report) {
     let reportDetailsModalElement;
+    let modalContentContainer;
 
     const submitInteraction = async (kind, content, reportId, reportPk) => {
         if (!appStore.get().user) throw new Error("Please connect your Nostr identity to interact.");
@@ -22,7 +23,6 @@ export function ReportDetailsModal(report) {
         });
         const updatedReport = appStore.get().reports.find(r => r.id === reportId);
         if (updatedReport) {
-            // Re-render the modal with updated report data
             reportDetailsModalElement = ReportDetailsModal(updatedReport);
             showModal(reportDetailsModalElement, 'detail-title');
         }
@@ -122,7 +122,6 @@ export function ReportDetailsModal(report) {
             isCurrentlyFollowed ? await confSvc.rmFollowed(pubkeyToToggle) : confSvc.addFollowed(pubkeyToToggle);
             const updatedReport = appStore.get().reports.find(r => r.pk === pubkeyToToggle);
             if (updatedReport) {
-                // Re-render the modal with updated report data
                 reportDetailsModalElement = ReportDetailsModal(updatedReport);
                 showModal(reportDetailsModalElement, 'detail-title');
             }
@@ -205,25 +204,26 @@ export function ReportDetailsModal(report) {
         }
     };
 
-    const contentContainer = createEl('div'); // Create a container for the modal's content
+    const contentRenderer = () => {
+        modalContentContainer = createEl('div');
 
-    // Render initial HTML content
-    const profilePromise = nostrSvc.fetchProf(report.pk);
-    profilePromise.then(profile => {
-        const currentUserPk = appStore.get().user?.pk;
-        const isAuthor = currentUserPk && currentUserPk === report.pk;
-        const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
-        const canFollow = currentUserPk && currentUserPk !== report.pk;
+        const profilePromise = nostrSvc.fetchProf(report.pk);
+        profilePromise.then(profile => {
+            const currentUserPk = appStore.get().user?.pk;
+            const isAuthor = currentUserPk && currentUserPk === report.pk;
+            const isFollowed = appStore.get().followedPubkeys.some(f => f.pk === report.pk);
+            const canFollow = currentUserPk && currentUserPk !== report.pk;
 
-        contentContainer.innerHTML = renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
+            modalContentContainer.innerHTML = renderReportDetailHtml(report, profile, isAuthor, isFollowed, canFollow);
 
-        setupReportDetailEventListeners(report, isAuthor, canFollow, contentContainer);
-        initializeMiniMap(report, contentContainer);
-        loadAndDisplayInteractions(report.id, report.pk, contentContainer.querySelector(`#interactions-for-${report.id}`));
-    });
+            setupReportDetailEventListeners(report, isAuthor, canFollow, modalContentContainer);
+            initializeMiniMap(report, modalContentContainer);
+            loadAndDisplayInteractions(report.id, report.pk, modalContentContainer.querySelector(`#interactions-for-${report.id}`));
+        });
+        return modalContentContainer;
+    };
 
-
-    reportDetailsModalElement = Modal('report-detail-container', report.title || 'Report Details', contentContainer);
+    reportDetailsModalElement = Modal('report-detail-container', report.title || 'Report Details', contentRenderer);
 
     return reportDetailsModalElement;
 }
