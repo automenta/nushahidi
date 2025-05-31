@@ -1,5 +1,5 @@
 import {createEl, sanitizeHTML, showToast} from '../utils.js';
-import {showConfirmModal} from './modals.js';
+import {showConfirmModal} from '../modals.js';
 
 export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     const form = createEl('form', {...formOptions});
@@ -8,7 +8,8 @@ export function renderForm(fieldsConfig, initialData = {}, formOptions = {}) {
     if (formOptions.onSubmit) form.onsubmit = formOptions.onSubmit;
 
     for (const field of fieldsConfig) {
-        const fieldId = field.id || (field.name ? `field-${field.name}-${Math.random().toString(36).substring(2, 9)}` : null);
+        // Ensure a unique ID is always generated if not explicitly provided
+        const fieldId = field.id || `field-${field.name || 'anon'}-${Math.random().toString(36).substring(2, 9)}`;
         const commonAttrs = {id: fieldId, name: field.name, required: field.required || false};
         const initialValue = initialData[field.name] ?? field.value ?? '';
 

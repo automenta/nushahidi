@@ -8,29 +8,29 @@ import {ImagePreviewItem} from './ImagePreviewItem.js';
 
 export class ReportFormModal extends Modal {
     constructor() {
+        // The contentRenderer for the Modal constructor should be minimal
+        // and not access 'this' of ReportFormModal.
+        // The actual form rendering and setup will happen in the show() method.
+        const contentRenderer = () => {
+            // This div will be populated by the show() method later
+            return createEl('div', {class: 'report-form-content-container'});
+        };
+
+        super('report-form-modal', 'New Report', contentRenderer);
+
+        // Now 'this' is available
         this.reportToEdit = null;
         this.formState = {
             pFLoc: null,
             uIMeta: []
         };
 
-        this.modalContentContainer = null;
+        // Get reference to the container created by contentRenderer
+        this.modalContentContainer = this.root.querySelector('.report-form-content-container');
         this.form = null;
         this.pFLocCoordsEl = null;
         this.upldPhotosPreviewEl = null;
 
-        // The contentRenderer for the Modal constructor should be minimal
-        // and not access 'this' of ReportFormModal.
-        // The actual form rendering and setup will happen in the show() method.
-        const contentRenderer = (modalContent) => {
-            this.modalContentContainer = createEl('div');
-            modalContent.appendChild(this.modalContentContainer);
-            return this.modalContentContainer;
-        };
-
-        super('report-form-modal', 'New Report', contentRenderer);
-
-        // After super() is called, 'this' is available.
         // Call show() to perform the initial rendering and setup.
         this.show();
     }
