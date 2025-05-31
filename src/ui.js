@@ -49,12 +49,12 @@ const setupOnboardingModal = () => {
 };
 
 export function initUI() {
-    // Ensure static containers exist
+    // Ensure static containers exist (non-modals)
     const filterControlsContainer = ensureContainerExists('filter-controls');
     const reportListContainer = ensureContainerExists('report-list-container');
     ensureContainerExists('report-list', reportListContainer); // Ensure report-list div exists inside report-list-container
 
-    // Initialize modals - they will append themselves to document.body
+    // Initialize modals - they will create and append themselves to document.body
     AuthModal();
     ReportFormModal();
     SettingsModal();
@@ -80,7 +80,8 @@ export function initUI() {
         if (newState.online !== oldState?.online) updateConnectionDisplay(newState.online);
         if (newState.online !== oldState?.online || newState.reports !== oldState?.reports) updateSyncDisplay();
         handleReportAndFilterUpdates(newState, oldState);
-        if (newState.settings.cats !== oldState?.settings?.cats) updateFilterCategories(newState.settings.cats);
+        // Safely access settings.cats for updateFilterCategories
+        if (newState.settings?.cats !== oldState?.settings?.cats) updateFilterCategories(newState.settings?.cats);
         if (newState.ui.modalOpen !== oldState?.ui?.modalOpen) handleModalFocus(newState.ui.modalOpen, oldState?.ui?.modalOpen);
         if (newState.ui.reportIdToView !== oldState?.ui?.reportIdToView) handleReportViewing(newState.ui.reportIdToView, newState.reports);
         if (newState.ui.loading !== oldState?.ui?.loading) updateGlobalLoadingSpinner(newState.ui.loading);
@@ -90,7 +91,8 @@ export function initUI() {
     updateAuthDisplay(appStore.get().user?.pk);
     updateConnectionDisplay(appStore.get().online);
     updateGlobalLoadingSpinner(appStore.get().ui.loading);
-    updateFilterCategories(appStore.get().settings.cats);
+    // Safely call updateFilterCategories on initial load
+    updateFilterCategories(appStore.get().settings?.cats);
     updateSyncDisplay();
     applyAllFilters();
 

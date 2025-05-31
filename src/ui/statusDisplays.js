@@ -68,7 +68,7 @@ export const updateFilterCategories = newCategories => {
     const selectElement = $('#filter-category', $('#filter-controls'));
     if (!selectElement) return;
     selectElement.innerHTML = '<option value="">All</option>';
-    newCategories.forEach(c => selectElement.appendChild(createEl('option', { value: c, textContent: sanitizeHTML(c) })));
+    (newCategories || []).forEach(c => selectElement.appendChild(createEl('option', { value: c, textContent: sanitizeHTML(c) })));
 };
 
 export const handleModalFocus = (newModalId, oldModalId) => {
@@ -79,7 +79,6 @@ export const handleReportViewing = (reportId, reports) => {
     if (reportId) {
         const report = reports.find(r => r.id === reportId);
         if (report) {
-            // ReportDetailsModal now creates and appends itself to document.body
             ReportDetailsModal(report);
             showModal('report-detail-container', 'detail-title');
         }
