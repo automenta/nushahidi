@@ -3,9 +3,7 @@ import {NavigationRoute, registerRoute} from 'workbox-routing';
 import {NetworkFirst, StaleWhileRevalidate} from 'workbox-strategies';
 import {ExpirationPlugin} from 'workbox-expiration';
 import {BackgroundSyncPlugin} from 'workbox-background-sync';
-import { setLogLevel, LOG_LEVEL } from 'workbox-core'; // Changed import
 
-setLogLevel(LOG_LEVEL.SILENT); // Changed usage
 
 cleanupOutdatedCaches();
 

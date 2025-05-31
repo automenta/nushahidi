@@ -1,5 +1,5 @@
-import { nip11 } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools/pool'; // Reverted to direct named import
+import {nip11} from 'nostr-tools';
+import {SimplePool} from 'nostr-tools/pool'; // Reverted to direct named import
 import {appStore} from '../store.js';
 import {C, parseReport, showToast} from '../utils.js';
 import {withLoading, withToast} from '../decorators.js';
@@ -205,29 +205,22 @@ export const nostrSvc = {
         // Only re-initialize if _pool is not a valid SimplePool instance
         if (!_pool || typeof _pool.on !== 'function') {
             try {
-                // Diagnostic log: What is SimplePool before instantiation?
-                console.log("SimplePool object:", SimplePool);
-                const newPool = new SimplePool(); // Instantiated directly
-                // Validate the newly created instance immediately
-                if (typeof newPool.on !== 'function') {
-                    console.error("SimplePool constructor returned an object without an 'on' method.");
-                    throw new Error("Nostr SimplePool failed to initialize correctly: Missing 'on' method.");
-                }
-                _pool = newPool; // Assign to _pool only if valid
 
-                // Attach listeners only once when the pool is successfully created
-                _pool.on('relay:connect', (url) => {
-                    updRlyStore(url, 'connected');
-                    showToast(`Connected to ${url}`, 'success', 2000);
-                });
-                _pool.on('relay:disconnect', (url) => {
-                    updRlyStore(url, 'disconnected');
-                    showToast(`Disconnected from ${url}`, 'warning', 2000);
-                });
-                _pool.on('relay:error', (url) => {
-                    updRlyStore(url, 'error');
-                    showToast(`Error connecting to ${url}`, 'error', 2000);
-                });
+                _pool = new SimplePool();
+
+                // // Attach listeners only once when the pool is successfully created
+                // _pool.on('relay:connect', (url) => {
+                //     updRlyStore(url, 'connected');
+                //     showToast(`Connected to ${url}`, 'success', 2000);
+                // });
+                // _pool.on('relay:disconnect', (url) => {
+                //     updRlyStore(url, 'disconnected');
+                //     showToast(`Disconnected from ${url}`, 'warning', 2000);
+                // });
+                // _pool.on('relay:error', (url) => {
+                //     updRlyStore(url, 'error');
+                //     showToast(`Error connecting to ${url}`, 'error', 2000);
+                // });
             } catch (e) {
                 console.error("Error initializing Nostr SimplePool:", e);
                 _pool = null; // Ensure _pool is null if initialization failed
@@ -243,21 +236,24 @@ export const nostrSvc = {
         }
 
         const currentRelaysInStore = appStore.get().relays;
-        const poolRelayUrls = _pool.relays.map(r => r.url);
+
+        const poolRelayUrls = _pool.relays.entries().map(r => r.url).toArray();
 
         for (const rConf of currentRelaysInStore) {
             if (!rConf.read && !rConf.write) continue;
 
-            if (!poolRelayUrls.includes(rConf.url)) {
-                _pool.addRelay(rConf.url);
-                updRlyStore(rConf.url, 'connecting');
+
+            const u = rConf.url;
+            if (!poolRelayUrls.includes(u)) {
+                _pool.subscribe([u]);
+                updRlyStore(u, 'connecting');
 
                 if (!rConf.nip11) {
                     try {
-                        const nip11Doc = await nip11.fetchRelayInformation(rConf.url);
-                        updRlyStore(rConf.url, 'connecting', nip11Doc);
+                        const nip11Doc = await nip11.fetchRelayInformation(u);
+                        updRlyStore(u, 'connecting', nip11Doc);
                     } catch (e) {
-                        console.warn(`Failed to fetch NIP-11 for ${rConf.url}: ${e.message}`);
+                        console.warn(`Failed to fetch NIP-11 for ${u}: ${e.message}`);
                     }
                 }
             }
