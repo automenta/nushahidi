@@ -4,32 +4,34 @@ import {settingsSections} from './settingsConfig.js';
 import {renderConfigurableListSetting} from './settingsUtils.js';
 import {renderOfflineQueue} from './settings/offlineQueue.js';
 
+const sectionRenderers = new Map([
+    ['list', (wrapper, section) => renderConfigurableListSetting(wrapper, section)],
+    ['section', (wrapper, section) => {
+        const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
+        const renderedContent = section.renderer(wrapper);
+        if (Array.isArray(renderedContent)) renderedContent.forEach(el => sectionEl.appendChild(el));
+        else if (renderedContent instanceof Node) sectionEl.appendChild(renderedContent);
+        wrapper.appendChild(sectionEl);
+    }],
+    ['offline-queue', (wrapper, section) => {
+        const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
+        sectionEl.append(
+            createEl('p', { textContent: 'Events waiting to be published when online.' }),
+            createEl('div', { id: section.listId })
+        );
+        wrapper.appendChild(sectionEl);
+        renderOfflineQueue(wrapper);
+    }]
+]);
+
 const settingsContentRenderer = modalRoot => {
     const settingsSectionsWrapper = createEl('div', { id: 'settings-sections' });
 
     settingsSections.forEach(section => {
-        if (section.type === 'list') {
-            renderConfigurableListSetting(settingsSectionsWrapper, section);
-        } else {
-            const sectionEl = createEl('section', {}, [createEl('h3', { textContent: section.title })]);
-            if (section.type === 'section') {
-                const renderedContent = section.renderer(settingsSectionsWrapper);
-                if (Array.isArray(renderedContent)) {
-                    renderedContent.forEach(el => sectionEl.appendChild(el));
-                } else if (renderedContent instanceof Node) {
-                    sectionEl.appendChild(renderedContent);
-                }
-            } else if (section.type === 'offline-queue') {
-                sectionEl.append(
-                    createEl('p', { textContent: 'Events waiting to be published when online.' }),
-                    createEl('div', { id: section.listId })
-                );
-            }
-            settingsSectionsWrapper.appendChild(sectionEl);
+        const renderer = sectionRenderers.get(section.type);
+        if (renderer) {
+            renderer(settingsSectionsWrapper, section);
             settingsSectionsWrapper.appendChild(createEl('hr'));
-            if (section.type === 'offline-queue') {
-                renderOfflineQueue(settingsSectionsWrapper);
-            }
         }
     });
     return settingsSectionsWrapper;

@@ -5,7 +5,7 @@ import {renderForm, renderList} from './forms.js';
 import {createModalWrapper, hideModal, showModal} from './modals.js';
 import {withLoading, withToast} from '../decorators.js';
 
-const REPORT_FORM_FIELDS = (categories, initialFormData) => [
+const getReportFormFields = (categories, initialFormData) => [
     { label: 'Title:', type: 'text', id: 'rep-title', name: 'title' },
     { label: 'Summary:', type: 'text', id: 'rep-sum', name: 'summary', required: true },
     { label: 'Description (MD):', type: 'textarea', id: 'rep-desc', name: 'description', required: true, rows: 3 },
@@ -198,7 +198,8 @@ export function RepFormComp(reportToEdit = null) {
         eventType: reportToEdit?.evType,
         status: reportToEdit?.stat,
         isEdit: !!reportToEdit,
-        uIMeta: formState.uIMeta
+        uIMeta: formState.uIMeta,
+        location: formState.pFLoc ? `${formState.pFLoc.lat.toFixed(5)},${formState.pFLoc.lng.toFixed(5)}` : 'None'
     };
 
     const formRoot = createModalWrapper('report-form-modal', reportToEdit ? 'Edit Report' : 'New Report', modalContent => {
@@ -217,7 +218,7 @@ export function RepFormComp(reportToEdit = null) {
             });
         };
 
-        const form = renderForm(REPORT_FORM_FIELDS(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
+        const form = renderForm(getReportFormFields(categories, initialFormData), initialFormData, { id: 'nstr-rep-form' });
         modalContent.appendChild(form);
 
         $('#rep-photos', form).onchange = setupReportFormImageUploadHandler(formState.uIMeta, updateImagePreview);

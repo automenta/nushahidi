@@ -1,5 +1,5 @@
 import {appStore} from '../store.js';
-import {$, createEl} from '../utils.js';
+import {$, createEl, sanitizeHTML} from '../utils.js';
 
 export function createModalWrapper(modalId, title, contentRenderer) {
     const modalElement = $(`#${modalId}`);
@@ -10,7 +10,7 @@ export function createModalWrapper(modalId, title, contentRenderer) {
 
     modalElement.append(
         createEl('span', { class: 'close-btn', innerHTML: '&times;', onclick: () => hideModal(modalId) }),
-        createEl('h2', { id: `${modalId}-heading`, textContent: title }),
+        createEl('h2', { id: `${modalId}-heading`, textContent: sanitizeHTML(title) }),
         modalContent
     );
 
@@ -23,7 +23,7 @@ export function createModalWrapper(modalId, title, contentRenderer) {
 
 export function showConfirmModal(title, message, onConfirm, onCancel) {
     createModalWrapper('confirm-modal', title, root => [
-        createEl('p', { innerHTML: message }),
+        createEl('p', { innerHTML: sanitizeHTML(message) }),
         createEl('div', { class: 'confirm-modal-buttons' }, [
             createEl('button', { class: 'cancel-button', textContent: 'Cancel', onclick: () => { hideModal('confirm-modal'); onCancel?.(); } }),
             createEl('button', { class: 'confirm-button', textContent: 'Confirm', onclick: () => { hideModal('confirm-modal'); onConfirm(); } })
@@ -59,7 +59,7 @@ export const showModal = (id, focusElId) => {
     const modal = $(`#${id}`);
     if (modal) {
         modal.style.display = 'block';
-        modal.removeAttribute('inert'); // Remove inert when showing
+        modal.removeAttribute('inert');
         $(focusElId, modal)?.focus();
     }
     appStore.set(s => ({ ...s, ui: { ...s.ui, modalOpen: id } }));
@@ -69,7 +69,7 @@ export const hideModal = id => {
     const modal = $(`#${id}`);
     if (modal) {
         modal.style.display = 'none';
-        modal.setAttribute('inert', ''); // Add inert when hiding
+        modal.setAttribute('inert', '');
     }
     appStore.set(s => ({ ...s.ui, modalOpen: null }));
 };
