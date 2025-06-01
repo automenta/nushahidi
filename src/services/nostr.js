@@ -156,7 +156,7 @@ export const nostrSvc = {
         const filter = buildReportFilter(appState, appState.mapGhs);
         const sub = _pool.subscribe(relaysToQuery, [filter], { // Changed .sub to .subscribe
             onevent: event => handleEvent(event, event.relay),
-            oneose: () => console.log('Reports EOSE')
+            oneose: () => { /*console.log('Reports EOSE')*/ }
         });
         _activeSubs.set('reports', { sub, type: 'reports' });
     },
