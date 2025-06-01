@@ -1,4 +1,3 @@
-import {appStore} from '../../store.js';
 import {idSvc} from '../../services.js';
 import {createEl, showToast} from '../../utils.js';
 import {Modal, showConfirmModal} from '../modals.js';

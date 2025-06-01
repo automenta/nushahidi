@@ -1,7 +1,7 @@
 import {nip19} from 'nostr-tools';
 import {appStore} from '../../store.js';
 import {idSvc} from '../../services.js';
-import {showToast, createEl} from '../../utils.js';
+import {createEl, showToast} from '../../utils.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showPassphraseModal} from '../modals.js';

@@ -1,9 +1,8 @@
-import { SimplePool } from 'nostr-tools/pool';
-import { getEventHash } from 'nostr-tools/pure'; // getEventHash is still useful for event IDs
-import { appStore } from '../store.js';
-import { dbSvc } from '../services/db.js';
-import { idSvc } from './identity.js';
-import { C, parseReport, showToast } from '../utils.js';
+import {SimplePool} from 'nostr-tools/pool';
+import {appStore} from '../store.js';
+import {dbSvc} from '../services/db.js';
+import {idSvc} from './identity.js';
+import {C, parseReport, showToast} from '../utils.js';
 
 let _pool = null;
 const _activeSubs = new Map();

@@ -2,7 +2,8 @@ import {appStore} from '../store.js';
 import {idSvc, mapSvc} from '../services.js';
 import {C, createEl} from '../utils.js';
 import {showConfirmModal} from './modals.js';
-import {applyAllFilters} from './components/FilterControls.js';
+// Removed import for SidebarControls as it's no longer needed
+import {applyAllFilters, FilterControls} from './components/FilterControls.js';
 import {ReportList} from './components/ReportList.js';
 import {GlobalLoadingSpinner} from './components/GlobalLoadingSpinner.js';
 import {AppHeader} from './components/AppHeader.js';
@@ -11,8 +12,6 @@ import {AuthModal} from './components/AuthModal.js';
 import {ReportFormModal} from './components/ReportFormModal.js';
 import {SettingsModal} from './components/SettingsModal.js';
 import {OnboardingModal} from './components/OnboardingModal.js';
-// Removed import for SidebarControls as it's no longer needed
-import {FilterControls} from './components/FilterControls.js';
 
 export class App {
     constructor(rootElement) {

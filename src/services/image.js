@@ -1,5 +1,5 @@
-import { appStore } from '../store.js';
-import { C } from '../utils.js';
+import {appStore} from '../store.js';
+import {C} from '../utils.js';
 
 export const imgSvc = {
     async upload(file) {

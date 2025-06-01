@@ -1,10 +1,10 @@
-import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools/pure';
-import { encrypt, decrypt, nsecToHex, npubToHex, showToast } from '../utils.js';
-import { appStore } from '../store.js';
-import { confSvc } from './config.js';
-import { withLoading, withToast } from '../decorators.js';
-import { showPassphraseModal } from '../ui/modals.js';
-import { nip19 } from 'nostr-tools';
+import {finalizeEvent, generateSecretKey, getPublicKey} from 'nostr-tools/pure';
+import {decrypt, encrypt, nsecToHex, showToast} from '../utils.js';
+import {appStore} from '../store.js';
+import {confSvc} from './config.js';
+import {withLoading, withToast} from '../decorators.js';
+import {showPassphraseModal} from '../ui/modals.js';
+import {nip19} from 'nostr-tools';
 
 let _locSk = null;
 

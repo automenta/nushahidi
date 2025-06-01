@@ -1,4 +1,4 @@
-import {npubToHex, C} from '../utils.js';
+import {C, npubToHex, showToast} from '../utils.js';
 import {appStore} from '../store.js';
 import {confSvc, nostrSvc} from '../services.js';
 import {KeyManagementSection} from './settings/keyManagement.js';
@@ -9,7 +9,6 @@ import {OfflineQueueSection} from './settings/offlineQueue.js';
 import {ConfigurableListSetting} from './components/ConfigurableListSetting.js';
 import {withLoading, withToast} from '../decorators.js';
 import {showConfirmModal} from './modals.js';
-import {showToast} from '../utils.js';
 
 import {RelayItem} from './components/settings/RelayItem.js';
 import {FocusTagItem} from './components/settings/FocusTagItem.js';

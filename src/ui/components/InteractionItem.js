@@ -1,4 +1,4 @@
-import {createEl, formatNpubShort, sanitizeHTML, C} from '../../utils.js';
+import {C, createEl, formatNpubShort, sanitizeHTML} from '../../utils.js';
 import {marked} from 'marked';
 
 export class InteractionItem {

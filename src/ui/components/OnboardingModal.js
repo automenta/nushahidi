@@ -1,4 +1,3 @@
-import {appStore} from '../../store.js';
 import {C, createEl} from '../../utils.js';
 import {Modal} from '../modals.js';
 

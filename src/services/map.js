@@ -1,11 +1,11 @@
 import L from 'leaflet';
 import 'ali.leaflet.markercluster';
 import 'leaflet-draw';
-import { appStore } from '../store.js';
-import { dbSvc } from './db.js';
-import { confSvc } from './config.js';
-import { generateUUID, getGhPrefixes, showToast } from '../utils.js';
-import { withToast } from '../decorators.js';
+import {appStore} from '../store.js';
+import {dbSvc} from './db.js';
+import {confSvc} from './config.js';
+import {generateUUID, getGhPrefixes, showToast} from '../utils.js';
+import {withToast} from '../decorators.js';
 
 let _map;
 let _mapTileLyr;

@@ -1,7 +1,7 @@
 import {appStore} from '../../store.js';
 import {createEl} from '../../utils.js';
 import {renderForm, renderList} from '../forms.js';
-import {withLoading, withToast} from '../../decorators.js';
+import {withToast} from '../../decorators.js';
 
 export class ConfigurableListSetting {
     constructor(config) {

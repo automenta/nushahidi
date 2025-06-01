@@ -1,6 +1,6 @@
 import {appStore} from '../../store.js';
 import {confSvc, mapSvc} from '../../services.js';
-import {C, isValidUrl, createEl} from '../../utils.js';
+import {C, createEl, isValidUrl} from '../../utils.js';
 import {withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 

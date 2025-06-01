@@ -1,6 +1,6 @@
 import {appStore} from '../../store.js';
 import {confSvc, dbSvc} from '../../services.js';
-import {showToast, createEl} from '../../utils.js';
+import {createEl, showToast} from '../../utils.js';
 import {withLoading, withToast} from '../../decorators.js';
 import {renderForm} from '../forms.js';
 import {showConfirmModal} from '../modals.js';

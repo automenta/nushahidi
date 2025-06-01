@@ -1,4 +1,4 @@
-import { C } from '../utils.js';
+import {C} from '../utils.js';
 
 let _db;
 
